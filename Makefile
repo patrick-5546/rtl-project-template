@@ -10,7 +10,7 @@ SURFER ?= surfer
 GTKWAVE ?= gtkwave
 MARKDOWNLINT ?= markdownlint-cli2
 VSIM ?= vsim
-MODELSIM_ARGS ?=
+MODELSIM_ARGS ?= -voptargs=+acc
 MODELSIM_ARCH ?= i686
 MODELSIM_BITS ?= 32
 MODELSIM32_PYTHON ?= .venv-modelsim32/bin/python
@@ -20,6 +20,7 @@ MODELSIM_WAVE ?= $(MODELSIM_BUILD_DIR)/vsim.wlf
 STATE ?= waves/top.surf.ron
 GTKWAVE_SAVE ?= waves/top.gtkw
 MODELSIM_DO ?= waves/top.do
+MODELSIM_GUI ?= 0
 TEST ?=
 TEST_FILTER ?=
 REBUILD ?= 1
@@ -44,7 +45,7 @@ help:
 	@echo "  make waves-gtkwave [TEST=...]                 Run tests, then open GTKWave"
 	@echo "  make test-modelsim [TEST=...]                 Run tests with ModelSim"
 	@echo "  make test-modelsim MODELSIM_PYTEST='<cmd>'    Run ModelSim with a custom Python env"
-	@echo "  make waves-modelsim [TEST=...]                Run tests, then open ModelSim"
+	@echo "  make waves-modelsim [TEST=...]                Run tests in live ModelSim GUI"
 	@echo "  make open-waves                               Open existing waveform in Surfer"
 	@echo "  make open-waves-gtkwave                       Open existing waveform in GTKWave"
 	@echo "  make open-waves-modelsim                      Open existing WLF in ModelSim"
@@ -69,6 +70,7 @@ test:
 	ARCH="$(ARCH)" COCOTB_BITS="$(COCOTB_BITS)" SIM=$(SIM) \
 		BUILD_DIR="$(BUILD_DIR)" MODELSIM_WAVE="$(MODELSIM_WAVE)" \
 		MODELSIM_ARGS="$(MODELSIM_ARGS)" \
+		MODELSIM_GUI="$(MODELSIM_GUI)" MODELSIM_DO="$(MODELSIM_DO)" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(PYTEST)
 
 test-modelsim:
@@ -76,7 +78,8 @@ test-modelsim:
 		MODELSIM_WAVE="$(MODELSIM_WAVE)" TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" \
 		REBUILD="$(REBUILD)" MODELSIM_ARGS="$(MODELSIM_ARGS)" \
 		ARCH="$(MODELSIM_ARCH)" COCOTB_BITS="$(MODELSIM_BITS)" \
-		PYTEST="$(MODELSIM_PYTEST)" UV="$(UV)"
+		PYTEST="$(MODELSIM_PYTEST)" UV="$(UV)" \
+		MODELSIM_GUI="$(MODELSIM_GUI)" MODELSIM_DO="$(MODELSIM_DO)"
 
 sim: test
 
@@ -138,10 +141,11 @@ open-waves-gtkwave:
 		$(GTKWAVE) "$(WAVE)"; \
 	fi
 
-waves-modelsim: test-modelsim
-	$(MAKE) open-waves-modelsim MODELSIM_WAVE="$(MODELSIM_WAVE)" \
-		MODELSIM_DO="$(MODELSIM_DO)" VSIM="$(VSIM)" \
-		MODELSIM_ARGS="$(MODELSIM_ARGS)"
+waves-modelsim:
+	$(MAKE) test-modelsim MODELSIM_GUI=1 MODELSIM_DO="$(MODELSIM_DO)" \
+		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" \
+		MODELSIM_ARGS="$(MODELSIM_ARGS)" MODELSIM_WAVE="$(MODELSIM_WAVE)" \
+		UV="$(UV)"
 
 open-waves-modelsim:
 	@test -f "$(MODELSIM_WAVE)" || { echo "Waveform '$(MODELSIM_WAVE)' not found. Run 'make test-modelsim' first."; exit 1; }

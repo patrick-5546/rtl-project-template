@@ -186,7 +186,10 @@ make test-modelsim TEST_FILTER='enable_.*'
 make test-modelsim TEST=enable_high_counts REBUILD=0
 ```
 
-ModelSim uses its native WLF waveform format:
+ModelSim uses its native WLF waveform format. Use `make waves-modelsim` for a
+live GUI simulation when you want source-linked debug, such as double-clicking a
+wave signal to navigate to its source. Use `make open-waves-modelsim` only when
+you want to inspect an existing saved WLF without rerunning simulation.
 
 ```sh
 make waves-modelsim
@@ -195,19 +198,27 @@ make open-waves-modelsim
 ```
 
 Reusable ModelSim wave layouts can be saved as a `.do` file such as
-`waves/top.do`. If that file exists, `make waves-modelsim` and
-`make open-waves-modelsim` load it automatically. Override the WLF or `.do` path
-if needed:
+`waves/top.do`. If that file exists, `make waves-modelsim` sources it in the
+live GUI after `run -all`, and `make open-waves-modelsim` loads it when opening
+an existing WLF. Override the WLF or `.do` path if needed:
 
 ```sh
+make waves-modelsim MODELSIM_DO=waves/other.do
 make open-waves-modelsim MODELSIM_WAVE=build/modelsim/other.wlf MODELSIM_DO=waves/other.do
 ```
 
-Override ModelSim arguments when needed:
+The ModelSim flow defaults to `MODELSIM_ARGS=-voptargs=+acc` for better GUI and
+waveform debug visibility. Override ModelSim arguments when needed, or set
+`MODELSIM_ARGS=` to run without extra debug access:
 
 ```sh
-make test-modelsim MODELSIM_ARGS="-64 -permit_unmatched_virtual_intf"
+make test-modelsim MODELSIM_ARGS="-voptargs=+acc -64"
+make test-modelsim MODELSIM_ARGS=
 ```
+
+`make open-waves-modelsim` opens an already-generated WLF, so `+acc` cannot add
+debug visibility that was not preserved when the WLF was created. For best source
+navigation, prefer `make waves-modelsim`.
 
 ### 32-bit Intel/Altera ModelSim setup
 
