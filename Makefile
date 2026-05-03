@@ -29,7 +29,7 @@ SV_SOURCES := rtl/top.sv
 .PHONY: all check clean format help lint open-waves open-waves-gtkwave \
 	md-format md-lint open-waves-modelsim pre-commit-install pre-commit-run \
 	py-format py-format-check py-lint py-type sim sv-format sv-format-check \
-	sv-lint sync test test-modelsim test-one verilator-lint waves waves-gtkwave \
+	sv-lint sync test test-modelsim verilator-lint waves waves-gtkwave \
 	waves-modelsim
 
 all: check test
@@ -77,13 +77,6 @@ test-modelsim:
 		REBUILD="$(REBUILD)" MODELSIM_ARGS="$(MODELSIM_ARGS)" \
 		ARCH="$(MODELSIM_ARCH)" COCOTB_BITS="$(MODELSIM_BITS)" \
 		PYTEST="$(MODELSIM_PYTEST)" UV="$(UV)"
-
-test-one:
-	@test -n "$(TEST)" || { echo "Usage: make test-one TEST=<cocotb_test_name>"; exit 2; }
-	$(MAKE) test TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" \
-		SIM="$(SIM)" BUILD_DIR="$(BUILD_DIR)" MODELSIM_WAVE="$(MODELSIM_WAVE)" \
-		MODELSIM_ARGS="$(MODELSIM_ARGS)" ARCH="$(ARCH)" COCOTB_BITS="$(COCOTB_BITS)" \
-		PYTEST="$(PYTEST)" UV="$(UV)"
 
 sim: test
 
