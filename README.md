@@ -29,7 +29,51 @@ make lint            # Run Ruff, ty, Verible, and Verilator lint-only
 make test            # Run cocotb tests and show the cocotb pass/fail summary
 make waves           # Run tests, then open the generated waveform in Surfer
 make waves-gtkwave   # Run tests, then open the generated waveform in GTKWave
+make open-waves      # Open the existing waveform in Surfer without rerunning
+make open-waves-gtkwave # Open the existing waveform in GTKWave without rerunning
+make help            # Show debug/test workflow examples
 make clean           # Remove generated local artifacts
+```
+
+## Debugging tests
+
+Run the full regression:
+
+```sh
+make test
+```
+
+Run one cocotb test by exact test name:
+
+```sh
+make test TEST=enable_high_counts
+```
+
+Run a subset with a cocotb test-name regular expression:
+
+```sh
+make test TEST_FILTER='enable_.*'
+```
+
+By default, tests rebuild the simulator before running. For faster debug loops
+after a successful build, reuse the existing simulator build:
+
+```sh
+make test TEST=enable_high_counts REBUILD=0
+```
+
+Use run-then-open targets when you want a fresh waveform:
+
+```sh
+make waves TEST=enable_high_counts
+make waves-gtkwave TEST=enable_high_counts
+```
+
+Use open-only targets when you just want to inspect the existing waveform:
+
+```sh
+make open-waves
+make open-waves-gtkwave
 ```
 
 The default waveform path is `build/sim/dump.vcd`. Generated waveform files are

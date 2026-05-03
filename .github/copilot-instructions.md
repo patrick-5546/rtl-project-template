@@ -31,10 +31,16 @@ Use the existing Makefile targets instead of inventing new one-off commands:
 - `make format`: format Python and SystemVerilog.
 - `make lint`: run Ruff, ty, Verible lint/format checks, and Verilator lint-only.
 - `make test`: run pytest/cocotb tests with Verilator.
+- `make test TEST=<name>`: run one cocotb test by exact test name.
+- `make test TEST_FILTER='<regex>'`: run cocotb tests matching a regular expression.
+- `make test REBUILD=0`: reuse an existing simulator build for faster debug loops.
 - `make waves`: run tests and open `build/sim/dump.vcd` in Surfer, loading
   `waves/top.surf.ron` when that state file exists.
 - `make waves-gtkwave`: run tests and open `build/sim/dump.vcd` in GTKWave,
   loading `waves/top.gtkw` when that save file exists.
+- `make open-waves`: open an existing waveform in Surfer without rerunning tests.
+- `make open-waves-gtkwave`: open an existing waveform in GTKWave without rerunning tests.
+- `make help`: show common debug workflow examples.
 - `make clean`: remove generated local artifacts.
 
 Python tools are installed and run through uv. Prefer `uv run ...` or the
@@ -58,6 +64,8 @@ globally installed.
 - Put cocotb tests under `tests/` and launch them through pytest.
 - Use Verilator as the default simulator via `SIM=verilator`.
 - Keep tests deterministic and focused on externally visible RTL behavior.
+- Prefer cocotb runner selection via `TEST` or `TEST_FILTER` over pytest `-k`,
+  because pytest only sees the outer wrapper test.
 - Generate waveforms when useful for debugging; the default waveform path is
   `build/sim/dump.vcd`. Save reusable Surfer signal/layout state in
   `waves/top.surf.ron` and reusable GTKWave signal/layout state in

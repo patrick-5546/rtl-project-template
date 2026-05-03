@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -6,6 +7,13 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotb_tools.runner import get_runner
+
+
+def env_flag(name: str, *, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
 async def start_counter(dut: Any) -> None:
@@ -69,18 +77,26 @@ def test_top_with_verilator() -> None:
     test_dir = Path(__file__).resolve().parent
     build_dir = project_dir / "build" / "sim"
     pythonpath = os.pathsep.join(filter(None, [str(test_dir), os.environ.get("PYTHONPATH", "")]))
+    selected_test = os.environ.get("TEST") or None
+    test_filter = os.environ.get("TEST_FILTER") or None
+    rebuild = env_flag("REBUILD", default=True)
+    if selected_test and test_filter:
+        raise ValueError("Set either TEST or TEST_FILTER, not both.")
+    if selected_test:
+        test_filter = rf"(^|.*\.){re.escape(selected_test)}$"
 
     runner = get_runner(os.environ.get("SIM", "verilator"))
     runner.build(
         sources=[project_dir / "rtl" / "top.sv"],
         hdl_toplevel="top",
         build_dir=build_dir,
-        always=True,
+        always=rebuild,
         waves=True,
     )
     runner.test(
         hdl_toplevel="top",
         test_module=Path(__file__).stem,
+        test_filter=test_filter,
         build_dir=build_dir,
         waves=True,
         extra_env={"PYTHONPATH": pythonpath},

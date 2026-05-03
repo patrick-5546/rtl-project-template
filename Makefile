@@ -5,19 +5,41 @@ GTKWAVE ?= gtkwave
 WAVE ?= build/sim/dump.vcd
 STATE ?= waves/top.surf.ron
 GTKWAVE_SAVE ?= waves/top.gtkw
+TEST ?=
+TEST_FILTER ?=
+REBUILD ?= 1
 
 SV_SOURCES := rtl/top.sv
 
-.PHONY: all check clean format lint py-format py-format-check py-lint py-type sim sv-format \
-	sv-format-check sv-lint sync test verilator-lint waves waves-gtkwave
+.PHONY: all check clean format help lint open-waves open-waves-gtkwave py-format \
+	py-format-check py-lint py-type sim sv-format sv-format-check sv-lint sync test \
+	test-one verilator-lint waves waves-gtkwave
 
 all: check test
+
+help:
+	@echo "Common targets:"
+	@echo "  make test                                      Run the full cocotb regression"
+	@echo "  make test TEST=enable_high_counts             Run one cocotb test"
+	@echo "  make test TEST_FILTER='enable_.*'             Run matching cocotb tests"
+	@echo "  make test TEST=enable_high_counts REBUILD=0   Reuse an existing simulator build"
+	@echo "  make waves [TEST=...]                         Run tests, then open Surfer"
+	@echo "  make waves-gtkwave [TEST=...]                 Run tests, then open GTKWave"
+	@echo "  make open-waves                               Open existing waveform in Surfer"
+	@echo "  make open-waves-gtkwave                       Open existing waveform in GTKWave"
+	@echo "  make lint                                     Run all lint/type checks"
+	@echo "  make format                                   Format Python and SystemVerilog"
+	@echo "  make clean                                    Remove generated artifacts"
 
 sync:
 	$(UV) sync
 
 test: sync
-	SIM=$(SIM) $(UV) run pytest -s
+	SIM=$(SIM) TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(UV) run pytest -s
+
+test-one:
+	@test -n "$(TEST)" || { echo "Usage: make test-one TEST=<cocotb_test_name>"; exit 2; }
+	$(MAKE) test TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" SIM="$(SIM)" UV="$(UV)"
 
 sim: test
 
@@ -52,7 +74,10 @@ check: lint
 format: py-format sv-format
 
 waves: test
-	test -f "$(WAVE)"
+	$(MAKE) open-waves WAVE="$(WAVE)" STATE="$(STATE)" SURFER="$(SURFER)"
+
+open-waves:
+	@test -f "$(WAVE)" || { echo "Waveform '$(WAVE)' not found. Run 'make test' first."; exit 1; }
 	if test -f "$(STATE)"; then \
 		$(SURFER) --state-file "$(STATE)" "$(WAVE)"; \
 	else \
@@ -60,7 +85,10 @@ waves: test
 	fi
 
 waves-gtkwave: test
-	test -f "$(WAVE)"
+	$(MAKE) open-waves-gtkwave WAVE="$(WAVE)" GTKWAVE_SAVE="$(GTKWAVE_SAVE)" GTKWAVE="$(GTKWAVE)"
+
+open-waves-gtkwave:
+	@test -f "$(WAVE)" || { echo "Waveform '$(WAVE)' not found. Run 'make test' first."; exit 1; }
 	if test -f "$(GTKWAVE_SAVE)"; then \
 		$(GTKWAVE) "$(WAVE)" "$(GTKWAVE_SAVE)"; \
 	else \
