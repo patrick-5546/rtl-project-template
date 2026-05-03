@@ -36,11 +36,9 @@ def project_paths_from_list_file(name: str, project_dir: Path, default: Path) ->
 
 
 async def start_counter(dut: Any) -> None:
-    dut.clk_i.value = 0
+    cocotb.start_soon(Clock(dut.clk_i, 10, unit="ns").start())
     dut.en_i.value = 0
     dut.rst_ni.value = 0
-    await Timer(1, unit="ns")
-    cocotb.start_soon(Clock(dut.clk_i, 10, unit="ns").start())
     await ClockCycles(dut.clk_i, 2)
     assert dut.count_o.value.to_unsigned() == 0
     dut.rst_ni.value = 1
