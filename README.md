@@ -8,6 +8,8 @@ Surfer, GTKWave, uv, Ruff, ty, pytest, and Verible.
 - `rtl/top.sv`: a parameterized counter/LED-style top module.
 - `tests/test_top.py`: cocotb tests launched by pytest with Verilator or ModelSim.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
+- `.pre-commit-config.yaml`: local hooks that reuse the repository's lint and
+  type-check targets.
 - `Makefile`: common commands for formatting, linting, type checking, simulation,
   and waveform viewing.
 
@@ -25,6 +27,7 @@ captures a useful signal list or layout.
 
 ```sh
 make sync
+make pre-commit-install
 make test
 make lint
 ```
@@ -34,6 +37,8 @@ The default simulation flow is cocotb through pytest with Verilator.
 | Command | Purpose |
 | --- | --- |
 | `make sync` | Install/update the uv-managed Python environment |
+| `make pre-commit-install` | Install the Git pre-commit hook for this clone |
+| `make pre-commit-run` | Run all pre-commit hooks manually |
 | `make test` | Run the full cocotb regression with Verilator |
 | `make waves` | Run tests, then open a fresh waveform in Surfer |
 | `make open-waves` | Open the existing Surfer waveform without rerunning tests |
@@ -56,6 +61,30 @@ not support Python 3.14.
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
 | Surfer | Default waveform viewer | [Install guide](https://docs.surfer-project.org/book/#installing-a-specific-version) | [User guide](https://docs.surfer-project.org/book/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
+
+## Pre-commit hooks
+
+`pre-commit` is installed in the uv-managed Python environment and locked in
+`uv.lock`. Install the Git hook with:
+
+```sh
+make pre-commit-install
+```
+
+Run the full hook set manually with:
+
+```sh
+make pre-commit-run
+```
+
+These Makefile targets wrap `uv run pre-commit ...`, so hooks use the same
+uv-managed environment as the rest of the Python tooling.
+
+The hooks call the existing Makefile targets for Ruff formatting checks, Ruff
+linting, ty type checking, Verible formatting/linting, and Verilator lint-only.
+They do not run cocotb simulation, ModelSim, or waveform viewers; use `make test`
+and the explicit optional-flow targets when those checks are needed. See the
+[pre-commit documentation](https://pre-commit.com/) for hook usage details.
 
 ## Default workflow: Verilator and Surfer
 
@@ -229,8 +258,8 @@ make test-modelsim MODELSIM_ARGS="-64"
 
 This template was verified on Ubuntu 22.04 with these tool versions:
 
-Python package versions, including cocotb, pytest, Ruff, and ty, are locked by
-uv in `uv.lock`.
+Python package versions, including cocotb, pre-commit, pytest, Ruff, and ty, are
+locked by uv in `uv.lock`.
 
 | Tool | Verified version |
 | --- | --- |

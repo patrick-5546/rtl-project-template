@@ -1,7 +1,7 @@
 # Update project tooling
 
 Use this prompt when changing Python dependencies, uv settings, Makefile targets,
-Ruff, ty, Verible, Verilator, ModelSim, or waveform tooling.
+pre-commit hooks, Ruff, ty, Verible, Verilator, ModelSim, or waveform tooling.
 
 ## Goal
 
@@ -9,8 +9,8 @@ Update the tooling coherently so local commands remain simple and documented.
 
 ## Instructions
 
-1. Inspect `Makefile`, `pyproject.toml`, `.python-version`, `uv.lock`, and
-   `README.md` before editing.
+1. Inspect `Makefile`, `pyproject.toml`, `.python-version`, `uv.lock`,
+   `.pre-commit-config.yaml`, and `README.md` before editing.
 2. Prefer updating existing Makefile targets over adding unrelated scripts.
 3. Keep Python tools managed through uv.
 4. Keep cocotb's Python compatibility in mind. The current project pins local
@@ -26,7 +26,10 @@ Update the tooling coherently so local commands remain simple and documented.
    - pytest/cocotb with Verilator for default simulation.
    - pytest/cocotb with ModelSim through cocotb's `SIM=questa` runner when
      ModelSim support is affected.
-7. Update `README.md` when command names, required tools, or workflow behavior
+   - pre-commit hooks that mirror the lightweight non-GUI lint/type-check flow.
+7. Update `.pre-commit-config.yaml` when changing checks that should run before
+   commits.
+8. Update `README.md` when command names, required tools, or workflow behavior
    changes.
 
 ## Validation
@@ -37,6 +40,7 @@ Run the affected targets. For broad tooling changes, use:
 make format
 make lint
 make test
+make pre-commit-run
 ```
 
 For dependency changes, also confirm the uv lock/environment is current:

@@ -12,6 +12,8 @@ ty, pytest, and Verible. GTKWave and ModelSim are optional alternative flows.
   `tests/test_top.py`.
 - `pyproject.toml`: Python dependencies and configuration for uv, pytest, Ruff,
   and ty.
+- `.pre-commit-config.yaml`: local hooks that reuse the repository lint and
+  type-check targets.
 - `.python-version`: uv Python pin. This template uses Python 3.13 because the
   current cocotb release does not support Python 3.14.
 - `Makefile`: canonical local commands for formatting, linting, type checking,
@@ -39,6 +41,8 @@ Use the existing Makefile targets instead of inventing new one-off commands:
 - `make waves`: run tests and open `build/verilator/dump.vcd` in Surfer, loading
   `waves/top.surf.ron` when that state file exists.
 - `make open-waves`: open an existing waveform in Surfer without rerunning tests.
+- `make pre-commit-install`: install the Git pre-commit hook for this clone.
+- `make pre-commit-run`: run all pre-commit hooks manually.
 - `make help`: show common debug workflow examples.
 - `make clean`: remove generated local artifacts.
 
@@ -46,6 +50,8 @@ Python tools are installed and run through uv. Prefer `uv run ...` or the
 Makefile targets over assuming tools like `ruff`, `ty`, or `pytest` are
 globally installed. Python package versions are locked by `uv.lock`; external
 tool versions are documented only as a verified environment in `README.md`.
+`pre-commit` is also uv-managed; use `make pre-commit-install` and
+`make pre-commit-run`.
 
 ### Optional flows
 
@@ -103,6 +109,7 @@ After RTL, test, or tooling changes, run the relevant subset of:
 - `make format`
 - `make lint`
 - `make test`
+- `make pre-commit-run`
 
 For Markdown-only documentation or prompt changes, a build is not required, but
 verify that referenced paths and Makefile targets are accurate.

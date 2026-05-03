@@ -1,4 +1,5 @@
 UV ?= uv
+PRE_COMMIT ?= $(UV) run pre-commit
 PYTEST ?= $(UV) run pytest -s
 SIM ?= verilator
 MODELSIM_SIM ?= questa
@@ -25,9 +26,9 @@ REBUILD ?= 1
 SV_SOURCES := rtl/top.sv
 
 .PHONY: all check clean format help lint open-waves open-waves-gtkwave \
-	open-waves-modelsim py-format py-format-check py-lint py-type sim sv-format \
-	sv-format-check sv-lint sync test test-modelsim test-one verilator-lint waves \
-	waves-gtkwave waves-modelsim
+	open-waves-modelsim pre-commit-install pre-commit-run py-format \
+	py-format-check py-lint py-type sim sv-format sv-format-check sv-lint sync \
+	test test-modelsim test-one verilator-lint waves waves-gtkwave waves-modelsim
 
 all: check test
 
@@ -45,12 +46,20 @@ help:
 	@echo "  make open-waves                               Open existing waveform in Surfer"
 	@echo "  make open-waves-gtkwave                       Open existing waveform in GTKWave"
 	@echo "  make open-waves-modelsim                      Open existing WLF in ModelSim"
+	@echo "  make pre-commit-install                       Install the Git pre-commit hook"
+	@echo "  make pre-commit-run                           Run all pre-commit hooks"
 	@echo "  make lint                                     Run all lint/type checks"
 	@echo "  make format                                   Format Python and SystemVerilog"
 	@echo "  make clean                                    Remove generated artifacts"
 
 sync:
 	$(UV) sync
+
+pre-commit-install:
+	$(PRE_COMMIT) install
+
+pre-commit-run:
+	$(PRE_COMMIT) run --all-files
 
 test:
 	ARCH="$(ARCH)" COCOTB_BITS="$(COCOTB_BITS)" SIM=$(SIM) \
