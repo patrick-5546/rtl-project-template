@@ -34,7 +34,7 @@ help:
 sync:
 	$(UV) sync
 
-test: sync
+test:
 	SIM=$(SIM) TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(UV) run pytest -s
 
 test-one:
@@ -43,16 +43,16 @@ test-one:
 
 sim: test
 
-py-format: sync
+py-format:
 	$(UV) run ruff format .
 
-py-format-check: sync
+py-format-check:
 	$(UV) run ruff format --check .
 
-py-lint: sync
+py-lint:
 	$(UV) run ruff check .
 
-py-type: sync
+py-type:
 	$(UV) run ty check
 
 sv-format:
