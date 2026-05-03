@@ -26,7 +26,7 @@ The test target runs cocotb through pytest with Verilator as the simulator.
 ```sh
 make format          # Format Python and SystemVerilog
 make lint            # Run Ruff, ty, Verible, and Verilator lint-only
-make test            # Run cocotb tests with pytest and Verilator
+make test            # Run cocotb tests and show the cocotb pass/fail summary
 make waves           # Run tests, then open the generated waveform in Surfer
 make waves-gtkwave   # Run tests, then open the generated waveform in GTKWave
 make clean           # Remove generated local artifacts

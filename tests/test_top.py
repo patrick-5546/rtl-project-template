@@ -13,10 +13,10 @@ async def start_counter(dut: Any) -> None:
     dut.en_i.value = 0
     dut.rst_ni.value = 0
     await ClockCycles(dut.clk_i, 2)
-    assert dut.count_o.value.integer == 0
+    assert dut.count_o.value.to_unsigned() == 0
     dut.rst_ni.value = 1
     await tick(dut)
-    assert dut.count_o.value.integer == 0
+    assert dut.count_o.value.to_unsigned() == 0
 
 
 async def tick(dut: Any, cycles: int = 1) -> None:
@@ -31,14 +31,14 @@ async def reset_clears_counter(dut: Any) -> None:
 
     dut.en_i.value = 1
     await tick(dut, 5)
-    assert dut.count_o.value.integer == 5
+    assert dut.count_o.value.to_unsigned() == 5
 
     dut.rst_ni.value = 0
     await Timer(1, unit="ns")
-    assert dut.count_o.value.integer == 5
+    assert dut.count_o.value.to_unsigned() == 5
 
     await tick(dut)
-    assert dut.count_o.value.integer == 0
+    assert dut.count_o.value.to_unsigned() == 0
 
 
 @cocotb.test()
@@ -48,7 +48,7 @@ async def enable_high_counts(dut: Any) -> None:
     dut.en_i.value = 1
     for expected_count in range(1, 6):
         await tick(dut)
-        assert dut.count_o.value.integer == expected_count
+        assert dut.count_o.value.to_unsigned() == expected_count
 
 
 @cocotb.test()
@@ -57,11 +57,11 @@ async def enable_low_holds_count(dut: Any) -> None:
 
     dut.en_i.value = 1
     await tick(dut, 3)
-    assert dut.count_o.value.integer == 3
+    assert dut.count_o.value.to_unsigned() == 3
 
     dut.en_i.value = 0
     await tick(dut, 4)
-    assert dut.count_o.value.integer == 3
+    assert dut.count_o.value.to_unsigned() == 3
 
 
 def test_top_with_verilator() -> None:

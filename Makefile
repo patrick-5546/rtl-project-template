@@ -17,7 +17,7 @@ sync:
 	$(UV) sync
 
 test: sync
-	SIM=$(SIM) $(UV) run pytest
+	SIM=$(SIM) $(UV) run pytest -s
 
 sim: test
 
