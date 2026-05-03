@@ -62,7 +62,7 @@ The default simulation flow is cocotb through pytest with Verilator.
 | --- | --- |
 | `make format` | Format Python, Markdown, and SystemVerilog |
 | `make lint` | Run Ruff, ty, Markdown, Verible, and Verilator checks |
-| `make help` | Show debug workflow examples |
+| `make help` | Show available Makefile targets |
 | `make clean` | Remove generated local artifacts |
 
 The pre-commit hooks call the existing Makefile lint and type-check targets.
@@ -224,7 +224,7 @@ include the verification features needed for collecting coverage
 on cover groups (aka directives).
 
 Surfer is a fast, modern waveform viewer. It is still early in its
-development cycle and does not have much features.
+development cycle and does not have many features.
 
 GTKWave is a more comprehensive waveform viewer. Source code can
 be viewed and annotated with values from the waveform using the

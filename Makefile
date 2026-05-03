@@ -50,18 +50,21 @@ ALL_SV_SOURCES := $(SV_SOURCES) $(ABV_SOURCES)
 GTKWAVE_STEMS_SOURCES = $(SV_SOURCES) $(if $(filter 1 true yes on,$(ABV)),$(ABV_SOURCES))
 GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 
-.PHONY: all clean format gtkwave-stems help lint open-waves open-waves-gtkwave \
-	md-format md-lint open-waves-questa pre-commit-install pre-commit-run \
-	coverage coverage-questa open-coverage-html \
-	open-coverage-questa open-coverage-questa-html \
+.PHONY: all clean coverage coverage-questa format gtkwave-stems help lint \
+	md-format md-lint \
+	open-coverage-html open-coverage-questa open-coverage-questa-html \
+	open-waves open-waves-gtkwave open-waves-questa \
+	pre-commit-install pre-commit-run \
 	py-format py-format-check py-lint py-type \
-	sv-format sv-format-check sv-lint sync test test-questa verilator-lint \
+	sv-format sv-format-check sv-lint sync \
+	test test-questa verilator-lint \
 	waves waves-gtkwave waves-questa
 
 all: lint test
 
 help:
 	@echo "Common targets:"
+	@echo "  make all                                       Run lint + test (default)"
 	@echo "  make test                                      Run the full cocotb regression"
 	@echo "  make test TEST=enable_high_counts             Run one cocotb test"
 	@echo "  make test TEST_FILTER='enable_.*'             Run matching cocotb tests"
@@ -74,7 +77,6 @@ help:
 	@echo "  make open-coverage-questa-html                Open Questa coverage as HTML"
 	@echo "  make waves [TEST=...]                         Run tests, then open Surfer"
 	@echo "  make waves-gtkwave [TEST=...]                 Run tests, then open GTKWave"
-	@echo "  make gtkwave-stems                            Generate GTKWave rtlbrowser stems"
 	@echo "  make test-questa [TEST=...]                   Run tests with Questa"
 	@echo "  make waves-questa [TEST=...]                  Run tests in live Questa GUI"
 	@echo "  make open-waves                               Open existing waveform in Surfer"
@@ -83,9 +85,14 @@ help:
 	@echo "  make pre-commit-install                       Install the Git pre-commit hook"
 	@echo "  make pre-commit-run                           Run all pre-commit hooks"
 	@echo "  make lint                                     Run all lint/type checks"
+	@echo "  make py-format                                Format Python with ruff"
+	@echo "  make py-lint                                  Lint Python with ruff"
+	@echo "  make sv-format                                Format SystemVerilog in-place"
+	@echo "  make sv-lint                                  Lint SystemVerilog with Verible"
 	@echo "  make format                                   Format Python, Markdown, and SystemVerilog"
 	@echo "  make md-lint                                  Run Markdown lint checks"
 	@echo "  make md-format                                Apply Markdown lint fixes"
+	@echo "  make sync                                     Run uv sync"
 	@echo "  make clean                                    Remove generated artifacts"
 
 sync:
@@ -98,7 +105,7 @@ pre-commit-run:
 	$(PRE_COMMIT) run --all-files
 
 test:
-	ARCH="$(ARCH)" COCOTB_BITS="$(COCOTB_BITS)" SIM=$(SIM) \
+	SIM=$(SIM) \
 		BUILD_DIR="$(BUILD_DIR)" QUESTA_WAVE="$(QUESTA_WAVE)" \
 		QUESTA_ARGS="$(QUESTA_ARGS)" ABV="$(ABV)" \
 		HDL_COVERAGE="$(HDL_COVERAGE)" COVERAGE_DAT="$(COVERAGE_DAT)" \
@@ -241,4 +248,4 @@ open-waves-questa:
 	fi
 
 clean:
-	rm -rf build
+	rm -rf build work transcript
