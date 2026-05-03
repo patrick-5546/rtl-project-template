@@ -40,7 +40,7 @@ help:
 	@echo "  make test                                      Run the full cocotb regression"
 	@echo "  make test TEST=enable_high_counts             Run one cocotb test"
 	@echo "  make test TEST_FILTER='enable_.*'             Run matching cocotb tests"
-	@echo "  make test TEST=enable_high_counts REBUILD=0   Reuse an existing simulator build"
+	@echo "  make test REBUILD=0                           Reuse an existing simulator build"
 	@echo "  make waves [TEST=...]                         Run tests, then open Surfer"
 	@echo "  make waves-gtkwave [TEST=...]                 Run tests, then open GTKWave"
 	@echo "  make test-modelsim [TEST=...]                 Run tests with ModelSim"
