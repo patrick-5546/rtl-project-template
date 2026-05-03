@@ -17,7 +17,7 @@ and tool details. Run `make help` for a quick reference.
 
 - Use modern cocotb APIs: `unit="ns"`, not deprecated `units="ns"`.
 - Keep tests deterministic and focused on externally visible RTL behavior.
-- Use Verilator as the default simulator. ModelSim uses cocotb's `SIM=questa`
+- Use Verilator as the default simulator. Questa uses cocotb's `SIM=questa`
   runner internally.
 
 ## Gotchas
@@ -26,9 +26,7 @@ and tool details. Run `make help` for a quick reference.
   3.14.
 - Python tools run through uv. Use `uv run ...` or Makefile targets, not bare
   `ruff`/`ty`/`pytest`.
-- Override the ModelSim GUI executable with `VSIM`, not `MODELSIM`; ModelSim
+- Override the Questa GUI executable with `VSIM`, not `MODELSIM`; Questa
   treats `MODELSIM` as a `modelsim.ini` environment variable.
-- For 32-bit Intel ModelSim, simulator, Python, and cocotb VPI library bitness
-  must all match.
 - Do not commit files from `build/` or add new tools unless necessary for the
   requested change.

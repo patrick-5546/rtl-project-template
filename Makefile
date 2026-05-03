@@ -2,24 +2,21 @@ UV ?= uv
 PRE_COMMIT ?= $(UV) run pre-commit
 PYTEST ?= $(UV) run pytest -s
 SIM ?= verilator
-MODELSIM_SIM ?= questa
+QUESTA_SIM ?= questa
 VERILATOR_BUILD_DIR ?= build/verilator
-MODELSIM_BUILD_DIR ?= build/modelsim
-BUILD_DIR ?= $(if $(filter $(MODELSIM_SIM),$(SIM)),$(MODELSIM_BUILD_DIR),$(VERILATOR_BUILD_DIR))
+QUESTA_BUILD_DIR ?= build/questa
+BUILD_DIR ?= $(if $(filter $(QUESTA_SIM),$(SIM)),$(QUESTA_BUILD_DIR),$(VERILATOR_BUILD_DIR))
 SURFER ?= surfer
 GTKWAVE ?= gtkwave
 GTKWAVE_ARGS ?= -o
 JSON2STEMS ?= json2stems
 MARKDOWNLINT ?= markdownlint-cli2
 VSIM ?= vsim
+VCOVER ?= vcover
 HTML_VIEWER ?= xdg-open
-MODELSIM_ARGS ?= -voptargs=+acc
-MODELSIM_ARCH ?= i686
-MODELSIM_BITS ?= 32
-MODELSIM32_PYTHON ?= .venv-modelsim32/bin/python
-MODELSIM_PYTEST ?= $(if $(wildcard $(MODELSIM32_PYTHON)),$(MODELSIM32_PYTHON) -m pytest -s,$(PYTEST))
+QUESTA_ARGS ?= -voptargs=+acc -debugdb
 WAVE ?= $(VERILATOR_BUILD_DIR)/dump.vcd
-MODELSIM_WAVE ?= $(MODELSIM_BUILD_DIR)/vsim.wlf
+QUESTA_WAVE ?= $(QUESTA_BUILD_DIR)/vsim.wlf
 STATE ?= waves/top.surf.ron
 GTKWAVE_SAVE ?= waves/top.gtkw
 GTKWAVE_STEMS_TOP ?= top
@@ -27,18 +24,21 @@ GTKWAVE_STEMS_DIR ?= $(VERILATOR_BUILD_DIR)/rtlbrowse
 GTKWAVE_STEMS ?= $(GTKWAVE_STEMS_DIR)/top.stems
 GTKWAVE_STEMS_JSON ?= $(GTKWAVE_STEMS_DIR)/V$(GTKWAVE_STEMS_TOP).tree.json
 GTKWAVE_STEMS_META ?= $(GTKWAVE_STEMS_DIR)/V$(GTKWAVE_STEMS_TOP).tree.meta.json
-MODELSIM_DO ?= waves/top.do
-MODELSIM_GUI ?= 0
+QUESTA_DO ?= waves/top.do
+QUESTA_GUI ?= 0
 TEST ?=
 TEST_FILTER ?=
 REBUILD ?= 1
 ABV ?= 0
 HDL_COVERAGE ?= 0
 COVERAGE_DAT ?= $(BUILD_DIR)/coverage.dat
+QUESTA_COVERAGE_UCDB ?= $(QUESTA_BUILD_DIR)/coverage.ucdb
 COVERAGE_ANNOTATION_DIR ?= $(BUILD_DIR)/coverage_annotated
 COVERAGE_INFO ?= $(BUILD_DIR)/coverage.info
 COVERAGE_HTML_DIR ?= $(VERILATOR_BUILD_DIR)/coverage_html
 COVERAGE_HTML_INDEX ?= $(COVERAGE_HTML_DIR)/index.html
+QUESTA_COVERAGE_HTML_DIR ?= $(QUESTA_BUILD_DIR)/coverage_html
+QUESTA_COVERAGE_HTML_INDEX ?= $(QUESTA_COVERAGE_HTML_DIR)/index.html
 SV_SOURCES_FILE ?= rtl/sources.vf
 ABV_SOURCES_FILE ?= rtl/abv_sources.vf
 
@@ -51,10 +51,12 @@ GTKWAVE_STEMS_SOURCES = $(SV_SOURCES) $(if $(filter 1 true yes on,$(ABV)),$(ABV_
 GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 
 .PHONY: all clean format gtkwave-stems help lint open-waves open-waves-gtkwave \
-	md-format md-lint open-waves-modelsim pre-commit-install pre-commit-run \
-	coverage open-coverage-html py-format py-format-check py-lint py-type \
-	sv-format sv-format-check sv-lint sync test test-modelsim verilator-lint \
-	waves waves-gtkwave waves-modelsim
+	md-format md-lint open-waves-questa pre-commit-install pre-commit-run \
+	coverage coverage-questa open-coverage-html \
+	open-coverage-questa open-coverage-questa-html \
+	py-format py-format-check py-lint py-type \
+	sv-format sv-format-check sv-lint sync test test-questa verilator-lint \
+	waves waves-gtkwave waves-questa
 
 all: lint test
 
@@ -66,16 +68,18 @@ help:
 	@echo "  make test REBUILD=0                           Reuse an existing simulator build"
 	@echo "  make test ABV=1                               Run with SVA assertions enabled"
 	@echo "  make coverage                                 Run Verilator full coverage"
-	@echo "  make open-coverage-html                       Open existing coverage HTML"
+	@echo "  make coverage-questa                          Run Questa full coverage"
+	@echo "  make open-coverage-html                       Open existing Verilator coverage HTML"
+	@echo "  make open-coverage-questa                     Open Questa coverage in GUI"
+	@echo "  make open-coverage-questa-html                Open Questa coverage as HTML"
 	@echo "  make waves [TEST=...]                         Run tests, then open Surfer"
 	@echo "  make waves-gtkwave [TEST=...]                 Run tests, then open GTKWave"
 	@echo "  make gtkwave-stems                            Generate GTKWave rtlbrowser stems"
-	@echo "  make test-modelsim [TEST=...]                 Run tests with ModelSim"
-	@echo "  make test-modelsim MODELSIM_PYTEST='<cmd>'    Run ModelSim with a custom Python env"
-	@echo "  make waves-modelsim [TEST=...]                Run tests in live ModelSim GUI"
+	@echo "  make test-questa [TEST=...]                   Run tests with Questa"
+	@echo "  make waves-questa [TEST=...]                  Run tests in live Questa GUI"
 	@echo "  make open-waves                               Open existing waveform in Surfer"
 	@echo "  make open-waves-gtkwave                       Open existing waveform in GTKWave"
-	@echo "  make open-waves-modelsim                      Open existing WLF in ModelSim"
+	@echo "  make open-waves-questa                        Open existing WLF in Questa"
 	@echo "  make pre-commit-install                       Install the Git pre-commit hook"
 	@echo "  make pre-commit-run                           Run all pre-commit hooks"
 	@echo "  make lint                                     Run all lint/type checks"
@@ -95,20 +99,19 @@ pre-commit-run:
 
 test:
 	ARCH="$(ARCH)" COCOTB_BITS="$(COCOTB_BITS)" SIM=$(SIM) \
-		BUILD_DIR="$(BUILD_DIR)" MODELSIM_WAVE="$(MODELSIM_WAVE)" \
-		MODELSIM_ARGS="$(MODELSIM_ARGS)" ABV="$(ABV)" \
+		BUILD_DIR="$(BUILD_DIR)" QUESTA_WAVE="$(QUESTA_WAVE)" \
+		QUESTA_ARGS="$(QUESTA_ARGS)" ABV="$(ABV)" \
 		HDL_COVERAGE="$(HDL_COVERAGE)" COVERAGE_DAT="$(COVERAGE_DAT)" \
 		SV_SOURCES_FILE="$(SV_SOURCES_FILE)" ABV_SOURCES_FILE="$(ABV_SOURCES_FILE)" \
-		MODELSIM_GUI="$(MODELSIM_GUI)" MODELSIM_DO="$(MODELSIM_DO)" \
+		QUESTA_GUI="$(QUESTA_GUI)" QUESTA_DO="$(QUESTA_DO)" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(PYTEST)
 
-test-modelsim:
-	$(MAKE) test SIM="$(MODELSIM_SIM)" BUILD_DIR="$(MODELSIM_BUILD_DIR)" \
-		MODELSIM_WAVE="$(MODELSIM_WAVE)" TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" \
-		REBUILD="$(REBUILD)" MODELSIM_ARGS="$(MODELSIM_ARGS)" \
-		ARCH="$(MODELSIM_ARCH)" COCOTB_BITS="$(MODELSIM_BITS)" \
-		PYTEST="$(MODELSIM_PYTEST)" UV="$(UV)" ABV="$(ABV)" \
-		MODELSIM_GUI="$(MODELSIM_GUI)" MODELSIM_DO="$(MODELSIM_DO)"
+test-questa:
+	$(MAKE) test SIM="$(QUESTA_SIM)" BUILD_DIR="$(QUESTA_BUILD_DIR)" \
+		QUESTA_WAVE="$(QUESTA_WAVE)" TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" \
+		REBUILD="$(REBUILD)" QUESTA_ARGS="$(QUESTA_ARGS)" \
+		PYTEST="$(UV) run pytest -s --timeout=0" UV="$(UV)" ABV="$(ABV)" \
+		QUESTA_GUI="$(QUESTA_GUI)" QUESTA_DO="$(QUESTA_DO)"
 
 py-format:
 	$(UV) run ruff format .
@@ -162,6 +165,24 @@ coverage:
 	@echo "Annotated report: $(COVERAGE_ANNOTATION_DIR)"
 	@echo "LCOV info: $(COVERAGE_INFO)"
 
+coverage-questa:
+	$(MAKE) test-questa ABV=1 HDL_COVERAGE=1 \
+		COVERAGE_DAT="$(QUESTA_COVERAGE_UCDB)" \
+		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)"
+	$(VCOVER) report -summary "$(QUESTA_COVERAGE_UCDB)"
+	@echo "Coverage UCDB: $(QUESTA_COVERAGE_UCDB)"
+
+open-coverage-questa:
+	@test -f "$(QUESTA_COVERAGE_UCDB)" || { echo "UCDB '$(QUESTA_COVERAGE_UCDB)' not found. Run 'make coverage-questa' first."; exit 1; }
+	$(VSIM) -viewcov "$(QUESTA_COVERAGE_UCDB)"
+
+open-coverage-questa-html:
+	@test -f "$(QUESTA_COVERAGE_UCDB)" || { echo "UCDB '$(QUESTA_COVERAGE_UCDB)' not found. Run 'make coverage-questa' first."; exit 1; }
+	rm -rf "$(QUESTA_COVERAGE_HTML_DIR)"
+	$(VCOVER) report -html -details -output "$(QUESTA_COVERAGE_HTML_DIR)" "$(QUESTA_COVERAGE_UCDB)"
+	@echo "HTML report: $(QUESTA_COVERAGE_HTML_INDEX)"
+	$(HTML_VIEWER) "$(QUESTA_COVERAGE_HTML_INDEX)"
+
 open-coverage-html:
 	@test -f "$(COVERAGE_INFO)" || { echo "Coverage info '$(COVERAGE_INFO)' not found. Run 'make coverage' first."; exit 1; }
 	rm -rf "$(COVERAGE_HTML_DIR)"
@@ -205,18 +226,18 @@ gtkwave-stems:
 	$(JSON2STEMS) "$(GTKWAVE_STEMS_META)" "$(GTKWAVE_STEMS_JSON)" "$(GTKWAVE_STEMS)"
 	@echo "GTKWave stems: $(GTKWAVE_STEMS)"
 
-waves-modelsim:
-	$(MAKE) test-modelsim MODELSIM_GUI=1 MODELSIM_DO="$(MODELSIM_DO)" \
+waves-questa:
+	$(MAKE) test-questa QUESTA_GUI=1 QUESTA_DO="$(QUESTA_DO)" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" \
-		MODELSIM_ARGS="$(MODELSIM_ARGS)" MODELSIM_WAVE="$(MODELSIM_WAVE)" \
+		QUESTA_ARGS="$(QUESTA_ARGS)" QUESTA_WAVE="$(QUESTA_WAVE)" \
 		ABV="$(ABV)" UV="$(UV)"
 
-open-waves-modelsim:
-	@test -f "$(MODELSIM_WAVE)" || { echo "Waveform '$(MODELSIM_WAVE)' not found. Run 'make test-modelsim' first."; exit 1; }
-	if test -f "$(MODELSIM_DO)"; then \
-		$(VSIM) $(MODELSIM_ARGS) -view "$(MODELSIM_WAVE)" -do "$(MODELSIM_DO)"; \
+open-waves-questa:
+	@test -f "$(QUESTA_WAVE)" || { echo "Waveform '$(QUESTA_WAVE)' not found. Run 'make test-questa' first."; exit 1; }
+	if test -f "$(QUESTA_DO)"; then \
+		$(VSIM) $(QUESTA_ARGS) -view "$(QUESTA_WAVE)" -do "$(QUESTA_DO)"; \
 	else \
-		$(VSIM) $(MODELSIM_ARGS) -view "$(MODELSIM_WAVE)"; \
+		$(VSIM) $(QUESTA_ARGS) -view "$(QUESTA_WAVE)"; \
 	fi
 
 clean:

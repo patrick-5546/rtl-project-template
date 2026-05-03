@@ -1,8 +1,9 @@
 .venv/
-.venv-modelsim32/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
 
 build/
+work/
+
 transcript

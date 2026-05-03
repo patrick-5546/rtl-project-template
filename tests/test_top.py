@@ -108,13 +108,13 @@ def test_top_with_simulator() -> None:
     test_dir = Path(__file__).resolve().parent
     simulator = os.environ.get("SIM", "verilator")
     build_dir = project_path_from_env("BUILD_DIR", project_dir, project_dir / "build" / simulator)
-    modelsim_wave = project_path_from_env(
-        "MODELSIM_WAVE",
+    questa_wave = project_path_from_env(
+        "QUESTA_WAVE",
         project_dir,
-        project_dir / "build" / "modelsim" / "vsim.wlf",
+        project_dir / "build" / "questa" / "vsim.wlf",
     )
-    modelsim_do = project_path_from_env(
-        "MODELSIM_DO",
+    questa_do = project_path_from_env(
+        "QUESTA_DO",
         project_dir,
         project_dir / "waves" / "top.do",
     )
@@ -124,7 +124,7 @@ def test_top_with_simulator() -> None:
     rebuild = env_flag("REBUILD", default=True)
     abv = env_flag("ABV", default=False)
     hdl_coverage = env_flag("HDL_COVERAGE", default=False)
-    modelsim_gui = env_flag("MODELSIM_GUI", default=False)
+    questa_gui = env_flag("QUESTA_GUI", default=False)
     coverage_dat = project_path_from_env(
         "COVERAGE_DAT",
         project_dir,
@@ -144,10 +144,10 @@ def test_top_with_simulator() -> None:
         raise ValueError("Set either TEST or TEST_FILTER, not both.")
     if selected_test:
         test_filter = rf"(^|.*\.){re.escape(selected_test)}$"
-    if hdl_coverage and simulator != "verilator":
-        raise ValueError("HDL_COVERAGE=1 is supported for the Verilator flow.")
-    if modelsim_gui and simulator != "questa":
-        raise ValueError("MODELSIM_GUI=1 is supported for the ModelSim/Questa flow.")
+    if hdl_coverage and simulator not in ("verilator", "questa"):
+        raise ValueError("HDL_COVERAGE=1 is supported for the Verilator and Questa flows.")
+    if questa_gui and simulator != "questa":
+        raise ValueError("QUESTA_GUI=1 is supported for the Questa flow.")
 
     sources = [*sv_sources]
     defines: dict[str, object] = {}
@@ -161,21 +161,30 @@ def test_top_with_simulator() -> None:
     test_args: list[str] = []
     if hdl_coverage:
         coverage_dat.parent.mkdir(parents=True, exist_ok=True)
-        build_args.append("--coverage")
-        plusargs.append(f"+verilator+coverage+file+{coverage_dat}")
+        if simulator == "verilator":
+            build_args.append("--coverage")
+            plusargs.append(f"+verilator+coverage+file+{coverage_dat}")
+        elif simulator == "questa":
+            build_args.extend(["-cover", "bcesfx"])
     if simulator == "questa":
-        modelsim_wave.parent.mkdir(parents=True, exist_ok=True)
+        questa_wave.parent.mkdir(parents=True, exist_ok=True)
         test_args = [
-            *shlex.split(os.environ.get("MODELSIM_ARGS", "")),
+            *shlex.split(os.environ.get("QUESTA_ARGS", "")),
             "-wlf",
-            str(modelsim_wave),
+            str(questa_wave),
             "-nowlfdeleteonquit",
         ]
-        if modelsim_gui:
+        if hdl_coverage:
+            test_args.append("-coverage")
+        if questa_gui:
             gui_commands = ["log -recursive /*", "run -all"]
-            if modelsim_do.is_file():
-                gui_commands.append(f"source {{{modelsim_do.as_posix()}}}")
+            if hdl_coverage:
+                gui_commands.insert(0, f"coverage save -onexit {coverage_dat}")
+            if questa_do.is_file():
+                gui_commands.append(f"source {{{questa_do.as_posix()}}}")
             pre_cmd = ["; ".join(gui_commands)]
+        elif hdl_coverage:
+            pre_cmd = [f"coverage save -onexit {coverage_dat}"]
 
     runner = get_runner(simulator)
     runner.build(
@@ -192,8 +201,8 @@ def test_top_with_simulator() -> None:
         test_module=Path(__file__).stem,
         test_filter=test_filter,
         build_dir=build_dir,
-        waves=not modelsim_gui,
-        gui=modelsim_gui,
+        waves=not questa_gui,
+        gui=questa_gui,
         extra_env={"PYTHONPATH": pythonpath},
         test_args=test_args,
         plusargs=plusargs,
