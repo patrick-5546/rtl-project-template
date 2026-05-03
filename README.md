@@ -13,16 +13,9 @@ Surfer, GTKWave, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
 - `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
 - `Makefile`: common commands for formatting, linting, type checking, simulation,
   and waveform viewing.
+- `waves/top.surf.ron`: reusable Surfer signal list and layout state.
 
 Generated simulator artifacts are ignored by Git and should stay under `build/`.
-Reusable waveform viewer state lives under `waves/` and may be committed when it
-captures a useful signal list or layout.
-
-| Flow | Generated waveform | Saved view file |
-| --- | --- | --- |
-| Verilator + Surfer | `build/verilator/dump.vcd` | `waves/top.surf.ron` |
-| Verilator + GTKWave | `build/verilator/dump.vcd` | `waves/top.gtkw` |
-| ModelSim | `build/modelsim/vsim.wlf` | `waves/top.do` |
 
 ## Quick start
 
@@ -129,14 +122,6 @@ Override either path if needed:
 make waves WAVE=build/verilator/other.vcd STATE=waves/other.surf.ron
 ```
 
-The repo-local Surfer config in `.surfer/config.toml` sets
-`transition_value = "Both"` so placing the cursor exactly on a transition shows
-both the previous and next values. The saved Surfer state also stores that
-transition display preference. The config sets `snap_distance = 20` so cursor
-clicks near signal transitions snap to the transition more reliably. Surfer snaps
-against the waveform row under the mouse pointer, not just the currently
-selected signal, so click near the transition on that signal's waveform row.
-
 ## Alternative tool flows
 
 The default workflow is Verilator simulation plus Surfer waveform viewing. These
@@ -179,23 +164,12 @@ make test-modelsim
 ```
 
 Target-specific ModelSim runs use the same test selection variables:
-
-```sh
-make test-modelsim TEST=enable_high_counts
-make test-modelsim TEST_FILTER='enable_.*'
-make test-modelsim TEST=enable_high_counts REBUILD=0
-```
+`TEST`, `TEST_FILTER`, `REBUILD`, and `ABV`.
 
 ModelSim uses its native WLF waveform format. Use `make waves-modelsim` for a
 live GUI simulation when you want source-linked debug, such as double-clicking a
 wave signal to navigate to its source. Use `make open-waves-modelsim` only when
 you want to inspect an existing saved WLF without rerunning simulation.
-
-```sh
-make waves-modelsim
-make waves-modelsim TEST=enable_high_counts
-make open-waves-modelsim
-```
 
 Reusable ModelSim wave layouts can be saved as a `.do` file such as
 `waves/top.do`. If that file exists, `make waves-modelsim` sources it in the
@@ -220,9 +194,9 @@ make test-modelsim MODELSIM_ARGS=
 debug visibility that was not preserved when the WLF was created. For best source
 navigation, prefer `make waves-modelsim`.
 
-### 32-bit Intel/Altera ModelSim setup
+#### 32-bit ModelSim setup
 
-Intel/Altera ModelSim Starter Edition installs are often 32-bit-only. In that
+ModelSim Starter Edition installs are often 32-bit-only. In that
 case the simulator, Python interpreter, and cocotb VPI libraries must all be
 32-bit. A 32-bit ModelSim runtime cannot load the 64-bit cocotb libraries from
 the default uv environment.
@@ -282,5 +256,5 @@ locked by uv in `uv.lock`.
 | ModelSim Intel FPGA Starter Edition | 2020.1 |
 | Surfer | 0.7.0 |
 | uv | 0.11.8 |
-| Verible | `v0.0-4053-g89d4d98a` |
+| Verible | v0.0-4053-g89d4d98a |
 | Verilator | 5.048 |
