@@ -1,19 +1,33 @@
 UV ?= uv
+PYTEST ?= $(UV) run pytest -s
 SIM ?= verilator
+MODELSIM_SIM ?= questa
+VERILATOR_BUILD_DIR ?= build/verilator
+MODELSIM_BUILD_DIR ?= build/modelsim
+BUILD_DIR ?= $(if $(filter $(MODELSIM_SIM),$(SIM)),$(MODELSIM_BUILD_DIR),$(VERILATOR_BUILD_DIR))
 SURFER ?= surfer
 GTKWAVE ?= gtkwave
-WAVE ?= build/sim/dump.vcd
+VSIM ?= vsim
+MODELSIM_ARGS ?=
+MODELSIM_ARCH ?= i686
+MODELSIM_BITS ?= 32
+MODELSIM32_PYTHON ?= .venv-modelsim32/bin/python
+MODELSIM_PYTEST ?= $(if $(wildcard $(MODELSIM32_PYTHON)),$(MODELSIM32_PYTHON) -m pytest -s,$(PYTEST))
+WAVE ?= $(VERILATOR_BUILD_DIR)/dump.vcd
+MODELSIM_WAVE ?= $(MODELSIM_BUILD_DIR)/vsim.wlf
 STATE ?= waves/top.surf.ron
 GTKWAVE_SAVE ?= waves/top.gtkw
+MODELSIM_DO ?= waves/top.do
 TEST ?=
 TEST_FILTER ?=
 REBUILD ?= 1
 
 SV_SOURCES := rtl/top.sv
 
-.PHONY: all check clean format help lint open-waves open-waves-gtkwave py-format \
-	py-format-check py-lint py-type sim sv-format sv-format-check sv-lint sync test \
-	test-one verilator-lint waves waves-gtkwave
+.PHONY: all check clean format help lint open-waves open-waves-gtkwave \
+	open-waves-modelsim py-format py-format-check py-lint py-type sim sv-format \
+	sv-format-check sv-lint sync test test-modelsim test-one verilator-lint waves \
+	waves-gtkwave waves-modelsim
 
 all: check test
 
@@ -25,8 +39,12 @@ help:
 	@echo "  make test TEST=enable_high_counts REBUILD=0   Reuse an existing simulator build"
 	@echo "  make waves [TEST=...]                         Run tests, then open Surfer"
 	@echo "  make waves-gtkwave [TEST=...]                 Run tests, then open GTKWave"
+	@echo "  make test-modelsim [TEST=...]                 Run tests with ModelSim"
+	@echo "  make test-modelsim MODELSIM_PYTEST='<cmd>'    Run ModelSim with a custom Python env"
+	@echo "  make waves-modelsim [TEST=...]                Run tests, then open ModelSim"
 	@echo "  make open-waves                               Open existing waveform in Surfer"
 	@echo "  make open-waves-gtkwave                       Open existing waveform in GTKWave"
+	@echo "  make open-waves-modelsim                      Open existing WLF in ModelSim"
 	@echo "  make lint                                     Run all lint/type checks"
 	@echo "  make format                                   Format Python and SystemVerilog"
 	@echo "  make clean                                    Remove generated artifacts"
@@ -35,11 +53,24 @@ sync:
 	$(UV) sync
 
 test:
-	SIM=$(SIM) TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(UV) run pytest -s
+	ARCH="$(ARCH)" COCOTB_BITS="$(COCOTB_BITS)" SIM=$(SIM) \
+		BUILD_DIR="$(BUILD_DIR)" MODELSIM_WAVE="$(MODELSIM_WAVE)" \
+		MODELSIM_ARGS="$(MODELSIM_ARGS)" \
+		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(PYTEST)
+
+test-modelsim:
+	$(MAKE) test SIM="$(MODELSIM_SIM)" BUILD_DIR="$(MODELSIM_BUILD_DIR)" \
+		MODELSIM_WAVE="$(MODELSIM_WAVE)" TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" \
+		REBUILD="$(REBUILD)" MODELSIM_ARGS="$(MODELSIM_ARGS)" \
+		ARCH="$(MODELSIM_ARCH)" COCOTB_BITS="$(MODELSIM_BITS)" \
+		PYTEST="$(MODELSIM_PYTEST)" UV="$(UV)"
 
 test-one:
 	@test -n "$(TEST)" || { echo "Usage: make test-one TEST=<cocotb_test_name>"; exit 2; }
-	$(MAKE) test TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" SIM="$(SIM)" UV="$(UV)"
+	$(MAKE) test TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" \
+		SIM="$(SIM)" BUILD_DIR="$(BUILD_DIR)" MODELSIM_WAVE="$(MODELSIM_WAVE)" \
+		MODELSIM_ARGS="$(MODELSIM_ARGS)" ARCH="$(ARCH)" COCOTB_BITS="$(COCOTB_BITS)" \
+		PYTEST="$(PYTEST)" UV="$(UV)"
 
 sim: test
 
@@ -93,6 +124,19 @@ open-waves-gtkwave:
 		$(GTKWAVE) "$(WAVE)" "$(GTKWAVE_SAVE)"; \
 	else \
 		$(GTKWAVE) "$(WAVE)"; \
+	fi
+
+waves-modelsim: test-modelsim
+	$(MAKE) open-waves-modelsim MODELSIM_WAVE="$(MODELSIM_WAVE)" \
+		MODELSIM_DO="$(MODELSIM_DO)" VSIM="$(VSIM)" \
+		MODELSIM_ARGS="$(MODELSIM_ARGS)"
+
+open-waves-modelsim:
+	@test -f "$(MODELSIM_WAVE)" || { echo "Waveform '$(MODELSIM_WAVE)' not found. Run 'make test-modelsim' first."; exit 1; }
+	if test -f "$(MODELSIM_DO)"; then \
+		$(VSIM) $(MODELSIM_ARGS) -view "$(MODELSIM_WAVE)" -do "$(MODELSIM_DO)"; \
+	else \
+		$(VSIM) $(MODELSIM_ARGS) -view "$(MODELSIM_WAVE)"; \
 	fi
 
 clean:

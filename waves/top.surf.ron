@@ -24,7 +24,7 @@
     autoload_sibling_state_files: None,
     autoreload_files: None,
     waves: Some((
-        source: File("build/sim/dump.vcd"),
+        source: File("build/verilator/dump.vcd"),
         format: Vcd,
         active_scope: Some(WaveScope((
             strs: [

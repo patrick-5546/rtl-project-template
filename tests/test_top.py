@@ -1,5 +1,6 @@
 import os
 import re
+import shlex
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,12 @@ def env_flag(name: str, *, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def project_path_from_env(name: str, project_dir: Path, default: Path) -> Path:
+    value = os.environ.get(name)
+    path = Path(value) if value else default
+    return path if path.is_absolute() else project_dir / path
 
 
 async def start_counter(dut: Any) -> None:
@@ -72,10 +79,16 @@ async def enable_low_holds_count(dut: Any) -> None:
     assert dut.count_o.value.to_unsigned() == 3
 
 
-def test_top_with_verilator() -> None:
+def test_top_with_simulator() -> None:
     project_dir = Path(__file__).resolve().parents[1]
     test_dir = Path(__file__).resolve().parent
-    build_dir = project_dir / "build" / "sim"
+    simulator = os.environ.get("SIM", "verilator")
+    build_dir = project_path_from_env("BUILD_DIR", project_dir, project_dir / "build" / simulator)
+    modelsim_wave = project_path_from_env(
+        "MODELSIM_WAVE",
+        project_dir,
+        project_dir / "build" / "modelsim" / "vsim.wlf",
+    )
     pythonpath = os.pathsep.join(filter(None, [str(test_dir), os.environ.get("PYTHONPATH", "")]))
     selected_test = os.environ.get("TEST") or None
     test_filter = os.environ.get("TEST_FILTER") or None
@@ -85,7 +98,17 @@ def test_top_with_verilator() -> None:
     if selected_test:
         test_filter = rf"(^|.*\.){re.escape(selected_test)}$"
 
-    runner = get_runner(os.environ.get("SIM", "verilator"))
+    test_args: list[str] = []
+    if simulator == "questa":
+        modelsim_wave.parent.mkdir(parents=True, exist_ok=True)
+        test_args = [
+            *shlex.split(os.environ.get("MODELSIM_ARGS", "")),
+            "-wlf",
+            str(modelsim_wave),
+            "-nowlfdeleteonquit",
+        ]
+
+    runner = get_runner(simulator)
     runner.build(
         sources=[project_dir / "rtl" / "top.sv"],
         hdl_toplevel="top",
@@ -100,4 +123,5 @@ def test_top_with_verilator() -> None:
         build_dir=build_dir,
         waves=True,
         extra_env={"PYTHONPATH": pythonpath},
+        test_args=test_args,
     )

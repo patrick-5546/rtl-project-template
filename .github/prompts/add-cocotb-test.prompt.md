@@ -5,7 +5,7 @@ Use this prompt when creating or changing cocotb tests for the SystemVerilog RTL
 ## Goal
 
 Add pytest-launched cocotb coverage for the requested RTL behavior using
-Verilator as the simulator.
+Verilator as the default simulator.
 
 ## Instructions
 
@@ -21,8 +21,8 @@ Verilator as the simulator.
    - Apply reset before checking normal behavior.
    - Wait for stable signal values after clock edges.
 7. Prefer modern cocotb APIs, such as `unit="ns"` for time units.
-8. Preserve waveform generation when it helps debugging. The default waveform
-   path is `build/sim/dump.vcd`.
+8. Preserve waveform generation when it helps debugging. Verilator writes
+   `build/verilator/dump.vcd`; ModelSim writes `build/modelsim/vsim.wlf`.
 
 ## Validation
 

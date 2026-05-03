@@ -1,7 +1,7 @@
-# Debug a cocotb or Verilator simulation failure
+# Debug a cocotb simulation failure
 
-Use this prompt when tests fail, Verilator errors during build, or waveform
-inspection is needed.
+Use this prompt when tests fail, Verilator or ModelSim errors during build, or
+waveform inspection is needed.
 
 ## Goal
 
@@ -16,17 +16,24 @@ tooling, and implement the smallest correct fix.
    make test
    ```
 
-2. Read the pytest, cocotb, and Verilator output carefully. Preserve the first
+2. Read the pytest, cocotb, and simulator output carefully. Preserve the first
    meaningful error rather than chasing later cascading failures.
 3. Check whether the failure happened during:
    - Python test collection.
-   - Verilator compile/elaboration.
+   - Simulator compile/elaboration.
    - cocotb runtime.
    - RTL assertion or expected-value checking.
-4. If waveforms are needed, use the generated `build/sim/dump.vcd` file or run:
+4. If Verilator waveforms are needed, use the generated
+   `build/verilator/dump.vcd` file or run:
 
    ```sh
    make waves
+   ```
+
+   If ModelSim waveforms are needed, use `build/modelsim/vsim.wlf` or run:
+
+   ```sh
+   make waves-modelsim
    ```
 
 5. Fix the root cause rather than weakening tests or hiding tool errors.
@@ -43,5 +50,6 @@ tooling, and implement the smallest correct fix.
   versions.
 - cocotb API changes, such as `unit` versus deprecated `units`.
 - Verilator warnings treated as failures by the lint-only flow.
+- ModelSim/Questa runner issues use `SIM=questa` internally.
 - `SV_SOURCES` in the `Makefile` when new RTL files are added.
 - Reset polarity and timing in both RTL and tests.

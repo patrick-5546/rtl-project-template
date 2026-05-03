@@ -1,7 +1,7 @@
 # Update project tooling
 
 Use this prompt when changing Python dependencies, uv settings, Makefile targets,
-Ruff, ty, Verible, Verilator, or waveform tooling.
+Ruff, ty, Verible, Verilator, ModelSim, or waveform tooling.
 
 ## Goal
 
@@ -21,7 +21,9 @@ Update the tooling coherently so local commands remain simple and documented.
    - ty for Python type checking.
    - Verible format/lint for SystemVerilog.
    - Verilator `--lint-only --timing -Wall --sv` for RTL linting.
-   - pytest/cocotb with Verilator for simulation.
+   - pytest/cocotb with Verilator for default simulation.
+   - pytest/cocotb with ModelSim through cocotb's `SIM=questa` runner when
+     ModelSim support is affected.
 7. Update `README.md` when command names, required tools, or workflow behavior
    changes.
 
