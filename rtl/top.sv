@@ -15,4 +15,8 @@ module top #(
     end
   end
 
+`ifdef ABV
+  top_abv #(.WIDTH(WIDTH)) top_abv_i (.*);
+`endif
+
 endmodule

@@ -10,6 +10,7 @@ SURFER ?= surfer
 GTKWAVE ?= gtkwave
 MARKDOWNLINT ?= markdownlint-cli2
 VSIM ?= vsim
+HTML_VIEWER ?= xdg-open
 MODELSIM_ARGS ?= -voptargs=+acc
 MODELSIM_ARCH ?= i686
 MODELSIM_BITS ?= 32
@@ -24,14 +25,27 @@ MODELSIM_GUI ?= 0
 TEST ?=
 TEST_FILTER ?=
 REBUILD ?= 1
+ABV ?= 0
+HDL_COVERAGE ?= 0
+COVERAGE_DAT ?= $(BUILD_DIR)/coverage.dat
+COVERAGE_ANNOTATION_DIR ?= $(BUILD_DIR)/coverage_annotated
+COVERAGE_INFO ?= $(BUILD_DIR)/coverage.info
+COVERAGE_HTML_DIR ?= $(VERILATOR_BUILD_DIR)/coverage_html
+COVERAGE_HTML_INDEX ?= $(COVERAGE_HTML_DIR)/index.html
+SV_SOURCES_FILE ?= rtl/sources.vf
+ABV_SOURCES_FILE ?= rtl/abv_sources.vf
 
-SV_SOURCES := rtl/top.sv
+read_sources = $(strip $(shell sed -e 's/[[:space:]]*#.*//' -e '/^[[:space:]]*$$/d' $(1)))
+
+SV_SOURCES := $(call read_sources,$(SV_SOURCES_FILE))
+ABV_SOURCES := $(call read_sources,$(ABV_SOURCES_FILE))
+ALL_SV_SOURCES := $(SV_SOURCES) $(ABV_SOURCES)
 
 .PHONY: all check clean format help lint open-waves open-waves-gtkwave \
 	md-format md-lint open-waves-modelsim pre-commit-install pre-commit-run \
-	py-format py-format-check py-lint py-type sim sv-format sv-format-check \
-	sv-lint sync test test-modelsim verilator-lint waves waves-gtkwave \
-	waves-modelsim
+	coverage open-coverage-html py-format py-format-check py-lint py-type sim \
+	sv-format sv-format-check sv-lint sync test test-modelsim verilator-lint \
+	waves waves-gtkwave waves-modelsim
 
 all: check test
 
@@ -41,6 +55,9 @@ help:
 	@echo "  make test TEST=enable_high_counts             Run one cocotb test"
 	@echo "  make test TEST_FILTER='enable_.*'             Run matching cocotb tests"
 	@echo "  make test REBUILD=0                           Reuse an existing simulator build"
+	@echo "  make test ABV=1                               Run with SVA assertions enabled"
+	@echo "  make coverage                                 Run Verilator full coverage"
+	@echo "  make open-coverage-html                       Open existing coverage HTML"
 	@echo "  make waves [TEST=...]                         Run tests, then open Surfer"
 	@echo "  make waves-gtkwave [TEST=...]                 Run tests, then open GTKWave"
 	@echo "  make test-modelsim [TEST=...]                 Run tests with ModelSim"
@@ -69,7 +86,9 @@ pre-commit-run:
 test:
 	ARCH="$(ARCH)" COCOTB_BITS="$(COCOTB_BITS)" SIM=$(SIM) \
 		BUILD_DIR="$(BUILD_DIR)" MODELSIM_WAVE="$(MODELSIM_WAVE)" \
-		MODELSIM_ARGS="$(MODELSIM_ARGS)" \
+		MODELSIM_ARGS="$(MODELSIM_ARGS)" ABV="$(ABV)" \
+		HDL_COVERAGE="$(HDL_COVERAGE)" COVERAGE_DAT="$(COVERAGE_DAT)" \
+		SV_SOURCES_FILE="$(SV_SOURCES_FILE)" ABV_SOURCES_FILE="$(ABV_SOURCES_FILE)" \
 		MODELSIM_GUI="$(MODELSIM_GUI)" MODELSIM_DO="$(MODELSIM_DO)" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(PYTEST)
 
@@ -78,7 +97,7 @@ test-modelsim:
 		MODELSIM_WAVE="$(MODELSIM_WAVE)" TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" \
 		REBUILD="$(REBUILD)" MODELSIM_ARGS="$(MODELSIM_ARGS)" \
 		ARCH="$(MODELSIM_ARCH)" COCOTB_BITS="$(MODELSIM_BITS)" \
-		PYTEST="$(MODELSIM_PYTEST)" UV="$(UV)" \
+		PYTEST="$(MODELSIM_PYTEST)" UV="$(UV)" ABV="$(ABV)" \
 		MODELSIM_GUI="$(MODELSIM_GUI)" MODELSIM_DO="$(MODELSIM_DO)"
 
 sim: test
@@ -102,22 +121,50 @@ md-format:
 	$(MARKDOWNLINT) --fix
 
 sv-format:
-	verible-verilog-format --inplace $(SV_SOURCES)
+	verible-verilog-format --inplace $(ALL_SV_SOURCES)
 
 sv-format-check:
-	verible-verilog-format --verify $(SV_SOURCES)
+	@for source in $(ALL_SV_SOURCES); do \
+		verible-verilog-format --verify "$$source" || exit $$?; \
+	done
 
 sv-lint:
-	verible-verilog-lint $(SV_SOURCES)
+	verible-verilog-lint $(ALL_SV_SOURCES)
 
 verilator-lint:
-	verilator --lint-only --timing -Wall --sv $(SV_SOURCES)
+	verilator --lint-only --timing -Wall --sv --coverage +define+ABV $(ALL_SV_SOURCES)
 
 lint: py-format-check py-lint py-type md-lint sv-format-check sv-lint verilator-lint
 
 check: lint
 
 format: py-format md-format sv-format
+
+coverage:
+	$(MAKE) test SIM=verilator BUILD_DIR="$(VERILATOR_BUILD_DIR)" \
+		ABV=1 HDL_COVERAGE=1 COVERAGE_DAT="$(COVERAGE_DAT)" \
+		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" \
+		PYTEST="$(PYTEST)" UV="$(UV)"
+	rm -rf "$(COVERAGE_ANNOTATION_DIR)"
+	verilator_coverage --annotate "$(COVERAGE_ANNOTATION_DIR)" \
+		--annotate-all --annotate-points --annotate-min 1 --include-reset-arcs \
+		"$(COVERAGE_DAT)"
+	verilator_coverage --write-info "$(COVERAGE_INFO)" \
+		--include-reset-arcs \
+		"$(COVERAGE_DAT)"
+	@echo "Coverage data: $(COVERAGE_DAT)"
+	@echo "Annotated report: $(COVERAGE_ANNOTATION_DIR)"
+	@echo "LCOV info: $(COVERAGE_INFO)"
+
+open-coverage-html:
+	@test -f "$(COVERAGE_INFO)" || { echo "Coverage info '$(COVERAGE_INFO)' not found. Run 'make coverage' first."; exit 1; }
+	rm -rf "$(COVERAGE_HTML_DIR)"
+	genhtml --branch-coverage --no-function-coverage --show-details \
+		--legend --title "Verilator coverage" --prefix "$(CURDIR)" \
+		--output-directory "$(COVERAGE_HTML_DIR)" \
+		"$(COVERAGE_INFO)"
+	@echo "HTML report: $(COVERAGE_HTML_INDEX)"
+	$(HTML_VIEWER) "$(COVERAGE_HTML_INDEX)"
 
 waves: test
 	$(MAKE) open-waves WAVE="$(WAVE)" STATE="$(STATE)" SURFER="$(SURFER)"
@@ -145,7 +192,7 @@ waves-modelsim:
 	$(MAKE) test-modelsim MODELSIM_GUI=1 MODELSIM_DO="$(MODELSIM_DO)" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" \
 		MODELSIM_ARGS="$(MODELSIM_ARGS)" MODELSIM_WAVE="$(MODELSIM_WAVE)" \
-		UV="$(UV)"
+		ABV="$(ABV)" UV="$(UV)"
 
 open-waves-modelsim:
 	@test -f "$(MODELSIM_WAVE)" || { echo "Waveform '$(MODELSIM_WAVE)' not found. Run 'make test-modelsim' first."; exit 1; }

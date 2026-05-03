@@ -6,6 +6,10 @@ Surfer, GTKWave, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
 ## Contents
 
 - `rtl/top.sv`: a parameterized counter/LED-style top module.
+- `rtl/top_abv.sv`: optional assertion-based verification examples for
+  `rtl/top.sv`.
+- `rtl/sources.vf` and `rtl/abv_sources.vf`: source lists consumed by the Makefile
+  and cocotb runner.
 - `tests/test_top.py`: cocotb tests launched by pytest with Verilator or ModelSim.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
 - `.pre-commit-config.yaml`: local hooks that reuse the repository's lint and
@@ -34,6 +38,7 @@ The default simulation flow is cocotb through pytest with Verilator.
 | `make pre-commit-install` | Install the Git pre-commit hook for this clone |
 | `make pre-commit-run` | Run all pre-commit hooks manually |
 | `make test` | Run the full cocotb regression with Verilator |
+| `make coverage` | Run Verilator full coverage and generate reports |
 | `make waves` | Run tests, then open a fresh waveform in Surfer |
 | `make open-waves` | Open the existing Surfer waveform without rerunning tests |
 | `make format` | Format Python, Markdown, and SystemVerilog |
@@ -121,6 +126,67 @@ Override either path if needed:
 ```sh
 make waves WAVE=build/verilator/other.vcd STATE=waves/other.surf.ron
 ```
+
+## Assertion-based verification examples
+
+The optional ABV examples live in `rtl/top_abv.sv`. That file is a standalone
+checker module that `rtl/top.sv` instantiates only when the `ABV` define is
+enabled, so the default RTL behavior remains unchanged. The checker includes SVA
+assertions for reset, enable-low hold, and enable-high increment behavior.
+
+Run the default Verilator regression with assertions enabled:
+
+```sh
+make test ABV=1
+```
+
+Run lint checks, including the ABV source:
+
+```sh
+make lint
+```
+
+Run the ModelSim/Questa flow with the ABV checker included:
+
+```sh
+make test-modelsim ABV=1
+```
+
+## Verilator coverage
+
+The ABV file also includes `cover property` examples. Verilator records these as
+user functional coverage points when coverage is enabled.
+
+Run full Verilator coverage, including line, toggle, FSM, and user coverage:
+
+```sh
+make coverage
+make open-coverage-html
+```
+
+`make open-coverage-html` generates the HTML report
+then opens it with `HTML_VIEWER=xdg-open` by default.
+Run `make coverage` first, and override the viewer when needed:
+
+```sh
+make open-coverage-html HTML_VIEWER=firefox
+```
+
+You can also run the simulator with coverage instrumentation without generating
+reports:
+
+```sh
+make test ABV=1 HDL_COVERAGE=1
+```
+
+`make coverage` keeps ABV enabled, so assertions and `cover property` checks run.
+Verilator records `cover property` points as user coverage; it does not emit
+separate assertion coverage for `assert property` checks.
+
+SystemVerilog covergroups/coverpoints are intentionally not included. Verilator
+5.048 parses but ignores this repo's covergroup example, and Intel FPGA Starter
+Edition ModelSim reports that assertions and covergroups require QuestaSim or an
+appropriate verification-feature license.
 
 ## Alternative tool flows
 
