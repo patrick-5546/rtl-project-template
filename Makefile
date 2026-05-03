@@ -14,7 +14,6 @@ MARKDOWNLINT ?= markdownlint-cli2
 VSIM ?= vsim
 VCOVER ?= vcover
 HTML_VIEWER ?= xdg-open
-QUESTA_ARGS ?= -voptargs=+acc -debugdb
 WAVE ?= $(VERILATOR_BUILD_DIR)/dump.vcd
 QUESTA_WAVE ?= $(QUESTA_BUILD_DIR)/vsim.wlf
 STATE ?= waves/top.surf.ron
@@ -107,7 +106,7 @@ pre-commit-run:
 test:
 	SIM=$(SIM) \
 		BUILD_DIR="$(BUILD_DIR)" QUESTA_WAVE="$(QUESTA_WAVE)" \
-		QUESTA_ARGS="$(QUESTA_ARGS)" ABV="$(ABV)" \
+		ABV="$(ABV)" \
 		HDL_COVERAGE="$(HDL_COVERAGE)" COVERAGE_DAT="$(COVERAGE_DAT)" \
 		SV_SOURCES_FILE="$(SV_SOURCES_FILE)" ABV_SOURCES_FILE="$(ABV_SOURCES_FILE)" \
 		QUESTA_GUI="$(QUESTA_GUI)" QUESTA_DO="$(QUESTA_DO)" \
@@ -116,7 +115,7 @@ test:
 test-questa:
 	$(MAKE) test SIM="$(QUESTA_SIM)" BUILD_DIR="$(QUESTA_BUILD_DIR)" \
 		QUESTA_WAVE="$(QUESTA_WAVE)" TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" \
-		REBUILD="$(REBUILD)" QUESTA_ARGS="$(QUESTA_ARGS)" \
+		REBUILD="$(REBUILD)" \
 		PYTEST="$(UV) run pytest -s --timeout=0" UV="$(UV)" ABV="$(ABV)" \
 		QUESTA_GUI="$(QUESTA_GUI)" QUESTA_DO="$(QUESTA_DO)"
 
@@ -175,6 +174,7 @@ coverage:
 coverage-questa:
 	$(MAKE) test-questa ABV=1 HDL_COVERAGE=1 \
 		COVERAGE_DAT="$(QUESTA_COVERAGE_UCDB)" \
+		QUESTA_ARGS="-extendedtogglemode 1" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)"
 	$(VCOVER) report -summary "$(QUESTA_COVERAGE_UCDB)"
 	@echo "Coverage UCDB: $(QUESTA_COVERAGE_UCDB)"
@@ -236,15 +236,15 @@ gtkwave-stems:
 waves-questa:
 	$(MAKE) test-questa QUESTA_GUI=1 QUESTA_DO="$(QUESTA_DO)" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" \
-		QUESTA_ARGS="$(QUESTA_ARGS)" QUESTA_WAVE="$(QUESTA_WAVE)" \
-		ABV="$(ABV)" UV="$(UV)"
+		QUESTA_ARGS="-voptargs=+acc -debugdb" \
+		QUESTA_WAVE="$(QUESTA_WAVE)" ABV="$(ABV)" UV="$(UV)"
 
 open-waves-questa:
 	@test -f "$(QUESTA_WAVE)" || { echo "Waveform '$(QUESTA_WAVE)' not found. Run 'make test-questa' first."; exit 1; }
 	if test -f "$(QUESTA_DO)"; then \
-		$(VSIM) $(QUESTA_ARGS) -view "$(QUESTA_WAVE)" -do "$(QUESTA_DO)"; \
+		$(VSIM) -view "$(QUESTA_WAVE)" -do "$(QUESTA_DO)"; \
 	else \
-		$(VSIM) $(QUESTA_ARGS) -view "$(QUESTA_WAVE)"; \
+		$(VSIM) -view "$(QUESTA_WAVE)"; \
 	fi
 
 clean:

@@ -285,15 +285,6 @@ make waves-questa QUESTA_DO=waves/other.do
 make open-waves-questa QUESTA_WAVE=build/questa/other.wlf QUESTA_DO=waves/other.do
 ```
 
-The Questa flow defaults to `QUESTA_ARGS=-voptargs=+acc -debugdb` for better GUI and
-waveform debug visibility. Override Questa arguments when needed, or set
-`QUESTA_ARGS=` to run without extra debug access:
-
-```sh
-make test-questa QUESTA_ARGS="-voptargs=+acc -debugdb"
-make test-questa QUESTA_ARGS=
-```
-
 ## Verified environment
 
 This template was verified on Ubuntu 22.04 with these tool versions:
