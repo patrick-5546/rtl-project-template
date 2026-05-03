@@ -21,13 +21,14 @@ jobs:
       - name: Install Verilator
         run: sudo apt-get update && sudo apt-get install -y verilator
 
+      - name: Install markdownlint-cli2
+        run: sudo npm install -g markdownlint-cli2
+
       - name: Install Verible
         run: |
           curl -fsSL "https://github.com/chipsalliance/verible/releases/download/${VERIBLE_VERSION}/verible-${VERIBLE_VERSION}-linux-static-x86_64.tar.gz" \
             | sudo tar -xz -C /usr/local --strip-components=1
-
-      - name: Install markdownlint-cli2
-        run: sudo npm install -g markdownlint-cli2
+          sudo chmod -R a+rX /usr/local/bin
 
       - run: uv sync
 

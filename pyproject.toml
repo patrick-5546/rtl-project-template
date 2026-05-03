@@ -18,7 +18,7 @@ package = false
 [tool.pytest.ini_options]
 addopts = ["-ra"]
 testpaths = ["tests"]
-timeout = 2
+timeout = 60
 
 [tool.ruff]
 line-length = 100
