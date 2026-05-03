@@ -8,6 +8,7 @@ MODELSIM_BUILD_DIR ?= build/modelsim
 BUILD_DIR ?= $(if $(filter $(MODELSIM_SIM),$(SIM)),$(MODELSIM_BUILD_DIR),$(VERILATOR_BUILD_DIR))
 SURFER ?= surfer
 GTKWAVE ?= gtkwave
+MARKDOWNLINT ?= markdownlint-cli2
 VSIM ?= vsim
 MODELSIM_ARGS ?=
 MODELSIM_ARCH ?= i686
@@ -26,9 +27,10 @@ REBUILD ?= 1
 SV_SOURCES := rtl/top.sv
 
 .PHONY: all check clean format help lint open-waves open-waves-gtkwave \
-	open-waves-modelsim pre-commit-install pre-commit-run py-format \
-	py-format-check py-lint py-type sim sv-format sv-format-check sv-lint sync \
-	test test-modelsim test-one verilator-lint waves waves-gtkwave waves-modelsim
+	md-format md-lint open-waves-modelsim pre-commit-install pre-commit-run \
+	py-format py-format-check py-lint py-type sim sv-format sv-format-check \
+	sv-lint sync test test-modelsim test-one verilator-lint waves waves-gtkwave \
+	waves-modelsim
 
 all: check test
 
@@ -49,7 +51,9 @@ help:
 	@echo "  make pre-commit-install                       Install the Git pre-commit hook"
 	@echo "  make pre-commit-run                           Run all pre-commit hooks"
 	@echo "  make lint                                     Run all lint/type checks"
-	@echo "  make format                                   Format Python and SystemVerilog"
+	@echo "  make format                                   Format Python, Markdown, and SystemVerilog"
+	@echo "  make md-lint                                  Run Markdown lint checks"
+	@echo "  make md-format                                Apply Markdown lint fixes"
 	@echo "  make clean                                    Remove generated artifacts"
 
 sync:
@@ -95,6 +99,12 @@ py-lint:
 py-type:
 	$(UV) run ty check
 
+md-lint:
+	$(MARKDOWNLINT)
+
+md-format:
+	$(MARKDOWNLINT) --fix
+
 sv-format:
 	verible-verilog-format --inplace $(SV_SOURCES)
 
@@ -107,11 +117,11 @@ sv-lint:
 verilator-lint:
 	verilator --lint-only --timing -Wall --sv $(SV_SOURCES)
 
-lint: py-format-check py-lint py-type sv-format-check sv-lint verilator-lint
+lint: py-format-check py-lint py-type md-lint sv-format-check sv-lint verilator-lint
 
 check: lint
 
-format: py-format sv-format
+format: py-format md-format sv-format
 
 waves: test
 	$(MAKE) open-waves WAVE="$(WAVE)" STATE="$(STATE)" SURFER="$(SURFER)"

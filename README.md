@@ -1,7 +1,7 @@
 # FPGA Project Template
 
 A small FPGA project template using SystemVerilog, cocotb, Verilator, ModelSim,
-Surfer, GTKWave, uv, Ruff, ty, pytest, and Verible.
+Surfer, GTKWave, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
 
 ## Contents
 
@@ -10,6 +10,7 @@ Surfer, GTKWave, uv, Ruff, ty, pytest, and Verible.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
 - `.pre-commit-config.yaml`: local hooks that reuse the repository's lint and
   type-check targets.
+- `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
 - `Makefile`: common commands for formatting, linting, type checking, simulation,
   and waveform viewing.
 
@@ -42,8 +43,8 @@ The default simulation flow is cocotb through pytest with Verilator.
 | `make test` | Run the full cocotb regression with Verilator |
 | `make waves` | Run tests, then open a fresh waveform in Surfer |
 | `make open-waves` | Open the existing Surfer waveform without rerunning tests |
-| `make format` | Format Python and SystemVerilog |
-| `make lint` | Run Ruff, ty, Verible, and Verilator lint-only |
+| `make format` | Format Python, Markdown, and SystemVerilog |
+| `make lint` | Run Ruff, ty, Markdown, Verible, and Verilator checks |
 | `make help` | Show debug workflow examples |
 | `make clean` | Remove generated local artifacts |
 
@@ -51,14 +52,15 @@ The default simulation flow is cocotb through pytest with Verilator.
 
 Install the default external command-line tools before using the main
 Verilator/Surfer workflow. Python packages are managed by uv, but Verilator,
-Surfer, and Verible need to be available on `PATH`. The local Python version is
-pinned to `3.13` in `.python-version` because the current cocotb release does
-not support Python 3.14.
+Surfer, Verible, and markdownlint-cli2 need to be available on `PATH`. The local
+Python version is pinned to `3.13` in `.python-version` because the current
+cocotb release does not support Python 3.14.
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
 | Verilator | Default simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [User guide](https://verilator.org/guide/latest/) |
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
+| markdownlint-cli2 | Markdown linting/autofix | [Install](https://github.com/DavidAnson/markdownlint-cli2#install) | [Documentation](https://github.com/DavidAnson/markdownlint-cli2) |
 | Surfer | Default waveform viewer | [Install guide](https://docs.surfer-project.org/book/#installing-a-specific-version) | [User guide](https://docs.surfer-project.org/book/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
 
@@ -81,9 +83,10 @@ These Makefile targets wrap `uv run pre-commit ...`, so hooks use the same
 uv-managed environment as the rest of the Python tooling.
 
 The hooks call the existing Makefile targets for Ruff formatting checks, Ruff
-linting, ty type checking, Verible formatting/linting, and Verilator lint-only.
-They do not run cocotb simulation, ModelSim, or waveform viewers; use `make test`
-and the explicit optional-flow targets when those checks are needed. See the
+linting, ty type checking, Markdown linting, Verible formatting/linting, and
+Verilator lint-only. They do not run cocotb simulation, ModelSim, or waveform
+viewers; use `make test` and the explicit optional-flow targets when those
+checks are needed. See the
 [pre-commit documentation](https://pre-commit.com/) for hook usage details.
 
 ## Default workflow: Verilator and Surfer
@@ -264,6 +267,7 @@ locked by uv in `uv.lock`.
 | Tool | Verified version |
 | --- | --- |
 | GTKWave | 3.3.127 |
+| markdownlint-cli2 | 0.22.1 |
 | ModelSim Intel FPGA Starter Edition | 2020.1 |
 | Surfer | 0.7.0 |
 | uv | 0.11.8 |

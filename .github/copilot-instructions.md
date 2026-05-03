@@ -2,7 +2,8 @@
 
 This is a small FPGA project template using SystemVerilog RTL, cocotb tests,
 Verilator simulation, Surfer waveform viewing, uv-managed Python tools, Ruff,
-ty, pytest, and Verible. GTKWave and ModelSim are optional alternative flows.
+ty, markdownlint-cli2, pytest, and Verible. GTKWave and ModelSim are optional
+alternative flows.
 
 ## Repository layout
 
@@ -14,6 +15,7 @@ ty, pytest, and Verible. GTKWave and ModelSim are optional alternative flows.
   and ty.
 - `.pre-commit-config.yaml`: local hooks that reuse the repository lint and
   type-check targets.
+- `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
 - `.python-version`: uv Python pin. This template uses Python 3.13 because the
   current cocotb release does not support Python 3.14.
 - `Makefile`: canonical local commands for formatting, linting, type checking,
@@ -32,8 +34,9 @@ ty, pytest, and Verible. GTKWave and ModelSim are optional alternative flows.
 
 Use the existing Makefile targets instead of inventing new one-off commands:
 
-- `make format`: format Python and SystemVerilog.
-- `make lint`: run Ruff, ty, Verible lint/format checks, and Verilator lint-only.
+- `make format`: format Python, Markdown, and SystemVerilog.
+- `make lint`: run Ruff, ty, Markdown, Verible lint/format checks, and Verilator
+  lint-only.
 - `make test`: run pytest/cocotb tests with Verilator.
 - `make waves`: run tests and open the Verilator waveform in Surfer.
 - `make pre-commit-run`: run all configured pre-commit hooks manually.
@@ -44,7 +47,7 @@ Python tools are installed and run through uv. Prefer `uv run ...` or the
 Makefile targets over assuming tools like `ruff`, `ty`, or `pytest` are
 globally installed. Python package versions are locked by `uv.lock`; external
 tool versions are documented only as a verified environment in `README.md`.
-`pre-commit` is also uv-managed. GTKWave and ModelSim are optional alternative
+GTKWave and ModelSim are optional alternative
 flows documented in `README.md` and the task-specific prompt files.
 
 ## SystemVerilog conventions

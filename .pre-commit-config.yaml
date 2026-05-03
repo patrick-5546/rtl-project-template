@@ -21,6 +21,12 @@ repos:
         language: system
         pass_filenames: false
 
+      - id: markdown-lint
+        name: Markdown lint
+        entry: make md-lint
+        language: system
+        pass_filenames: false
+
       - id: verible-format-check
         name: Verible format check
         entry: make sv-format-check
