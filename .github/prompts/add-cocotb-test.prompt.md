@@ -23,6 +23,10 @@ Verilator as the default simulator.
 7. Prefer modern cocotb APIs, such as `unit="ns"` for time units.
 8. Preserve waveform generation when it helps debugging. Verilator writes
    `build/verilator/dump.vcd`; ModelSim writes `build/modelsim/vsim.wlf`.
+9. Prefer cocotb runner selection via `TEST` or `TEST_FILTER` over pytest `-k`,
+   because pytest only sees the outer wrapper test.
+10. Use optional ModelSim coverage only when relevant; this project invokes it
+    through `make test-modelsim`, which uses cocotb's `SIM=questa` runner.
 
 ## Validation
 
@@ -33,6 +37,14 @@ make py-format
 make py-lint
 make py-type
 make test
+```
+
+For targeted debug runs, use:
+
+```sh
+make test TEST=<cocotb_test_name>
+make test TEST_FILTER='<regex>'
+make test TEST=<cocotb_test_name> REBUILD=0
 ```
 
 If Python dependencies or tool settings changed, also run:

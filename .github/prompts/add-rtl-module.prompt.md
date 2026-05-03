@@ -22,8 +22,7 @@ style and keeping the standard HDL checks working.
 6. If adding a new RTL file that should be linted by default, update
    `SV_SOURCES` in the `Makefile`.
 7. Update or add cocotb tests when behavior changes.
-8. Do not commit generated files from `build/`, `sim_build/`, or waveform
-   outputs.
+8. Do not commit generated files from `build/` or raw waveform outputs.
 
 ## Validation
 
@@ -36,6 +35,11 @@ make verilator-lint
 make test
 ```
 
+If the change affects the standard pre-commit checks, also run:
+
+```sh
+make pre-commit-run
+```
+
 If the change is RTL-only and tests are not affected, explain why `make test`
 was not needed.
-

@@ -27,9 +27,15 @@ Update the tooling coherently so local commands remain simple and documented.
    - pytest/cocotb with ModelSim through cocotb's `SIM=questa` runner when
      ModelSim support is affected.
    - pre-commit hooks that mirror the lightweight non-GUI lint/type-check flow.
-7. Update `.pre-commit-config.yaml` when changing checks that should run before
+7. Keep optional flows documented but separate from the default Verilator/Surfer
+   workflow:
+   - GTKWave uses `make waves-gtkwave` and `make open-waves-gtkwave`.
+   - ModelSim uses `make test-modelsim`, `make waves-modelsim`, and
+     `make open-waves-modelsim`.
+   - Override the ModelSim GUI executable with `VSIM`, not `MODELSIM`.
+8. Update `.pre-commit-config.yaml` when changing checks that should run before
    commits.
-8. Update `README.md` when command names, required tools, or workflow behavior
+9. Update `README.md` when command names, required tools, or workflow behavior
    changes.
 
 ## Validation
