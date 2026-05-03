@@ -30,8 +30,8 @@ jobs:
         if: steps.cache-verilator.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update && sudo apt-get install -y ccache help2man libfl-dev
-          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1
-          cd verilator
+          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1 /tmp/verilator
+          cd /tmp/verilator
           autoconf
           ./configure --prefix=/opt/verilator
           make -j"$(nproc)"
@@ -73,8 +73,8 @@ jobs:
         if: steps.cache-verilator.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update && sudo apt-get install -y ccache help2man libfl-dev
-          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1
-          cd verilator
+          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1 /tmp/verilator
+          cd /tmp/verilator
           autoconf
           ./configure --prefix=/opt/verilator
           make -j"$(nproc)"
