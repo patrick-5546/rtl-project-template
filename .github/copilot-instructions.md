@@ -1,8 +1,8 @@
 # Copilot instructions for this repository
 
 This is a small FPGA project template using SystemVerilog RTL, cocotb tests,
-Verilator simulation, Surfer waveforms, uv-managed Python tools, Ruff, ty,
-pytest, and Verible.
+Verilator simulation, Surfer and GTKWave waveform viewing, uv-managed Python
+tools, Ruff, ty, pytest, and Verible.
 
 ## Repository layout
 
@@ -19,7 +19,10 @@ pytest, and Verible.
 - `build/`: generated simulation artifacts and waveforms. Do not commit files
   from this directory.
 - `waves/`: reusable Surfer state files such as `waves/top.surf.ron`; these may
-  be committed when they capture useful signal/layout views.
+  be committed when they capture useful signal/layout views. Reusable GTKWave
+  save files such as `waves/top.gtkw` may also be committed.
+- `.surfer/config.toml`: repo-local Surfer configuration. Keep it minimal; it
+  currently sets cursor snapping and transition value display.
 
 ## Preferred commands
 
@@ -30,6 +33,8 @@ Use the existing Makefile targets instead of inventing new one-off commands:
 - `make test`: run pytest/cocotb tests with Verilator.
 - `make waves`: run tests and open `build/sim/dump.vcd` in Surfer, loading
   `waves/top.surf.ron` when that state file exists.
+- `make waves-gtkwave`: run tests and open `build/sim/dump.vcd` in GTKWave,
+  loading `waves/top.gtkw` when that save file exists.
 - `make clean`: remove generated local artifacts.
 
 Python tools are installed and run through uv. Prefer `uv run ...` or the
@@ -55,7 +60,8 @@ globally installed.
 - Keep tests deterministic and focused on externally visible RTL behavior.
 - Generate waveforms when useful for debugging; the default waveform path is
   `build/sim/dump.vcd`. Save reusable Surfer signal/layout state in
-  `waves/top.surf.ron`.
+  `waves/top.surf.ron` and reusable GTKWave signal/layout state in
+  `waves/top.gtkw`.
 - Use modern cocotb APIs, such as `unit="ns"` instead of deprecated
   `units="ns"`.
 - Keep Python compatible with `.python-version` and `pyproject.toml`.

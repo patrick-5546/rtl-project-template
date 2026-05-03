@@ -67,7 +67,7 @@
             ],
         ),
         displayed_items: {
-            (1): Variable((
+            (6): Variable((
                 variable_ref: (
                     path: (
                         strs: [
@@ -75,13 +75,13 @@
                         ],
                         id: Wellen((3)),
                     ),
-                    name: "clk_i",
-                    id: Wellen((6)),
+                    name: "count_o",
+                    id: Wellen((9)),
                     index: None,
                 ),
                 color: None,
                 background_color: None,
-                display_name: "clk_i",
+                display_name: "count_o [7:0]",
                 display_name_type: Unique,
                 manual_name: None,
                 format: None,
@@ -111,7 +111,7 @@
                 height_scaling_factor: None,
                 analog: None,
             )),
-            (4): Variable((
+            (1): Variable((
                 variable_ref: (
                     path: (
                         strs: [
@@ -119,35 +119,13 @@
                         ],
                         id: Wellen((3)),
                     ),
-                    name: "rst_ni",
-                    id: Wellen((7)),
+                    name: "clk_i",
+                    id: Wellen((6)),
                     index: None,
                 ),
                 color: None,
                 background_color: None,
-                display_name: "rst_ni",
-                display_name_type: Unique,
-                manual_name: None,
-                format: None,
-                field_formats: [],
-                height_scaling_factor: None,
-                analog: None,
-            )),
-            (6): Variable((
-                variable_ref: (
-                    path: (
-                        strs: [
-                            "top",
-                        ],
-                        id: Wellen((3)),
-                    ),
-                    name: "count_o",
-                    id: Wellen((9)),
-                    index: None,
-                ),
-                color: None,
-                background_color: None,
-                display_name: "count_o [7:0]",
+                display_name: "clk_i",
                 display_name_type: Unique,
                 manual_name: None,
                 format: None,
@@ -177,12 +155,34 @@
                 height_scaling_factor: None,
                 analog: None,
             )),
+            (4): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "top",
+                        ],
+                        id: Wellen((3)),
+                    ),
+                    name: "rst_ni",
+                    id: Wellen((7)),
+                    index: None,
+                ),
+                color: None,
+                background_color: None,
+                display_name: "rst_ni",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+                height_scaling_factor: None,
+                analog: None,
+            )),
         },
         display_item_ref_counter: 7,
         viewports: [
             (
-                curr_left: (0.25),
-                curr_right: (0.75),
+                curr_left: (0.0),
+                curr_right: (1.0),
                 target_left: (0.0),
                 target_right: (1.0),
                 move_start_left: (0.0),
@@ -192,7 +192,7 @@
             ),
         ],
         cursor: Some((1, [
-            70895,
+            80000,
         ])),
         markers: {},
         focused_item: Some((4)),
@@ -245,9 +245,9 @@
         include_others: true,
         group_by_direction: false,
     ),
-    sidepanel_width: Some(161.90625),
+    sidepanel_width: Some(300.0),
     ui_zoom_factor: None,
     animation_enabled: None,
     use_dinotrace_style: None,
-    transition_value: None,
+    transition_value: Some(Both),
 )

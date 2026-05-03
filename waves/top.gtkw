@@ -1,0 +1,26 @@
+[*]
+[*] GTKWave Analyzer v3.3.127 (w)1999-2026 BSI
+[*] Sun May  3 03:13:56 2026
+[*]
+[dumpfile] "/path/to/fpga_proj_tmpl/build/sim/dump.vcd"
+[dumpfile_mtime] "Sun May  3 03:13:47 2026"
+[dumpfile_size] 1700
+[savefile] "/path/to/fpga_proj_tmpl/waves/top.gtkw"
+[timestart] 0
+[size] 1850 1136
+[pos] -1 -1
+*-15.145228 80000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 225
+[signals_width] 203
+[sst_expanded] 1
+[sst_vpaned_height] 329
+@25
+top.WIDTH[31:0]
+@28
+top.clk_i
+top.rst_ni
+top.en_i
+@22
+top.count_o[7:0]
+[pattern_trace] 1
+[pattern_trace] 0

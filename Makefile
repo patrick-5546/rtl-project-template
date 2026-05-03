@@ -1,13 +1,15 @@
 UV ?= uv
 SIM ?= verilator
 SURFER ?= surfer
+GTKWAVE ?= gtkwave
 WAVE ?= build/sim/dump.vcd
 STATE ?= waves/top.surf.ron
+GTKWAVE_SAVE ?= waves/top.gtkw
 
 SV_SOURCES := rtl/top.sv
 
 .PHONY: all check clean format lint py-format py-format-check py-lint py-type sim sv-format \
-	sv-format-check sv-lint sync test verilator-lint waves
+	sv-format-check sv-lint sync test verilator-lint waves waves-gtkwave
 
 all: check test
 
@@ -55,6 +57,14 @@ waves: test
 		$(SURFER) --state-file "$(STATE)" "$(WAVE)"; \
 	else \
 		$(SURFER) "$(WAVE)"; \
+	fi
+
+waves-gtkwave: test
+	test -f "$(WAVE)"
+	if test -f "$(GTKWAVE_SAVE)"; then \
+		$(GTKWAVE) "$(WAVE)" "$(GTKWAVE_SAVE)"; \
+	else \
+		$(GTKWAVE) "$(WAVE)"; \
 	fi
 
 clean:
