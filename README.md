@@ -8,16 +8,20 @@ Surfer, GTKWave, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
 - `rtl/top.sv`: a parameterized counter/LED-style top module.
 - `rtl/top_abv.sv`: optional assertion-based verification examples for
   `rtl/top.sv`.
-- `rtl/sources.vf` and `rtl/abv_sources.vf`: source lists consumed by the Makefile
-  and cocotb runner.
-- `tests/test_top.py`: cocotb tests launched by pytest with Verilator or ModelSim.
+- `rtl/sources.vf` and `rtl/abv_sources.vf`: source lists consumed by the
+  Makefile and cocotb runner.
+- `tests/test_top.py`: cocotb tests launched by pytest with Verilator or
+  ModelSim.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
 - `.pre-commit-config.yaml`: local hooks that reuse the repository's lint and
   type-check targets.
 - `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
-- `Makefile`: common commands for formatting, linting, type checking, simulation,
-  and waveform viewing.
+- `.surfer/config.toml`: repo-local Surfer configuration.
+- `Makefile`: common commands for formatting, linting, type checking,
+  simulation, and waveform viewing.
 - `waves/top.surf.ron`: reusable Surfer signal list and layout state.
+- `waves/top.gtkw`: reusable GTKWave save file.
+- `waves/top.do`: reusable ModelSim wave layout.
 
 Generated simulator artifacts are ignored by Git and should stay under `build/`.
 
@@ -32,19 +36,39 @@ make lint
 
 The default simulation flow is cocotb through pytest with Verilator.
 
+**Setup:**
+
 | Command | Purpose |
 | --- | --- |
 | `make sync` | Install/update the uv-managed Python environment |
-| `make pre-commit-install` | Install the Git pre-commit hook for this clone |
+| `make pre-commit-install` | Install the Git pre-commit hook |
 | `make pre-commit-run` | Run all pre-commit hooks manually |
+
+**Workflow:**
+
+| Command | Purpose |
+| --- | --- |
 | `make test` | Run the full cocotb regression with Verilator |
+| `make test-modelsim` | Run the same regression with ModelSim |
 | `make coverage` | Run Verilator full coverage and generate reports |
 | `make waves` | Run tests, then open a fresh waveform in Surfer |
-| `make open-waves` | Open the existing Surfer waveform without rerunning tests |
+| `make waves-gtkwave` | Run tests, then open a fresh waveform in GTKWave |
+| `make waves-modelsim` | Run tests in a live ModelSim GUI |
+| `make open-waves` | Open the existing waveform without rerunning tests |
+
+**Quality:**
+
+| Command | Purpose |
+| --- | --- |
 | `make format` | Format Python, Markdown, and SystemVerilog |
 | `make lint` | Run Ruff, ty, Markdown, Verible, and Verilator checks |
 | `make help` | Show debug workflow examples |
 | `make clean` | Remove generated local artifacts |
+
+The pre-commit hooks call the existing Makefile lint and type-check targets.
+They do not run simulation or waveform viewers; use `make test` and the
+optional-flow targets for those. See the
+[pre-commit documentation](https://pre-commit.com/) for hook usage details.
 
 ## Tool installation and Python notes
 
@@ -61,31 +85,6 @@ cocotb release does not support Python 3.14.
 | markdownlint-cli2 | Markdown linting/autofix | [Install](https://github.com/DavidAnson/markdownlint-cli2#install) | [Documentation](https://github.com/DavidAnson/markdownlint-cli2) |
 | Surfer | Default waveform viewer | [Install guide](https://docs.surfer-project.org/book/#installing-a-specific-version) | [User guide](https://docs.surfer-project.org/book/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
-
-## Pre-commit hooks
-
-`pre-commit` is installed in the uv-managed Python environment and locked in
-`uv.lock`. Install the Git hook with:
-
-```sh
-make pre-commit-install
-```
-
-Run the full hook set manually with:
-
-```sh
-make pre-commit-run
-```
-
-These Makefile targets wrap `uv run pre-commit ...`, so hooks use the same
-uv-managed environment as the rest of the Python tooling.
-
-The hooks call the existing Makefile targets for Ruff formatting checks, Ruff
-linting, ty type checking, Markdown linting, Verible formatting/linting, and
-Verilator lint-only. They do not run cocotb simulation, ModelSim, or waveform
-viewers; use `make test` and the explicit optional-flow targets when those
-checks are needed. See the
-[pre-commit documentation](https://pre-commit.com/) for hook usage details.
 
 ## Default workflow: Verilator and Surfer
 
@@ -152,9 +151,12 @@ Run the ModelSim/Questa flow with the ABV checker included:
 make test-modelsim ABV=1
 ```
 
-## Verilator coverage
+## Coverage
 
-The ABV file also includes `cover property` examples. Verilator records these as
+Only the Verilator coverage flow is set up in this template; ModelSim/Questa
+coverage requires a paid verification-feature license.
+
+The ABV file includes `cover property` examples. Verilator records these as
 user functional coverage points when coverage is enabled.
 
 Run full Verilator coverage, including line, toggle, FSM, and user coverage:
@@ -164,9 +166,8 @@ make coverage
 make open-coverage-html
 ```
 
-`make open-coverage-html` generates the HTML report
-then opens it with `HTML_VIEWER=xdg-open` by default.
-Run `make coverage` first, and override the viewer when needed:
+`make open-coverage-html` generates an HTML report and opens it in the default
+browser. Override the viewer when needed:
 
 ```sh
 make open-coverage-html HTML_VIEWER=firefox
@@ -183,15 +184,39 @@ make test ABV=1 HDL_COVERAGE=1
 Verilator records `cover property` points as user coverage; it does not emit
 separate assertion coverage for `assert property` checks.
 
-SystemVerilog covergroups/coverpoints are intentionally not included. Verilator
-5.048 parses but ignores this repo's covergroup example, and Intel FPGA Starter
-Edition ModelSim reports that assertions and covergroups require QuestaSim or an
-appropriate verification-feature license.
+SystemVerilog covergroups/coverpoints are not included. Verilator 5.048 parses
+but ignores covergroup syntax.
 
-## Alternative tool flows
+## Optional tools
 
-The default workflow is Verilator simulation plus Surfer waveform viewing. These
-targets provide alternate viewers or simulators when needed.
+The sections below cover optional simulators and viewers.
+
+### Tool comparison
+
+**Simulators:**
+
+| Tool | Model | ABV | Coverage | Used here for |
+| --- | --- | --- | --- | --- |
+| Verilator | Cycle-based | Limited | Yes | Default tests, lint, and coverage |
+| ModelSim/Questa | Event-based | Paid license | Paid license | Optional vendor-style simulation |
+
+**Waveform viewers:**
+
+| Tool | Inputs | Source browse | Driver trace |
+| --- | --- | --- | --- |
+| Surfer | VCD, FST, GHW | No | No |
+| GTKWave | VCD, FST, GHW | Yes (RTL browser) | No |
+| ModelSim/Questa | WLF | Yes | Paid license |
+
+Verilator is the default simulator because it is open-source,
+script-friendly, fast, and easy to run in CI. It handles the assertion and
+`cover property` examples in this template, but its SystemVerilog
+verification-feature support is not complete.
+
+ModelSim/Questa is a commercial simulator with broad SystemVerilog support
+and native interactive debug. The free Intel FPGA Starter Edition does not
+include the verification features needed for this template's ABV examples,
+and is 32-bit so cocotb needs a matching 32-bit Python environment.
 
 ### GTKWave
 
@@ -205,6 +230,9 @@ make waves-gtkwave
 make waves-gtkwave TEST=enable_high_counts
 make open-waves-gtkwave
 ```
+
+The GTKWave targets also prepare GTKWave's RTL browser support, so source
+browsing is available when using GTKWave's source-navigation menu actions.
 
 Reusable GTKWave signal/layout state should be saved as `waves/top.gtkw`. If
 that file exists, `make waves-gtkwave` loads it automatically. Override either
@@ -233,9 +261,10 @@ Target-specific ModelSim runs use the same test selection variables:
 `TEST`, `TEST_FILTER`, `REBUILD`, and `ABV`.
 
 ModelSim uses its native WLF waveform format. Use `make waves-modelsim` for a
-live GUI simulation when you want source-linked debug, such as double-clicking a
-wave signal to navigate to its source. Use `make open-waves-modelsim` only when
-you want to inspect an existing saved WLF without rerunning simulation.
+live GUI simulation with source-linked debug. Use `make open-waves-modelsim`
+to inspect an existing WLF without rerunning simulation. Driver tracing
+(double-clicking a signal to find its RTL driver) requires the Extended
+Dataflow license.
 
 Reusable ModelSim wave layouts can be saved as a `.do` file such as
 `waves/top.do`. If that file exists, `make waves-modelsim` sources it in the

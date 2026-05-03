@@ -8,6 +8,8 @@ MODELSIM_BUILD_DIR ?= build/modelsim
 BUILD_DIR ?= $(if $(filter $(MODELSIM_SIM),$(SIM)),$(MODELSIM_BUILD_DIR),$(VERILATOR_BUILD_DIR))
 SURFER ?= surfer
 GTKWAVE ?= gtkwave
+GTKWAVE_ARGS ?= -o
+JSON2STEMS ?= json2stems
 MARKDOWNLINT ?= markdownlint-cli2
 VSIM ?= vsim
 HTML_VIEWER ?= xdg-open
@@ -20,6 +22,11 @@ WAVE ?= $(VERILATOR_BUILD_DIR)/dump.vcd
 MODELSIM_WAVE ?= $(MODELSIM_BUILD_DIR)/vsim.wlf
 STATE ?= waves/top.surf.ron
 GTKWAVE_SAVE ?= waves/top.gtkw
+GTKWAVE_STEMS_TOP ?= top
+GTKWAVE_STEMS_DIR ?= $(VERILATOR_BUILD_DIR)/rtlbrowse
+GTKWAVE_STEMS ?= $(GTKWAVE_STEMS_DIR)/top.stems
+GTKWAVE_STEMS_JSON ?= $(GTKWAVE_STEMS_DIR)/V$(GTKWAVE_STEMS_TOP).tree.json
+GTKWAVE_STEMS_META ?= $(GTKWAVE_STEMS_DIR)/V$(GTKWAVE_STEMS_TOP).tree.meta.json
 MODELSIM_DO ?= waves/top.do
 MODELSIM_GUI ?= 0
 TEST ?=
@@ -40,14 +47,16 @@ read_sources = $(strip $(shell sed -e 's/[[:space:]]*#.*//' -e '/^[[:space:]]*$$
 SV_SOURCES := $(call read_sources,$(SV_SOURCES_FILE))
 ABV_SOURCES := $(call read_sources,$(ABV_SOURCES_FILE))
 ALL_SV_SOURCES := $(SV_SOURCES) $(ABV_SOURCES)
+GTKWAVE_STEMS_SOURCES = $(SV_SOURCES) $(if $(filter 1 true yes on,$(ABV)),$(ABV_SOURCES))
+GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 
-.PHONY: all check clean format help lint open-waves open-waves-gtkwave \
+.PHONY: all clean format gtkwave-stems help lint open-waves open-waves-gtkwave \
 	md-format md-lint open-waves-modelsim pre-commit-install pre-commit-run \
-	coverage open-coverage-html py-format py-format-check py-lint py-type sim \
+	coverage open-coverage-html py-format py-format-check py-lint py-type \
 	sv-format sv-format-check sv-lint sync test test-modelsim verilator-lint \
 	waves waves-gtkwave waves-modelsim
 
-all: check test
+all: lint test
 
 help:
 	@echo "Common targets:"
@@ -60,6 +69,7 @@ help:
 	@echo "  make open-coverage-html                       Open existing coverage HTML"
 	@echo "  make waves [TEST=...]                         Run tests, then open Surfer"
 	@echo "  make waves-gtkwave [TEST=...]                 Run tests, then open GTKWave"
+	@echo "  make gtkwave-stems                            Generate GTKWave rtlbrowser stems"
 	@echo "  make test-modelsim [TEST=...]                 Run tests with ModelSim"
 	@echo "  make test-modelsim MODELSIM_PYTEST='<cmd>'    Run ModelSim with a custom Python env"
 	@echo "  make waves-modelsim [TEST=...]                Run tests in live ModelSim GUI"
@@ -100,8 +110,6 @@ test-modelsim:
 		PYTEST="$(MODELSIM_PYTEST)" UV="$(UV)" ABV="$(ABV)" \
 		MODELSIM_GUI="$(MODELSIM_GUI)" MODELSIM_DO="$(MODELSIM_DO)"
 
-sim: test
-
 py-format:
 	$(UV) run ruff format .
 
@@ -135,8 +143,6 @@ verilator-lint:
 	verilator --lint-only --timing -Wall --sv --coverage +define+ABV $(ALL_SV_SOURCES)
 
 lint: py-format-check py-lint py-type md-lint sv-format-check sv-lint verilator-lint
-
-check: lint
 
 format: py-format md-format sv-format
 
@@ -178,15 +184,26 @@ open-waves:
 	fi
 
 waves-gtkwave: test
-	$(MAKE) open-waves-gtkwave WAVE="$(WAVE)" GTKWAVE_SAVE="$(GTKWAVE_SAVE)" GTKWAVE="$(GTKWAVE)"
+	$(MAKE) open-waves-gtkwave WAVE="$(WAVE)" GTKWAVE_SAVE="$(GTKWAVE_SAVE)" \
+		GTKWAVE="$(GTKWAVE)" GTKWAVE_ARGS="$(GTKWAVE_ARGS)" \
+		GTKWAVE_STEMS="$(GTKWAVE_STEMS)"
 
 open-waves-gtkwave:
 	@test -f "$(WAVE)" || { echo "Waveform '$(WAVE)' not found. Run 'make test' first."; exit 1; }
+	$(MAKE) gtkwave-stems GTKWAVE_STEMS="$(GTKWAVE_STEMS)"
 	if test -f "$(GTKWAVE_SAVE)"; then \
-		$(GTKWAVE) "$(WAVE)" "$(GTKWAVE_SAVE)"; \
+		$(GTKWAVE) $(GTKWAVE_ARGS) -t "$(GTKWAVE_STEMS)" "$(WAVE)" "$(GTKWAVE_SAVE)"; \
 	else \
-		$(GTKWAVE) "$(WAVE)"; \
+		$(GTKWAVE) $(GTKWAVE_ARGS) -t "$(GTKWAVE_STEMS)" "$(WAVE)"; \
 	fi
+
+gtkwave-stems:
+	mkdir -p "$(GTKWAVE_STEMS_DIR)" "$(dir $(GTKWAVE_STEMS))"
+	verilator -Wno-fatal --json-only --bbox-sys --timing --sv \
+		--top-module "$(GTKWAVE_STEMS_TOP)" --Mdir "$(GTKWAVE_STEMS_DIR)" \
+		$(GTKWAVE_STEMS_DEFINES) $(GTKWAVE_STEMS_SOURCES)
+	$(JSON2STEMS) "$(GTKWAVE_STEMS_META)" "$(GTKWAVE_STEMS_JSON)" "$(GTKWAVE_STEMS)"
+	@echo "GTKWave stems: $(GTKWAVE_STEMS)"
 
 waves-modelsim:
 	$(MAKE) test-modelsim MODELSIM_GUI=1 MODELSIM_DO="$(MODELSIM_DO)" \
