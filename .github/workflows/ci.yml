@@ -6,6 +6,7 @@ on:
   pull_request:
 
 env:
+  VERILATOR_VERSION: v5.048
   VERIBLE_VERSION: v0.0-4053-g89d4d98a
 
 jobs:
@@ -18,8 +19,26 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install Verilator
-        run: sudo apt-get update && sudo apt-get install -y verilator
+      - name: Cache Verilator
+        id: cache-verilator
+        uses: actions/cache@v4
+        with:
+          path: /opt/verilator
+          key: verilator-${{ env.VERILATOR_VERSION }}
+
+      - name: Build Verilator
+        if: steps.cache-verilator.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update && sudo apt-get install -y ccache help2man libfl-dev
+          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1
+          cd verilator
+          autoconf
+          ./configure --prefix=/opt/verilator
+          make -j"$(nproc)"
+          make install
+
+      - name: Add Verilator to PATH
+        run: echo "/opt/verilator/bin" >> "$GITHUB_PATH"
 
       - name: Install markdownlint-cli2
         run: sudo npm install -g markdownlint-cli2
@@ -43,8 +62,26 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install Verilator
-        run: sudo apt-get update && sudo apt-get install -y verilator
+      - name: Cache Verilator
+        id: cache-verilator
+        uses: actions/cache@v4
+        with:
+          path: /opt/verilator
+          key: verilator-${{ env.VERILATOR_VERSION }}
+
+      - name: Build Verilator
+        if: steps.cache-verilator.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update && sudo apt-get install -y ccache help2man libfl-dev
+          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1
+          cd verilator
+          autoconf
+          ./configure --prefix=/opt/verilator
+          make -j"$(nproc)"
+          make install
+
+      - name: Add Verilator to PATH
+        run: echo "/opt/verilator/bin" >> "$GITHUB_PATH"
 
       - run: uv sync
 
