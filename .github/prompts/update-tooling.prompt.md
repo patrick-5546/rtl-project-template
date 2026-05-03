@@ -15,7 +15,9 @@ Update the tooling coherently so local commands remain simple and documented.
 3. Keep Python tools managed through uv.
 4. Keep cocotb's Python compatibility in mind. The current project pins local
    uv Python to `3.13` because cocotb 2.0.1 does not support Python 3.14.
-5. If Python dependencies change, run `uv sync` so `uv.lock` stays current.
+5. If Python dependencies change, update `uv.lock` with uv. `uv sync` is useful
+   for explicit environment setup, but normal Makefile targets should not depend
+   on automatically syncing the default uv environment.
 6. Keep these validation surfaces wired together:
    - Ruff format/check for Python.
    - ty for Python type checking.
@@ -37,7 +39,7 @@ make lint
 make test
 ```
 
-For dependency changes, also confirm:
+For dependency changes, also confirm the uv lock/environment is current:
 
 ```sh
 uv sync

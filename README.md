@@ -11,6 +11,16 @@ Surfer, GTKWave, uv, Ruff, ty, pytest, and Verible.
 - `Makefile`: common commands for formatting, linting, type checking, simulation,
   and waveform viewing.
 
+Generated simulator artifacts are ignored by Git and should stay under `build/`.
+Reusable waveform viewer state lives under `waves/` and may be committed when it
+captures a useful signal list or layout.
+
+| Flow | Generated waveform | Saved view file |
+| --- | --- | --- |
+| Verilator + Surfer | `build/verilator/dump.vcd` | `waves/top.surf.ron` |
+| Verilator + GTKWave | `build/verilator/dump.vcd` | `waves/top.gtkw` |
+| ModelSim | `build/modelsim/vsim.wlf` | `waves/top.do` |
+
 ## Quick start
 
 ```sh
@@ -19,38 +29,46 @@ make test
 make lint
 ```
 
-The test target runs cocotb through pytest with Verilator as the default
-simulator.
+The default simulation flow is cocotb through pytest with Verilator.
 
-## Common commands
+| Command | Purpose |
+| --- | --- |
+| `make sync` | Install/update the uv-managed Python environment |
+| `make test` | Run the full cocotb regression with Verilator |
+| `make waves` | Run tests, then open a fresh waveform in Surfer |
+| `make open-waves` | Open the existing Surfer waveform without rerunning tests |
+| `make format` | Format Python and SystemVerilog |
+| `make lint` | Run Ruff, ty, Verible, and Verilator lint-only |
+| `make help` | Show debug workflow examples |
+| `make clean` | Remove generated local artifacts |
 
-```sh
-make format          # Format Python and SystemVerilog
-make lint            # Run Ruff, ty, Verible, and Verilator lint-only
-make test            # Run cocotb tests and show the cocotb pass/fail summary
-make waves           # Run tests, then open the generated waveform in Surfer
-make open-waves      # Open the existing waveform in Surfer without rerunning
-make help            # Show debug/test workflow examples
-make clean           # Remove generated local artifacts
-```
+## Tool installation and Python notes
 
-## Debugging tests
+Install the default external command-line tools before using the main
+Verilator/Surfer workflow. Python packages are managed by uv, but Verilator,
+Surfer, and Verible need to be available on `PATH`. The local Python version is
+pinned to `3.13` in `.python-version` because the current cocotb release does
+not support Python 3.14.
 
-Run the full regression:
+| Tool | Purpose | Install | Documentation |
+| --- | --- | --- | --- |
+| Verilator | Default simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [User guide](https://verilator.org/guide/latest/) |
+| Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
+| Surfer | Default waveform viewer | [Install guide](https://docs.surfer-project.org/book/#installing-a-specific-version) | [User guide](https://docs.surfer-project.org/book/) |
+| uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
+
+## Default workflow: Verilator and Surfer
+
+Run the full Verilator regression:
 
 ```sh
 make test
 ```
 
-Run one cocotb test by exact test name:
+Select one test by exact name or regular expression:
 
 ```sh
 make test TEST=enable_high_counts
-```
-
-Run a subset with a cocotb test-name regular expression:
-
-```sh
 make test TEST_FILTER='enable_.*'
 ```
 
@@ -71,18 +89,6 @@ Use open-only targets when you just want to inspect the existing waveform:
 
 ```sh
 make open-waves
-```
-
-Generated simulator artifacts are ignored by Git and should stay under `build/`.
-The default Verilator flow writes `build/verilator/dump.vcd` for Surfer.
-
-Reusable Surfer state, such as the saved signal list and layout, should be saved
-as `waves/top.surf.ron`. That file can be committed so reopening Surfer shows
-the same signals. If `waves/top.surf.ron` exists, `make waves` loads it
-automatically:
-
-```sh
-make waves
 ```
 
 Override either path if needed:
@@ -106,7 +112,10 @@ targets provide alternate viewers or simulators when needed.
 
 ### GTKWave
 
-GTKWave can view the same Verilator VCD used by Surfer:
+GTKWave is optional and can view the same Verilator VCD used by Surfer. Install
+it from the [GTKWave homepage](https://gtkwave.sourceforge.net/); its
+[manual](https://gtkwave.sourceforge.net/gtkwave.pdf) documents save files and
+viewer controls.
 
 ```sh
 make waves-gtkwave
@@ -122,11 +131,14 @@ path if needed:
 make waves-gtkwave WAVE=build/verilator/other.vcd GTKWAVE_SAVE=waves/other.gtkw
 ```
 
-### ModelSim
+### ModelSim usage
 
-ModelSim uses cocotb's `questa` runner internally. The Makefile hides that
-detail and keeps ModelSim artifacts separate from Verilator artifacts under
-`build/modelsim/`.
+ModelSim is optional. The Makefile uses cocotb's `questa` runner internally and
+keeps ModelSim artifacts separate from Verilator artifacts under
+`build/modelsim/`. Install notes are available in these
+[Ubuntu ModelSim notes](https://github.com/qsz746/How-to-install-Modelsim-on-ubuntu-22.04/blob/main/README.md);
+local documentation for this install is under
+`$HOME/intelFPGA/20.1/modelsim_ase/docs`.
 
 Run the same regression with ModelSim:
 
@@ -142,7 +154,7 @@ make test-modelsim TEST_FILTER='enable_.*'
 make test-modelsim TEST=enable_high_counts REBUILD=0
 ```
 
-ModelSim is supported through its native WLF waveform format:
+ModelSim uses its native WLF waveform format:
 
 ```sh
 make waves-modelsim
@@ -165,9 +177,14 @@ Override ModelSim arguments when needed:
 make test-modelsim MODELSIM_ARGS="-64 -permit_unmatched_virtual_intf"
 ```
 
+### 32-bit Intel/Altera ModelSim setup
+
 Intel/Altera ModelSim Starter Edition installs are often 32-bit-only. In that
-case the Python interpreter and cocotb VPI libraries must also be 32-bit. The
-ModelSim target defaults to the legacy 32-bit architecture settings from
+case the simulator, Python interpreter, and cocotb VPI libraries must all be
+32-bit. A 32-bit ModelSim runtime cannot load the 64-bit cocotb libraries from
+the default uv environment.
+
+The ModelSim target defaults to the legacy 32-bit architecture settings from
 cocotb/cocotb#396:
 
 ```make
@@ -208,14 +225,18 @@ pass `-64` if your installation requires it:
 make test-modelsim MODELSIM_ARGS="-64"
 ```
 
-## Tooling notes
+## Verified environment
 
-The template assumes `uv`, `verilator`, `verible-verilog-lint`,
-`verible-verilog-format`, `surfer`, `gtkwave`, `vsim`, `vlib`, and `vlog` are
-available on `PATH`. Python tools are installed and invoked through uv. The
-local Python version is pinned to `3.13` in `.python-version` because the current
-cocotb release does not support Python 3.14.
+This template was verified on Ubuntu 22.04 with these tool versions:
 
-The ModelSim cocotb flow requires simulator, Python, and cocotb VPI library
-bitness to match. A 32-bit Intel/Altera ModelSim runtime cannot load the 64-bit
-cocotb libraries from the default uv environment.
+Python package versions, including cocotb, pytest, Ruff, and ty, are locked by
+uv in `uv.lock`.
+
+| Tool | Verified version |
+| --- | --- |
+| GTKWave | 3.3.127 |
+| ModelSim Intel FPGA Starter Edition | 2020.1 |
+| Surfer | 0.7.0 |
+| uv | 0.11.8 |
+| Verible | `v0.0-4053-g89d4d98a` |
+| Verilator | 5.048 |
