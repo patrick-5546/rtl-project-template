@@ -68,4 +68,4 @@ waves-gtkwave: test
 	fi
 
 clean:
-	rm -rf build .pytest_cache .ruff_cache .ty .venv __pycache__ tests/__pycache__
+	rm -rf build
