@@ -10,7 +10,10 @@ GTKWave, Surfer, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
   `rtl/top.sv`.
 - `rtl/sources.vf` and `rtl/abv_sources.vf`: source lists consumed by the
   Makefile and cocotb runner.
-- `tests/test_top.py`: cocotb tests launched by pytest with Verilator or Questa.
+- `tests/runner.py`: shared cocotb test runner; provides `build_and_test()` so
+  each test file only specifies its DUT.
+- `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest with
+  Verilator or Questa.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
 - `.pre-commit-config.yaml`: local hooks that reuse the repository's lint and
   type-check targets.
