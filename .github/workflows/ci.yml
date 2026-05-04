@@ -110,12 +110,12 @@ jobs:
       - name: Run coverage
         run: make coverage
 
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: hdl-coverage-report
-          path: build/verilator/coverage_html
+      # - name: Upload coverage report
+      #   if: always()
+      #   uses: actions/upload-artifact@v7
+      #   with:
+      #     name: hdl-coverage-report
+      #     path: build/verilator/coverage_html
 
   test:
     runs-on: ubuntu-latest
