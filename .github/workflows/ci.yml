@@ -110,17 +110,6 @@ jobs:
       - name: Run coverage
         run: make coverage
 
-      - name: Generate HTML report and enforce thresholds
-        run: |
-          genhtml build/verilator/coverage.info \
-            --output-directory build/verilator/coverage_html \
-            --branch-coverage --no-function-coverage \
-            --show-details --legend \
-            --title "Verilator HDL coverage" \
-            --prefix "${{ github.workspace }}" \
-            --fail-under-lines 90 \
-            --fail-under-branches 90
-
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v6

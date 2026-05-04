@@ -36,6 +36,8 @@ COVERAGE_ANNOTATION_DIR ?= $(BUILD_DIR)/coverage_annotated
 COVERAGE_INFO ?= $(BUILD_DIR)/coverage.info
 COVERAGE_HTML_DIR ?= $(VERILATOR_BUILD_DIR)/coverage_html
 COVERAGE_HTML_INDEX ?= $(COVERAGE_HTML_DIR)/index.html
+COVERAGE_MIN_LINES ?= 90
+COVERAGE_MIN_BRANCHES ?= 90
 QUESTA_COVERAGE_HTML_DIR ?= $(QUESTA_BUILD_DIR)/coverage_html
 QUESTA_COVERAGE_HTML_INDEX ?= $(QUESTA_COVERAGE_HTML_DIR)/index.html
 SV_SOURCES_FILE ?= rtl/sources.vf
@@ -167,9 +169,16 @@ coverage:
 	verilator_coverage --write-info "$(COVERAGE_INFO)" \
 		--include-reset-arcs \
 		"$(COVERAGE_DAT)"
+	rm -rf "$(COVERAGE_HTML_DIR)"
+	genhtml --branch-coverage --no-function-coverage --show-details \
+		--legend --title "Verilator coverage" --prefix "$(CURDIR)" \
+		--fail-under-lines $(COVERAGE_MIN_LINES) \
+		--fail-under-branches $(COVERAGE_MIN_BRANCHES) \
+		--output-directory "$(COVERAGE_HTML_DIR)" \
+		"$(COVERAGE_INFO)"
 	@echo "Coverage data: $(COVERAGE_DAT)"
 	@echo "Annotated report: $(COVERAGE_ANNOTATION_DIR)"
-	@echo "LCOV info: $(COVERAGE_INFO)"
+	@echo "HTML report: $(COVERAGE_HTML_INDEX)"
 
 coverage-questa:
 	$(MAKE) test-questa ABV=1 HDL_COVERAGE=1 \
@@ -191,13 +200,7 @@ open-coverage-questa-html:
 	$(HTML_VIEWER) "$(QUESTA_COVERAGE_HTML_INDEX)"
 
 open-coverage-html:
-	@test -f "$(COVERAGE_INFO)" || { echo "Coverage info '$(COVERAGE_INFO)' not found. Run 'make coverage' first."; exit 1; }
-	rm -rf "$(COVERAGE_HTML_DIR)"
-	genhtml --branch-coverage --no-function-coverage --show-details \
-		--legend --title "Verilator coverage" --prefix "$(CURDIR)" \
-		--output-directory "$(COVERAGE_HTML_DIR)" \
-		"$(COVERAGE_INFO)"
-	@echo "HTML report: $(COVERAGE_HTML_INDEX)"
+	@test -f "$(COVERAGE_HTML_INDEX)" || { echo "HTML report '$(COVERAGE_HTML_INDEX)' not found. Run 'make coverage' first."; exit 1; }
 	$(HTML_VIEWER) "$(COVERAGE_HTML_INDEX)"
 
 waves: test
