@@ -67,6 +67,62 @@ jobs:
 
       - run: make md-lint
 
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Cache Verilator
+        id: cache-verilator
+        uses: actions/cache@v4
+        with:
+          path: /opt/verilator
+          key: verilator-${{ env.VERILATOR_VERSION }}
+
+      - name: Build Verilator
+        if: steps.cache-verilator.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update && sudo apt-get install -y ccache help2man libfl-dev
+          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1 /tmp/verilator
+          cd /tmp/verilator
+          autoconf
+          ./configure --prefix=/opt/verilator
+          make -j"$(nproc)"
+          make install
+
+      - name: Install ccache and lcov
+        run: sudo apt-get update && sudo apt-get install -y ccache lcov
+
+      - name: Add Verilator to PATH
+        run: echo "/opt/verilator/bin" >> "$GITHUB_PATH"
+
+      - run: uv sync
+
+      - name: Run coverage
+        run: make coverage
+
+      - name: Generate HTML report and enforce thresholds
+        run: |
+          genhtml build/verilator/coverage.info \
+            --output-directory build/verilator/coverage_html \
+            --branch-coverage --no-function-coverage \
+            --show-details --legend \
+            --title "Verilator HDL coverage" \
+            --prefix "${{ github.workspace }}" \
+            --fail-under-lines 90 \
+            --fail-under-branches 90
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hdl-coverage-report
+          path: build/verilator/coverage_html
+
   test:
     runs-on: ubuntu-latest
     steps:

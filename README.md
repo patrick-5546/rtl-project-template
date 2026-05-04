@@ -74,14 +74,15 @@ optional-flow targets for those. See the
 
 Install the default external command-line tools before using the main
 Verilator/Surfer workflow. Python packages are managed by uv, but Verilator,
-Surfer, Verible, and markdownlint-cli2 need to be available on `PATH`. The local
-Python version is pinned to `3.13` in `.python-version` because the current
+Surfer, Verible, LCOV, and markdownlint-cli2 need to be available on `PATH`. The
+local Python version is pinned to `3.13` in `.python-version` because the current
 cocotb release does not support Python 3.14.
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
 | Verilator | Default simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [User guide](https://verilator.org/guide/latest/) |
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
+| LCOV | Coverage HTML report generation | [Releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
 | markdownlint-cli2 | Markdown linting/autofix | [Install](https://github.com/DavidAnson/markdownlint-cli2#install) | [Documentation](https://github.com/DavidAnson/markdownlint-cli2) |
 | Surfer | Default waveform viewer | [Install guide](https://docs.surfer-project.org/book/#installing-a-specific-version) | [User guide](https://docs.surfer-project.org/book/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
@@ -295,6 +296,7 @@ locked by uv in `uv.lock`.
 | Tool | Verified version |
 | --- | --- |
 | GTKWave | 3.3.127 |
+| LCOV | 2.4 |
 | markdownlint-cli2 | 0.22.1 |
 | Questa Altera Starter FPGA Edition | 2025.2 |
 | Surfer | 0.7.0 |
