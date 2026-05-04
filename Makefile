@@ -186,17 +186,17 @@ coverage-questa:
 		QUESTA_ARGS="-extendedtogglemode 1" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)"
 	$(VCOVER) report -summary "$(QUESTA_COVERAGE_UCDB)"
+	rm -rf "$(QUESTA_COVERAGE_HTML_DIR)"
+	$(VCOVER) report -html -details -output "$(QUESTA_COVERAGE_HTML_DIR)" "$(QUESTA_COVERAGE_UCDB)"
 	@echo "Coverage UCDB: $(QUESTA_COVERAGE_UCDB)"
+	@echo "HTML report: $(QUESTA_COVERAGE_HTML_INDEX)"
 
 open-coverage-questa:
 	@test -f "$(QUESTA_COVERAGE_UCDB)" || { echo "UCDB '$(QUESTA_COVERAGE_UCDB)' not found. Run 'make coverage-questa' first."; exit 1; }
 	$(VSIM) -viewcov "$(QUESTA_COVERAGE_UCDB)"
 
 open-coverage-questa-html:
-	@test -f "$(QUESTA_COVERAGE_UCDB)" || { echo "UCDB '$(QUESTA_COVERAGE_UCDB)' not found. Run 'make coverage-questa' first."; exit 1; }
-	rm -rf "$(QUESTA_COVERAGE_HTML_DIR)"
-	$(VCOVER) report -html -details -output "$(QUESTA_COVERAGE_HTML_DIR)" "$(QUESTA_COVERAGE_UCDB)"
-	@echo "HTML report: $(QUESTA_COVERAGE_HTML_INDEX)"
+	@test -f "$(QUESTA_COVERAGE_HTML_INDEX)" || { echo "HTML report '$(QUESTA_COVERAGE_HTML_INDEX)' not found. Run 'make coverage-questa' first."; exit 1; }
 	$(HTML_VIEWER) "$(QUESTA_COVERAGE_HTML_INDEX)"
 
 open-coverage-html:
