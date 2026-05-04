@@ -8,6 +8,7 @@ on:
 env:
   VERILATOR_VERSION: v5.048
   VERIBLE_VERSION: v0.0-4053-g89d4d98a
+  LCOV_VERSION: v2.4
 
 jobs:
   lint-sv:
@@ -94,8 +95,12 @@ jobs:
           make -j"$(nproc)"
           make install
 
-      - name: Install ccache and lcov
-        run: sudo apt-get update && sudo apt-get install -y ccache lcov
+      - name: Install ccache and LCOV
+        run: |
+          sudo apt-get update && sudo apt-get install -y ccache libcapture-tiny-perl libdatetime-perl
+          curl -fsSL "https://github.com/linux-test-project/lcov/releases/download/${LCOV_VERSION}/lcov-${LCOV_VERSION#v}.tar.gz" \
+            | sudo tar -xz -C /opt
+          echo "/opt/lcov-${LCOV_VERSION#v}/bin" >> "$GITHUB_PATH"
 
       - name: Add Verilator to PATH
         run: echo "/opt/verilator/bin" >> "$GITHUB_PATH"
