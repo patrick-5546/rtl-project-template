@@ -52,6 +52,7 @@ The default simulation flow is cocotb through pytest with Verilator.
 | --- | --- |
 | `make test` | Run the full cocotb regression with Verilator |
 | `make coverage` | Run Verilator full coverage and generate reports |
+| `make open-coverage-html` | Open the existing Verilator coverage HTML report |
 | `make waves` | Run tests, then open a fresh waveform in GTKWave |
 | `make open-waves` | Open the existing waveform without rerunning tests |
 
@@ -83,7 +84,7 @@ cocotb release does not support Python 3.14.
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | [Releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
 | markdownlint-cli2 | Markdown linting/autofix | [Install](https://github.com/DavidAnson/markdownlint-cli2#install) | [Documentation](https://github.com/DavidAnson/markdownlint-cli2) |
-| GTKWave | Default waveform viewer | [Homepage](https://gtkwave.sourceforge.net/) | [Manual](https://gtkwave.sourceforge.net/gtkwave.pdf) |
+| GTKWave | Default waveform viewer | [Build from source](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
 
 ## Default workflow: Verilator and GTKWave
@@ -154,10 +155,11 @@ make open-coverage-html
 ```
 
 `make coverage` enables ABV automatically so assertions and `cover property`
-checks are included. Override the HTML viewer when needed:
+checks are included. Override the HTML viewer when needed.
+For WSL, install wslu and use `wslview`.
 
 ```sh
-make open-coverage-html HTML_VIEWER=firefox
+make open-coverage-html HTML_VIEWER=wslview
 ```
 
 You can also run with coverage instrumentation without generating reports:
