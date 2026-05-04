@@ -1,7 +1,7 @@
 [project]
 name = "fpga-proj-tmpl"
 version = "0.1.0"
-description = "A minimal FPGA project template using SystemVerilog, cocotb, and Verilator."
+description = "A FPGA project template using SystemVerilog, cocotb, and Verilator."
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "cocotb>=2.0.1",

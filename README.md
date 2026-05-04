@@ -1,6 +1,6 @@
 # FPGA Project Template
 
-A small FPGA project template using SystemVerilog, cocotb, Verilator, Questa,
+A FPGA project template using SystemVerilog, cocotb, Verilator, Questa,
 GTKWave, Surfer, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
 
 ## Contents
@@ -168,7 +168,7 @@ make test ABV=1 HDL_COVERAGE=1
 
 The same `make coverage-<sim>` pattern works for Questa. Both simulators
 generate HTML reports; Questa can also open coverage interactively in its GUI
-(`make open-coverage-questa`).
+(`make open-coverage-questa`) or as HTML (`make open-coverage-questa-html`).
 
 Neither simulator supports SystemVerilog covergroups — Verilator parses but
 ignores the syntax, and the Questa Starter Edition requires a paid
