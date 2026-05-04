@@ -298,7 +298,7 @@ locked by uv in `uv.lock`.
 | GTKWave | 3.3.127 |
 | LCOV | 2.4 |
 | markdownlint-cli2 | 0.22.1 |
-| Questa Altera Starter FPGA Edition | 2025.2 |
+| Questa | 2025.1 |
 | Surfer | 0.7.0 |
 | uv | 0.11.8 |
 | Verible | v0.0-4053-g89d4d98a |
