@@ -54,12 +54,12 @@ GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 .PHONY: all clean coverage coverage-questa format gtkwave-stems help lint \
 	md-format md-lint \
 	open-coverage-html open-coverage-questa open-coverage-questa-html \
-	open-waves open-waves-gtkwave open-waves-questa \
+	open-waves open-waves-questa open-waves-surfer \
 	pre-commit-install pre-commit-run \
 	py-format py-format-check py-lint py-type \
 	sv-format sv-format-check sv-lint sync \
 	test test-questa verilator-lint \
-	waves waves-gtkwave waves-questa
+	waves waves-questa waves-surfer
 
 all: lint test
 
@@ -76,12 +76,12 @@ help:
 	@echo "  make open-coverage-html                       Open existing Verilator coverage HTML"
 	@echo "  make open-coverage-questa                     Open Questa coverage in GUI"
 	@echo "  make open-coverage-questa-html                Open Questa coverage as HTML"
-	@echo "  make waves [TEST=...]                         Run tests, then open Surfer"
-	@echo "  make waves-gtkwave [TEST=...]                 Run tests, then open GTKWave"
+	@echo "  make waves [TEST=...]                         Run tests, then open GTKWave"
+	@echo "  make waves-surfer [TEST=...]                  Run tests, then open Surfer"
 	@echo "  make test-questa [TEST=...]                   Run tests with Questa"
 	@echo "  make waves-questa [TEST=...]                  Run tests in live Questa GUI"
-	@echo "  make open-waves                               Open existing waveform in Surfer"
-	@echo "  make open-waves-gtkwave                       Open existing waveform in GTKWave"
+	@echo "  make open-waves                               Open existing waveform in GTKWave"
+	@echo "  make open-waves-surfer                        Open existing waveform in Surfer"
 	@echo "  make open-waves-questa                        Open existing WLF in Questa"
 	@echo "  make pre-commit-install                       Install the Git pre-commit hook"
 	@echo "  make pre-commit-run                           Run all pre-commit hooks"
@@ -204,28 +204,28 @@ open-coverage-html:
 	$(HTML_VIEWER) "$(COVERAGE_HTML_INDEX)"
 
 waves: test
-	$(MAKE) open-waves WAVE="$(WAVE)" STATE="$(STATE)" SURFER="$(SURFER)"
-
-open-waves:
-	@test -f "$(WAVE)" || { echo "Waveform '$(WAVE)' not found. Run 'make test' first."; exit 1; }
-	if test -f "$(STATE)"; then \
-		$(SURFER) --state-file "$(STATE)" "$(WAVE)"; \
-	else \
-		$(SURFER) "$(WAVE)"; \
-	fi
-
-waves-gtkwave: test
-	$(MAKE) open-waves-gtkwave WAVE="$(WAVE)" GTKWAVE_SAVE="$(GTKWAVE_SAVE)" \
+	$(MAKE) open-waves WAVE="$(WAVE)" GTKWAVE_SAVE="$(GTKWAVE_SAVE)" \
 		GTKWAVE="$(GTKWAVE)" GTKWAVE_ARGS="$(GTKWAVE_ARGS)" \
 		GTKWAVE_STEMS="$(GTKWAVE_STEMS)"
 
-open-waves-gtkwave:
+open-waves:
 	@test -f "$(WAVE)" || { echo "Waveform '$(WAVE)' not found. Run 'make test' first."; exit 1; }
 	$(MAKE) gtkwave-stems GTKWAVE_STEMS="$(GTKWAVE_STEMS)"
 	if test -f "$(GTKWAVE_SAVE)"; then \
 		$(GTKWAVE) $(GTKWAVE_ARGS) -t "$(GTKWAVE_STEMS)" "$(WAVE)" "$(GTKWAVE_SAVE)"; \
 	else \
 		$(GTKWAVE) $(GTKWAVE_ARGS) -t "$(GTKWAVE_STEMS)" "$(WAVE)"; \
+	fi
+
+waves-surfer: test
+	$(MAKE) open-waves-surfer WAVE="$(WAVE)" STATE="$(STATE)" SURFER="$(SURFER)"
+
+open-waves-surfer:
+	@test -f "$(WAVE)" || { echo "Waveform '$(WAVE)' not found. Run 'make test' first."; exit 1; }
+	if test -f "$(STATE)"; then \
+		$(SURFER) --state-file "$(STATE)" "$(WAVE)"; \
+	else \
+		$(SURFER) "$(WAVE)"; \
 	fi
 
 gtkwave-stems:

@@ -1,7 +1,7 @@
 # FPGA Project Template
 
 A small FPGA project template using SystemVerilog, cocotb, Verilator, Questa,
-Surfer, GTKWave, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
+GTKWave, Surfer, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
 
 ## Contents
 
@@ -48,12 +48,8 @@ The default simulation flow is cocotb through pytest with Verilator.
 | Command | Purpose |
 | --- | --- |
 | `make test` | Run the full cocotb regression with Verilator |
-| `make test-questa` | Run the same regression with Questa |
 | `make coverage` | Run Verilator full coverage and generate reports |
-| `make coverage-questa` | Run Questa coverage and print UCDB report |
-| `make waves` | Run tests, then open a fresh waveform in Surfer |
-| `make waves-gtkwave` | Run tests, then open a fresh waveform in GTKWave |
-| `make waves-questa` | Run tests in a live Questa GUI |
+| `make waves` | Run tests, then open a fresh waveform in GTKWave |
 | `make open-waves` | Open the existing waveform without rerunning tests |
 
 **Quality:**
@@ -73,8 +69,8 @@ optional-flow targets for those. See the
 ## Tool installation and Python notes
 
 Install the default external command-line tools before using the main
-Verilator/Surfer workflow. Python packages are managed by uv, but Verilator,
-Surfer, Verible, LCOV, and markdownlint-cli2 need to be available on `PATH`. The
+Verilator/GTKWave workflow. Python packages are managed by uv, but Verilator,
+GTKWave, Verible, LCOV, and markdownlint-cli2 need to be available on `PATH`. The
 local Python version is pinned to `3.13` in `.python-version` because the current
 cocotb release does not support Python 3.14.
 
@@ -84,10 +80,10 @@ cocotb release does not support Python 3.14.
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | [Releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
 | markdownlint-cli2 | Markdown linting/autofix | [Install](https://github.com/DavidAnson/markdownlint-cli2#install) | [Documentation](https://github.com/DavidAnson/markdownlint-cli2) |
-| Surfer | Default waveform viewer | [Install guide](https://docs.surfer-project.org/book/#installing-a-specific-version) | [User guide](https://docs.surfer-project.org/book/) |
+| GTKWave | Default waveform viewer | [Homepage](https://gtkwave.sourceforge.net/) | [Manual](https://gtkwave.sourceforge.net/gtkwave.pdf) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
 
-## Default workflow: Verilator and Surfer
+## Default workflow: Verilator and GTKWave
 
 Run the full Verilator regression:
 
@@ -124,8 +120,13 @@ make open-waves
 Override either path if needed:
 
 ```sh
-make waves WAVE=build/verilator/other.vcd STATE=waves/other.surf.ron
+make waves WAVE=build/verilator/other.vcd GTKWAVE_SAVE=waves/other.gtkw
 ```
+
+The wave targets also prepare GTKWave's RTL browser support, so source
+browsing is available when using GTKWave's source-navigation menu actions.
+Reusable GTKWave signal/layout state should be saved as `waves/top.gtkw`. If
+that file exists, `make waves` loads it automatically.
 
 ## Assertion-based verification examples
 
@@ -134,22 +135,10 @@ checker module that `rtl/top.sv` instantiates only when the `ABV` define is
 enabled, so the default RTL behavior remains unchanged. The checker includes SVA
 assertions for reset, enable-low hold, and enable-high increment behavior.
 
-Run the default Verilator regression with assertions enabled:
+Run the default regression with assertions enabled:
 
 ```sh
 make test ABV=1
-```
-
-Run lint checks, including the ABV source:
-
-```sh
-make lint
-```
-
-Run the Questa flow with the ABV checker included:
-
-```sh
-make test-questa ABV=1
 ```
 
 ## Coverage
@@ -212,8 +201,8 @@ The sections below cover optional simulators and viewers.
 
 | Tool | Inputs | Source browse | Driver trace |
 | --- | --- | --- | --- |
-| Surfer | VCD, FST, GHW | No | No |
 | GTKWave | VCD, FST, GHW | Yes | Somewhat |
+| Surfer | VCD, FST, GHW | No | No |
 | Questa | WLF | Yes | Yes |
 
 Verilator is the default simulator because it is open-source,
@@ -224,35 +213,30 @@ and native interactive debug. The free Altera Starter Edition does not
 include the verification features needed for collecting coverage
 on cover groups (aka directives).
 
+GTKWave is the default waveform viewer. Source code can be viewed and
+annotated with values from the waveform using the RTLBrowse window.
+
 Surfer is a fast, modern waveform viewer. It is still early in its
 development cycle and does not have many features.
 
-GTKWave is a more comprehensive waveform viewer. Source code can
-be viewed and annotated with values from the waveform using the
-RTLBrowse window.
+### Surfer
 
-### GTKWave
-
-GTKWave is optional and can view the same Verilator VCD used by Surfer. Install
-it from the [GTKWave homepage](https://gtkwave.sourceforge.net/); its
-[manual](https://gtkwave.sourceforge.net/gtkwave.pdf) documents save files and
-viewer controls.
+Surfer is optional and can view the same Verilator VCD used by GTKWave. Install
+it from the [Surfer install guide](https://docs.surfer-project.org/book/#installing-a-specific-version);
+the [user guide](https://docs.surfer-project.org/book/) documents viewer controls.
 
 ```sh
-make waves-gtkwave
-make waves-gtkwave TEST=enable_high_counts
-make open-waves-gtkwave
+make waves-surfer
+make waves-surfer TEST=enable_high_counts
+make open-waves-surfer
 ```
 
-The GTKWave targets also prepare GTKWave's RTL browser support, so source
-browsing is available when using GTKWave's source-navigation menu actions.
-
-Reusable GTKWave signal/layout state should be saved as `waves/top.gtkw`. If
-that file exists, `make waves-gtkwave` loads it automatically. Override either
+Reusable Surfer signal/layout state should be saved as `waves/top.surf.ron`. If
+that file exists, `make waves-surfer` loads it automatically. Override either
 path if needed:
 
 ```sh
-make waves-gtkwave WAVE=build/verilator/other.vcd GTKWAVE_SAVE=waves/other.gtkw
+make waves-surfer WAVE=build/verilator/other.vcd STATE=waves/other.surf.ron
 ```
 
 ### Questa usage
