@@ -10,14 +10,10 @@ env:
   VERIBLE_VERSION: v0.0-4053-g89d4d98a
 
 jobs:
-  lint:
+  lint-sv:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
 
       - name: Cache Verilator
         id: cache-verilator
@@ -40,18 +36,36 @@ jobs:
       - name: Add Verilator to PATH
         run: echo "/opt/verilator/bin" >> "$GITHUB_PATH"
 
-      - name: Install markdownlint-cli2
-        run: sudo npm install -g markdownlint-cli2
-
       - name: Install Verible
         run: |
           curl -fsSL "https://github.com/chipsalliance/verible/releases/download/${VERIBLE_VERSION}/verible-${VERIBLE_VERSION}-linux-static-x86_64.tar.gz" \
             | sudo tar -xz -C /usr/local --strip-components=1
           sudo chmod -R a+rX /usr/local/bin
 
+      - run: make sv-format-check sv-lint verilator-lint
+
+  lint-py:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
       - run: uv sync
 
-      - run: make lint
+      - run: make py-format-check py-lint py-type
+
+  lint-md:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install markdownlint-cli2
+        run: sudo npm install -g markdownlint-cli2
+
+      - run: make md-lint
 
   test:
     runs-on: ubuntu-latest
