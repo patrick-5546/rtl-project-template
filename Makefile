@@ -54,8 +54,8 @@ GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 	open-coverage-html open-coverage-questa open-coverage-questa-html \
 	open-waves open-waves-questa open-waves-surfer \
 	prek-install prek-run \
-	sv-format sv-format-check sv-lint sync \
 	py-format py-format-check py-lint py-type py-lsp \
+	sv-format sv-format-check sv-lint sync update-py-deps \
 	test test-questa verilator-lint \
 	waves waves-questa waves-surfer
 
@@ -92,9 +92,14 @@ help:
 	@echo "  make md-lint                                  Run Markdown lint checks"
 	@echo "  make md-format                                Apply Markdown lint fixes"
 	@echo "  make sync                                     Run uv sync"
+	@echo "  make update-py-deps                           Upgrade all Python deps to latest"
 	@echo "  make clean                                    Remove generated artifacts"
 
 sync:
+	$(UV) sync
+
+update-py-deps:
+	$(UV) lock --upgrade
 	$(UV) sync
 
 prek-install:
