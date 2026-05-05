@@ -15,8 +15,7 @@ GTKWave, Surfer, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
 - `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest with
   Verilator or Questa.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
-- `.pre-commit-config.yaml`: local hooks that reuse the repository's lint and
-  type-check targets.
+- `prek.toml`: local hooks that reuse the repository's lint and type-check targets.
 - `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
 - `.surfer/config.toml`: repo-local Surfer configuration.
 - `Makefile`: common commands for formatting, linting, type checking,
@@ -31,7 +30,7 @@ Generated simulator artifacts are ignored by Git and should stay under `build/`.
 
 ```sh
 make sync
-make pre-commit-install
+make prek-install
 make test
 make lint
 ```
@@ -43,8 +42,8 @@ The default simulation flow is cocotb through pytest with Verilator.
 | Command | Purpose |
 | --- | --- |
 | `make sync` | Install/update the uv-managed Python environment |
-| `make pre-commit-install` | Install the Git pre-commit hook |
-| `make pre-commit-run` | Run all pre-commit hooks manually |
+| `make prek-install` | Install the Git pre-commit hook |
+| `make prek-run` | Run all prek hooks manually |
 
 **Workflow:**
 
@@ -65,10 +64,10 @@ The default simulation flow is cocotb through pytest with Verilator.
 | `make help` | Show available Makefile targets |
 | `make clean` | Remove generated local artifacts |
 
-The pre-commit hooks call the existing Makefile lint and type-check targets.
+The prek hooks call the existing Makefile lint and type-check targets.
 They do not run simulation or waveform viewers; use `make test` and the
 optional-flow targets for those. See the
-[pre-commit documentation](https://pre-commit.com/) for hook usage details.
+[prek documentation](https://prek.j178.dev/) for hook usage details.
 
 ## Tool installation and Python notes
 
@@ -279,7 +278,7 @@ make open-waves-questa QUESTA_WAVE=build/questa/other.wlf QUESTA_DO=waves/other.
 
 This template was verified on Ubuntu 22.04 with these tool versions:
 
-Python package versions, including cocotb, pre-commit, pytest, Ruff, and ty, are
+Python package versions, including cocotb, prek, pytest, Ruff, and ty, are
 locked by uv in `uv.lock`.
 
 | Tool | Verified version |

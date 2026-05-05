@@ -1,5 +1,5 @@
 UV ?= uv
-PRE_COMMIT ?= $(UV) run pre-commit
+PREK ?= $(UV) run prek
 PYTEST ?= $(UV) run pytest -s
 SIM ?= verilator
 QUESTA_SIM ?= questa
@@ -55,7 +55,7 @@ GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 	md-format md-lint \
 	open-coverage-html open-coverage-questa open-coverage-questa-html \
 	open-waves open-waves-questa open-waves-surfer \
-	pre-commit-install pre-commit-run \
+	prek-install prek-run \
 	py-format py-format-check py-lint py-type \
 	sv-format sv-format-check sv-lint sync \
 	test test-questa verilator-lint \
@@ -83,8 +83,8 @@ help:
 	@echo "  make open-waves                               Open existing waveform in GTKWave"
 	@echo "  make open-waves-surfer                        Open existing waveform in Surfer"
 	@echo "  make open-waves-questa                        Open existing WLF in Questa"
-	@echo "  make pre-commit-install                       Install the Git pre-commit hook"
-	@echo "  make pre-commit-run                           Run all pre-commit hooks"
+	@echo "  make prek-install                              Install the Git pre-commit hook"
+	@echo "  make prek-run                                  Run all prek hooks"
 	@echo "  make lint                                     Run all lint/type checks"
 	@echo "  make py-format                                Format Python with ruff"
 	@echo "  make py-lint                                  Lint Python with ruff"
@@ -99,11 +99,11 @@ help:
 sync:
 	$(UV) sync
 
-pre-commit-install:
-	$(PRE_COMMIT) install
+prek-install:
+	$(PREK) install
 
-pre-commit-run:
-	$(PRE_COMMIT) run --all-files
+prek-run:
+	$(PREK) run --all-files
 
 test:
 	SIM=$(SIM) \

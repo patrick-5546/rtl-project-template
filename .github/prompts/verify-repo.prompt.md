@@ -46,7 +46,7 @@ Run the Questa regression (block these if Questa is not installed):
   `BUILD_DIR`, `REBUILD`, `ABV`, `HDL_COVERAGE`, `QUESTA_GUI`, `QUESTA_WAVE`,
   `QUESTA_DO`, `SV_SOURCES_FILE`, `ABV_SOURCES_FILE`, `COVERAGE_DAT`) between
   the Makefile and `tests/runner.py`.
-- Verify every pre-commit hook calls a valid Makefile target and that all
+- Verify every prek hook calls a valid Makefile target and that all
   lint sub-targets are covered.
 - Verify `rtl/sources.vf` and `rtl/abv_sources.vf` list files that exist,
   and every `.sv` file in `rtl/` appears in one of them.

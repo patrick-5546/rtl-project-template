@@ -5,7 +5,7 @@ description = "A FPGA project template using SystemVerilog, cocotb, and Verilato
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "cocotb>=2.0.1",
-    "pre-commit>=4.6.0",
+    "prek>=0.3.11",
     "pytest>=9.0.3",
     "pytest-timeout>=2.4.0",
     "ruff>=0.15.12",
