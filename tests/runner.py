@@ -57,6 +57,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     test_filter = os.environ.get("TEST_FILTER") or None
     rebuild = env_flag("REBUILD", default=True)
     abv = env_flag("ABV", default=False)
+    no_covergroups = env_flag("NO_COVERGROUPS", default=False)
     hdl_coverage = env_flag("HDL_COVERAGE", default=False)
     questa_gui = env_flag("QUESTA_GUI", default=False)
     coverage_dat = project_path_from_env(
@@ -88,6 +89,8 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     if abv:
         sources.extend(abv_sources)
         defines["ABV"] = 1
+    if no_covergroups:
+        defines["NO_COVERGROUPS"] = 1
 
     build_args: list[str] = []
     plusargs: list[str] = []

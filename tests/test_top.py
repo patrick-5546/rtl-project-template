@@ -4,7 +4,13 @@ from typing import Any
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
-from runner import build_and_test
+from runner import build_and_test, env_flag
+
+_ABV = env_flag("ABV", default=False)
+
+if _ABV:
+    from cocotb_coverage.coverage import coverage_db
+    from coverage_top import sample_from_dut
 
 
 async def start_counter(dut: Any) -> None:
@@ -22,10 +28,13 @@ async def tick(dut: Any, cycles: int = 1) -> None:
     for _ in range(cycles):
         await RisingEdge(dut.clk_i)
         await Timer(1, unit="ns")
+        if _ABV:
+            sample_from_dut(dut)
 
 
 @cocotb.test()
 async def reset_clears_counter(dut: Any) -> None:
+    """Verify that asserting reset clears the counter to zero."""
     await start_counter(dut)
 
     dut.en_i.value = 1
@@ -42,6 +51,7 @@ async def reset_clears_counter(dut: Any) -> None:
 
 @cocotb.test()
 async def enable_high_counts(dut: Any) -> None:
+    """Verify that the counter increments on each clock when enabled."""
     await start_counter(dut)
 
     dut.en_i.value = 1
@@ -52,6 +62,7 @@ async def enable_high_counts(dut: Any) -> None:
 
 @cocotb.test()
 async def enable_low_holds_count(dut: Any) -> None:
+    """Verify that the counter holds its value when enable is deasserted."""
     await start_counter(dut)
 
     dut.en_i.value = 1
@@ -64,7 +75,38 @@ async def enable_low_holds_count(dut: Any) -> None:
 
 
 @cocotb.test()
+async def enable_toggles_at_all_counts(dut: Any) -> None:
+    """Sample enable low in every count bin range (mid, high, max)."""
+    await start_counter(dut)
+
+    # Count into mid range [64, 191] and hold.
+    dut.en_i.value = 1
+    await tick(dut, 100)
+    assert dut.count_o.value.to_unsigned() == 100
+    dut.en_i.value = 0
+    await tick(dut)
+    assert dut.count_o.value.to_unsigned() == 100
+
+    # Continue into high range [192, 254] and hold.
+    dut.en_i.value = 1
+    await tick(dut, 100)
+    assert dut.count_o.value.to_unsigned() == 200
+    dut.en_i.value = 0
+    await tick(dut)
+    assert dut.count_o.value.to_unsigned() == 200
+
+    # Continue to max (255) and hold.
+    dut.en_i.value = 1
+    await tick(dut, 55)
+    assert dut.count_o.value.to_unsigned() == 255
+    dut.en_i.value = 0
+    await tick(dut)
+    assert dut.count_o.value.to_unsigned() == 255
+
+
+@cocotb.test()
 async def counter_wraps(dut: Any) -> None:
+    """Verify that the counter wraps from max value back to zero."""
     await start_counter(dut)
 
     dut.en_i.value = 1
@@ -73,6 +115,24 @@ async def counter_wraps(dut: Any) -> None:
 
     await tick(dut)
     assert dut.count_o.value.to_unsigned() == 0
+
+
+@cocotb.test(skip=not _ABV)
+async def check_coverage(dut: Any) -> None:
+    """Assert that all coverage bins were hit by preceding tests."""
+    coverage_db.report_coverage(cocotb.log.info, bins=True)
+    coverage_db.export_to_xml(filename="cocotb_coverage.xml")
+
+    missed: list[str] = []
+    for path in coverage_db:
+        node = coverage_db[path]
+        if not hasattr(node, "detailed_coverage"):
+            continue
+        for bin_name, hits in node.detailed_coverage.items():
+            if isinstance(hits, int) and hits == 0:
+                missed.append(f"{path}.{bin_name}")
+    if missed:
+        raise AssertionError("Coverage holes — bins never hit:\n  " + "\n  ".join(missed))
 
 
 def test_top() -> None:

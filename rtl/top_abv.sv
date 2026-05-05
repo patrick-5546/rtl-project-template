@@ -49,4 +49,28 @@ module top_abv #(
   wraparound_setup_observed_c :
   cover property (@(posedge clk_i) disable iff (!rst_ni) en_i && count_o == MaxCount);
 
+  // Covergroups
+`ifndef NO_COVERGROUPS
+
+  covergroup counter_cg @(posedge clk_i);
+    option.per_instance = 1;
+
+    cp_count: coverpoint count_o {
+      bins low = {[0 : MaxCount / 4]};
+      bins mid = {[MaxCount / 4 + 1 : MaxCount * 3 / 4]};
+      bins high = {[MaxCount * 3 / 4 + 1 : MaxCount - 1]};
+      bins max = {MaxCount};
+    }
+
+    cp_en: coverpoint en_i {bins disabled = {1'b0}; bins enabled = {1'b1};}
+
+    cp_rst: coverpoint rst_ni {bins active = {1'b0}; bins inactive = {1'b1};}
+
+    cx_en_count : cross cp_en, cp_count;
+  endgroup
+
+  counter_cg counter_cg_i = new();
+
+`endif
+
 endmodule

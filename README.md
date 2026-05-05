@@ -14,6 +14,8 @@ GTKWave, Surfer, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
   each test file only specifies its DUT.
 - `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest with
   Verilator or Questa.
+- `tests/coverage_top.py`: Python functional coverage mirroring the SV
+  covergroup in `rtl/top_abv.sv`, using cocotb-coverage.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
 - `prek.toml`: local hooks that reuse the repository's lint and type-check targets.
 - `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
@@ -136,7 +138,16 @@ that file exists, `make waves` loads it automatically.
 The optional ABV examples live in `rtl/top_abv.sv`. That file is a standalone
 checker module that `rtl/top.sv` instantiates only when the `ABV` define is
 enabled, so the default RTL behavior remains unchanged. The checker includes SVA
-assertions for reset, enable-low hold, and enable-high increment behavior.
+assertions for reset, enable-low hold, and enable-high increment behavior,
+`cover property` statements for observability, and a `covergroup` with
+coverpoints for `count_o`, `en_i`, and `rst_ni` plus cross-coverage.
+
+Covergroups are guarded by `` `ifndef NO_COVERGROUPS ``, which the Makefile
+automatically defines for Verilator (since Verilator parses but does not collect
+covergroup data). Override with `NO_COVERGROUPS=0` to include them anyway.
+A Python mirror of the SV covergroup lives in `tests/coverage_top.py` using
+cocotb-coverage, so covergroup data is always collected regardless of simulator.
+The SV and Python definitions must be kept in sync.
 
 Run the default regression with assertions enabled:
 
@@ -171,10 +182,14 @@ The same `make coverage-<sim>` pattern works for Questa. Both simulators
 generate HTML reports; Questa can also open coverage interactively in its GUI
 (`make open-coverage-questa`) or as HTML (`make open-coverage-questa-html`).
 
-Neither simulator supports SystemVerilog covergroups — Verilator parses but
+Neither simulator collects SystemVerilog covergroup data — Verilator parses but
 ignores the syntax, and the Questa Starter Edition requires a paid
-`svverification` license. See the [tool comparison](#tool-comparison) for a
-full coverage breakdown.
+`svverification` license. Covergroups are present in `rtl/top_abv.sv` but
+guarded by `` `ifndef NO_COVERGROUPS ``; the Makefile defines `NO_COVERGROUPS`
+automatically for Verilator. Python-side covergroups via cocotb-coverage
+(`tests/coverage_top.py`) provide equivalent functional coverage on all
+simulators and export an XML report to the build directory. See the
+[tool comparison](#tool-comparison) for a full coverage breakdown.
 
 ## Optional tools
 
@@ -199,7 +214,8 @@ The sections below cover optional simulators and viewers.
 | FSM | ✅ | ✅ |
 | `cover property` | ✅ (aka user) | ✅ (aka directive) |
 | `assert property` | — | ✅ |
-| Covergroups | ❌ (ignored) | ❌ (needs license) |
+| Covergroups (SV) | ❌ (excluded) | ❌ (needs license) |
+| Covergroups (cocotb-coverage) | ✅ | ✅ |
 
 **Waveform viewers:**
 

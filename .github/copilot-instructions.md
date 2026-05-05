@@ -23,6 +23,17 @@ and tool details. Run `make help` for a quick reference.
   from `runner` and add a one-line pytest entry point:
   `build_and_test(hdl_toplevel="<module>", test_module=Path(__file__).stem)`.
 
+### Coverage
+
+- SV covergroups in ABV files (e.g. `rtl/top_abv.sv`) and their Python mirrors
+  in `tests/coverage_*.py` must stay in sync. When adding, removing, or
+  modifying coverpoints or bins in one, update the other to match.
+- Python covergroups use `cocotb-coverage` (`coverage_section` / `CoverPoint` /
+  `CoverCross` decorators) and work on all simulators. SV covergroups only
+  work on simulators with full verification support.
+- `cocotb-coverage` does not support keyword arguments in sampling function
+  calls; always use positional arguments.
+
 ## Gotchas
 
 - Python is pinned to 3.13 (`.python-version`) because cocotb does not support

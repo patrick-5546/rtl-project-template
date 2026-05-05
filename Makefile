@@ -30,6 +30,7 @@ TEST_FILTER ?=
 REBUILD ?= 1
 ABV ?= 0
 HDL_COVERAGE ?= 0
+NO_COVERGROUPS ?= $(if $(filter verilator,$(SIM)),1,0)
 COVERAGE_DAT ?= $(BUILD_DIR)/coverage.dat
 QUESTA_COVERAGE_UCDB ?= $(QUESTA_BUILD_DIR)/coverage.ucdb
 COVERAGE_ANNOTATION_DIR ?= $(BUILD_DIR)/coverage_annotated
@@ -109,6 +110,7 @@ test:
 	SIM=$(SIM) \
 		BUILD_DIR="$(BUILD_DIR)" QUESTA_WAVE="$(QUESTA_WAVE)" \
 		ABV="$(ABV)" \
+		NO_COVERGROUPS="$(NO_COVERGROUPS)" \
 		HDL_COVERAGE="$(HDL_COVERAGE)" COVERAGE_DAT="$(COVERAGE_DAT)" \
 		SV_SOURCES_FILE="$(SV_SOURCES_FILE)" ABV_SOURCES_FILE="$(ABV_SOURCES_FILE)" \
 		QUESTA_GUI="$(QUESTA_GUI)" QUESTA_DO="$(QUESTA_DO)" \
@@ -151,7 +153,7 @@ sv-lint:
 	verible-verilog-lint $(ALL_SV_SOURCES)
 
 verilator-lint:
-	verilator --lint-only --timing -Wall --sv --coverage +define+ABV $(ALL_SV_SOURCES)
+	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(ALL_SV_SOURCES)
 
 lint: py-format-check py-lint py-type md-lint sv-format-check sv-lint verilator-lint
 
