@@ -36,3 +36,5 @@ and tool details. Run `make help` for a quick reference.
   changing a default.
 - Do not commit files from `build/` or add new tools unless necessary for the
   requested change.
+- Check whether documentation (`README.md`, `make help`, docstrings,
+  comments) needs updating when making a change, and update it if so.
