@@ -54,8 +54,8 @@ GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 	open-coverage-html open-coverage-questa open-coverage-questa-html \
 	open-waves open-waves-questa open-waves-surfer \
 	prek-install prek-run \
-	py-format py-format-check py-lint py-type py-lsp \
-	sv-format sv-format-check sv-lint sync update-py-deps \
+	py-format py-format-check py-lint py-lint-all py-type py-lsp \
+	sv-format sv-format-check sv-lint sv-lint-all sync update-py-deps \
 	test test-questa verilator-lint \
 	waves waves-questa waves-surfer
 
@@ -63,8 +63,8 @@ all: lint test
 
 help:
 	@echo "Common targets:"
-	@echo "  make all                                       Run lint + test (default)"
-	@echo "  make test                                      Run the full cocotb regression"
+	@echo "  make all                                      Run lint + test (default)"
+	@echo "  make test                                     Run the full cocotb regression"
 	@echo "  make test TEST=enable_high_counts             Run one cocotb test"
 	@echo "  make test TEST_FILTER='enable_.*'             Run matching cocotb tests"
 	@echo "  make test REBUILD=0                           Reuse an existing simulator build"
@@ -81,18 +81,11 @@ help:
 	@echo "  make open-waves                               Open existing waveform in GTKWave"
 	@echo "  make open-waves-surfer                        Open existing waveform in Surfer"
 	@echo "  make open-waves-questa                        Open existing WLF in Questa"
-	@echo "  make prek-install                              Install the Git pre-commit hook"
-	@echo "  make prek-run                                  Run all prek hooks"
+	@echo "  make prek-install                             Install the Git pre-commit hook"
+	@echo "  make prek-run                                 Run all prek hooks"
 	@echo "  make lint                                     Run all lint/type checks"
-	@echo "  make py-format                                Format Python with ruff"
-	@echo "  make py-lint                                  Lint Python with ruff"
-	@echo "  make sv-format                                Format SystemVerilog in-place"
-	@echo "  make sv-lint                                  Lint SystemVerilog with Verible"
 	@echo "  make format                                   Format Python, Markdown, and SystemVerilog"
-	@echo "  make md-lint                                  Run Markdown lint checks"
-	@echo "  make md-format                                Apply Markdown lint fixes"
 	@echo "  make sync                                     Run uv sync"
-	@echo "  make update-py-deps                           Upgrade all Python deps to latest"
 	@echo "  make clean                                    Remove generated artifacts"
 
 sync:
@@ -160,7 +153,11 @@ sv-lint:
 verilator-lint:
 	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_SOURCES)
 
-lint: py-format-check py-lint py-type py-lsp md-lint sv-format-check sv-lint verilator-lint
+py-lint-all: py-format-check py-lint py-type py-lsp
+
+sv-lint-all: sv-format-check sv-lint verilator-lint
+
+lint: py-lint-all sv-lint-all md-lint
 
 format: py-format md-format sv-format
 

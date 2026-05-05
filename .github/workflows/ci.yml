@@ -43,7 +43,7 @@ jobs:
             | sudo tar -xz -C /usr/local --strip-components=1
           sudo chmod -R a+rX /usr/local/bin
 
-      - run: make sv-format-check sv-lint verilator-lint
+      - run: make sv-lint-all
 
   lint-py:
     runs-on: ubuntu-latest
@@ -56,7 +56,7 @@ jobs:
 
       - run: uv sync
 
-      - run: make py-format-check py-lint py-type py-lsp
+      - run: make py-lint-all
 
   lint-md:
     runs-on: ubuntu-latest
