@@ -8,8 +8,7 @@ GTKWave, Surfer, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
 - `rtl/top.sv`: a parameterized counter/LED-style top module.
 - `rtl/top_abv.sv`: optional assertion-based verification examples for
   `rtl/top.sv`.
-- `rtl/sources.vf` and `rtl/abv_sources.vf`: source lists consumed by the
-  Makefile and cocotb runner.
+- `rtl/sources.vf`: source list consumed by the Makefile and cocotb runner.
 - `tests/runner.py`: shared cocotb test runner; provides `build_and_test()` so
   each test file only specifies its DUT.
 - `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest with

@@ -1,3 +1,4 @@
+`ifdef ABV
 module top_abv #(
     parameter int unsigned WIDTH = 8
 ) (
@@ -74,3 +75,4 @@ module top_abv #(
 `endif
 
 endmodule
+`endif

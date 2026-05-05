@@ -45,12 +45,12 @@ Run the Questa regression (block these if Questa is not installed):
 - Cross-check default values for all environment variables (`SIM`,
   `BUILD_DIR`, `REBUILD`, `ABV`, `HDL_COVERAGE`, `NO_COVERGROUPS`,
   `QUESTA_GUI`, `QUESTA_WAVE`, `QUESTA_DO`, `SV_SOURCES_FILE`,
-  `ABV_SOURCES_FILE`, `COVERAGE_DAT`) between the Makefile and
+  `COVERAGE_DAT`) between the Makefile and
   `tests/runner.py`.
 - Verify every prek hook calls a valid Makefile target and that all
   lint sub-targets are covered.
-- Verify `rtl/sources.vf` and `rtl/abv_sources.vf` list files that exist,
-  and every `.sv` file in `rtl/` appears in one of them.
+- Verify `rtl/sources.vf` lists files that exist,
+  and every `.sv` file in `rtl/` appears in it.
 - Confirm `.gitignore` covers `build/`, `work/`, and transient files.
 - Verify SV covergroups in ABV files and their Python mirrors in
   `tests/coverage_*.py` are in sync: same coverpoints, same bins, same

@@ -42,14 +42,11 @@ COVERAGE_MIN_BRANCHES ?= 90
 QUESTA_COVERAGE_HTML_DIR ?= $(QUESTA_BUILD_DIR)/coverage_html
 QUESTA_COVERAGE_HTML_INDEX ?= $(QUESTA_COVERAGE_HTML_DIR)/index.html
 SV_SOURCES_FILE ?= rtl/sources.vf
-ABV_SOURCES_FILE ?= rtl/abv_sources.vf
 
 read_sources = $(strip $(shell sed -e 's/[[:space:]]*#.*//' -e '/^[[:space:]]*$$/d' $(1)))
 
 SV_SOURCES := $(call read_sources,$(SV_SOURCES_FILE))
-ABV_SOURCES := $(call read_sources,$(ABV_SOURCES_FILE))
-ALL_SV_SOURCES := $(SV_SOURCES) $(ABV_SOURCES)
-GTKWAVE_STEMS_SOURCES = $(SV_SOURCES) $(if $(filter 1 true yes on,$(ABV)),$(ABV_SOURCES))
+GTKWAVE_STEMS_SOURCES = $(SV_SOURCES)
 GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 
 .PHONY: all clean coverage coverage-questa format gtkwave-stems help lint \
@@ -112,7 +109,7 @@ test:
 		ABV="$(ABV)" \
 		NO_COVERGROUPS="$(NO_COVERGROUPS)" \
 		HDL_COVERAGE="$(HDL_COVERAGE)" COVERAGE_DAT="$(COVERAGE_DAT)" \
-		SV_SOURCES_FILE="$(SV_SOURCES_FILE)" ABV_SOURCES_FILE="$(ABV_SOURCES_FILE)" \
+		SV_SOURCES_FILE="$(SV_SOURCES_FILE)" \
 		QUESTA_GUI="$(QUESTA_GUI)" QUESTA_DO="$(QUESTA_DO)" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(PYTEST)
 
@@ -142,18 +139,18 @@ md-format:
 	$(MARKDOWNLINT) --fix
 
 sv-format:
-	verible-verilog-format --inplace $(ALL_SV_SOURCES)
+	verible-verilog-format --inplace $(SV_SOURCES)
 
 sv-format-check:
-	@for source in $(ALL_SV_SOURCES); do \
+	@for source in $(SV_SOURCES); do \
 		verible-verilog-format --verify "$$source" || exit $$?; \
 	done
 
 sv-lint:
-	verible-verilog-lint $(ALL_SV_SOURCES)
+	verible-verilog-lint $(SV_SOURCES)
 
 verilator-lint:
-	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(ALL_SV_SOURCES)
+	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_SOURCES)
 
 lint: py-format-check py-lint py-type md-lint sv-format-check sv-lint verilator-lint
 

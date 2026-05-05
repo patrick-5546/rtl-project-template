@@ -10,8 +10,7 @@ and tool details. Run `make help` for a quick reference.
 - Use `_i` for inputs, `_o` for outputs, and `_ni` for active-low reset inputs.
 - Prefer explicit port directions and `logic` signals.
 - Prefer parameterized widths when it keeps modules reusable.
-- New RTL files go in `rtl/` and must be added to `rtl/sources.vf`
-  (or `rtl/abv_sources.vf` for ABV files).
+- New RTL files go in `rtl/` and must be added to `rtl/sources.vf`.
 
 ### cocotb and Python
 

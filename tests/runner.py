@@ -70,11 +70,6 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
         project_dir,
         project_dir / "rtl" / "sources.vf",
     )
-    abv_sources = project_paths_from_list_file(
-        "ABV_SOURCES_FILE",
-        project_dir,
-        project_dir / "rtl" / "abv_sources.vf",
-    )
     if selected_test and test_filter:
         raise ValueError("Set either TEST or TEST_FILTER, not both.")
     if selected_test:
@@ -87,7 +82,6 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     sources = [*sv_sources]
     defines: dict[str, object] = {}
     if abv:
-        sources.extend(abv_sources)
         defines["ABV"] = 1
     if no_covergroups:
         defines["NO_COVERGROUPS"] = 1
