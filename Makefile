@@ -54,8 +54,8 @@ GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 	open-coverage-html open-coverage-questa open-coverage-questa-html \
 	open-waves open-waves-questa open-waves-surfer \
 	prek-install prek-run \
-	py-format py-format-check py-lint py-type \
 	sv-format sv-format-check sv-lint sync \
+	py-format py-format-check py-lint py-type py-lsp \
 	test test-questa verilator-lint \
 	waves waves-questa waves-surfer
 
@@ -132,6 +132,9 @@ py-lint:
 py-type:
 	$(UV) run ty check
 
+py-lsp:
+	$(UV) run basedpyright
+
 md-lint:
 	$(MARKDOWNLINT)
 
@@ -152,7 +155,7 @@ sv-lint:
 verilator-lint:
 	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_SOURCES)
 
-lint: py-format-check py-lint py-type md-lint sv-format-check sv-lint verilator-lint
+lint: py-format-check py-lint py-type py-lsp md-lint sv-format-check sv-lint verilator-lint
 
 format: py-format md-format sv-format
 

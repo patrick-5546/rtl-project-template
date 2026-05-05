@@ -56,7 +56,7 @@ jobs:
 
       - run: uv sync
 
-      - run: make py-format-check py-lint py-type
+      - run: make py-format-check py-lint py-type py-lsp
 
   lint-md:
     runs-on: ubuntu-latest

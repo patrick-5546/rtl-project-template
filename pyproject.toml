@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "A FPGA project template using SystemVerilog, cocotb, and Verilator."
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "basedpyright>=1.39.1",
     "cocotb>=2.0.1",
     "cocotb-coverage>=2.0.0",
     "prek>=0.3.11",
@@ -27,3 +28,7 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "SIM", "UP"]
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.13"

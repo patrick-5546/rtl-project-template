@@ -1,7 +1,8 @@
 # FPGA Project Template
 
 A FPGA project template using SystemVerilog, cocotb, Verilator, Questa,
-GTKWave, Surfer, uv, Ruff, ty, markdownlint-cli2, pytest, and Verible.
+GTKWave, Surfer, uv, Ruff, ty, basedpyright, markdownlint-cli2, pytest, and
+Verible.
 
 ## Contents
 
@@ -61,7 +62,7 @@ The default simulation flow is cocotb through pytest with Verilator.
 | Command | Purpose |
 | --- | --- |
 | `make format` | Format Python, Markdown, and SystemVerilog |
-| `make lint` | Run Ruff, ty, Markdown, Verible, and Verilator checks |
+| `make lint` | Run Ruff, ty, basedpyright, Markdown, Verible, and Verilator checks |
 | `make help` | Show available Makefile targets |
 | `make clean` | Remove generated local artifacts |
 
@@ -293,8 +294,8 @@ make open-waves-questa QUESTA_WAVE=build/questa/other.wlf QUESTA_DO=waves/other.
 
 This template was verified on Ubuntu 22.04 with these tool versions:
 
-Python package versions, including cocotb, prek, pytest, Ruff, and ty, are
-locked by uv in `uv.lock`.
+Python package versions, including cocotb, prek, pytest, Ruff, ty, and
+basedpyright, are locked by uv in `uv.lock`.
 
 | Tool | Verified version |
 | --- | --- |
