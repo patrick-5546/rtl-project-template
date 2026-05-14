@@ -24,10 +24,18 @@ module top_abv #(
   assert property (@(posedge clk_i) disable iff (!rst_ni) en_i |=> count_o == $past(count_o) + 1'b1)
   else $fatal("count_o did not increment while en_i was high");
 
-  // Covers
+  // Antecedent covers (one per implication-style assertion above)
 
   reset_observed_c :
   cover property (@(posedge clk_i) !rst_ni);
+
+  enable_low_antecedent_c :
+  cover property (@(posedge clk_i) disable iff (!rst_ni) !en_i);
+
+  enable_high_antecedent_c :
+  cover property (@(posedge clk_i) disable iff (!rst_ni) en_i);
+
+  // Behavior covers
 
   enable_low_hold_observed_c :
   cover property (@(posedge clk_i) disable iff (!rst_ni) $past(

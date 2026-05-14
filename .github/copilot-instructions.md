@@ -11,6 +11,9 @@ and tool details. Run `make help` for a quick reference.
 - Prefer explicit port directions and `logic` signals.
 - Prefer parameterized widths when it keeps modules reusable.
 - New RTL files go in `rtl/` and must be added to `rtl/sources.vf`.
+- For each implication-style (`|->` / `|=>`) `assert property`, also add a
+  `cover property` for the bare antecedent (matching any `disable iff` clause)
+  so vacuous passes show up as a coverage hole instead of silently passing.
 
 ### cocotb and Python
 
