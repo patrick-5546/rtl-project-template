@@ -47,7 +47,17 @@ SV_SOURCES_FILE ?= rtl/sources.vf
 
 read_sources = $(strip $(shell sed -e 's/[[:space:]]*#.*//' -e '/^[[:space:]]*$$/d' $(1)))
 
-SV_SOURCES := $(call read_sources,$(SV_SOURCES_FILE))
+SV_ENTRIES := $(call read_sources,$(SV_SOURCES_FILE))
+SV_INCLUDE_DIRS := $(patsubst +incdir+%,%,$(filter +incdir+%,$(SV_ENTRIES)))
+SV_VERIBLE_EXTRAS := $(patsubst +verible+%,%,$(filter +verible+%,$(SV_ENTRIES)))
+SV_SOURCES := $(filter-out +%,$(SV_ENTRIES))
+SV_INCLUDE_FLAGS := $(addprefix -I,$(SV_INCLUDE_DIRS))
+SV_VERIBLE_INPUTS := $(SV_SOURCES) $(SV_VERIBLE_EXTRAS)
+
+$(foreach dir,$(SV_INCLUDE_DIRS),$(if $(wildcard $(dir)/.),,$(error sources.vf: '+incdir+$(dir)' does not resolve to a directory)))
+$(foreach src,$(SV_VERIBLE_EXTRAS),$(if $(wildcard $(src)),,$(error sources.vf: '+verible+$(src)' does not resolve to a file)))
+$(foreach src,$(SV_SOURCES),$(if $(wildcard $(src)),,$(error sources.vf: '$(src)' does not resolve to a file)))
+
 GTKWAVE_STEMS_SOURCES = $(SV_SOURCES)
 GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 
@@ -144,24 +154,24 @@ md-format:
 	$(MARKDOWNLINT) --fix
 
 sv-format:
-	verible-verilog-format --inplace $(SV_SOURCES)
+	verible-verilog-format --inplace $(SV_VERIBLE_INPUTS)
 
 sv-format-check:
-	@for source in $(SV_SOURCES); do \
+	@for source in $(SV_VERIBLE_INPUTS); do \
 		verible-verilog-format --verify "$$source" || exit $$?; \
 	done
 
 sv-lint:
-	verible-verilog-lint $(SV_SOURCES)
+	verible-verilog-lint $(SV_VERIBLE_INPUTS)
 
 verilator-lint:
-	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_SOURCES)
+	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
 sv-lint-slang:
-	$(SLANG) -Werror +define+ABV $(SV_SOURCES)
+	$(SLANG) -Werror +define+ABV $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
 sv-tidy-slang:
-	$(SLANG_TIDY) +define+ABV $(SV_SOURCES)
+	$(SLANG_TIDY) +define+ABV $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
 py-lint-all: py-format-check py-lint py-type py-lsp
 
@@ -246,7 +256,7 @@ gtkwave-stems:
 	mkdir -p "$(GTKWAVE_STEMS_DIR)" "$(dir $(GTKWAVE_STEMS))"
 	verilator -Wno-fatal --json-only --bbox-sys --timing --sv \
 		--top-module "$(GTKWAVE_STEMS_TOP)" --Mdir "$(GTKWAVE_STEMS_DIR)" \
-		$(GTKWAVE_STEMS_DEFINES) $(GTKWAVE_STEMS_SOURCES)
+		$(SV_INCLUDE_FLAGS) $(GTKWAVE_STEMS_DEFINES) $(GTKWAVE_STEMS_SOURCES)
 	$(JSON2STEMS) "$(GTKWAVE_STEMS_META)" "$(GTKWAVE_STEMS_JSON)" "$(GTKWAVE_STEMS)"
 	@echo "GTKWave stems: $(GTKWAVE_STEMS)"
 

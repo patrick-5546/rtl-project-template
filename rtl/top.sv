@@ -16,7 +16,7 @@ module top #(
   end
 
 `ifdef ABV
-  top_abv #(.WIDTH(WIDTH)) i_top_abv (.*);
+  `include "top_abv.sv"
 `endif
 
 endmodule

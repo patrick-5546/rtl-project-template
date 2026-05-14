@@ -11,16 +11,24 @@ and tool details. Run `make help` for a quick reference.
 - Prefer explicit port directions and `logic` signals.
 - Prefer parameterized widths when it keeps modules reusable.
 - New RTL files go in `rtl/` and must be added to `rtl/sources.vf`.
+  `sources.vf` follows Verilator command-file syntax: each non-comment
+  line is either a source file path, a `+incdir+<dir>` directive
+  (preprocessor include search path), or a `+verible+<file>` directive
+  (project-local extension — file is processed by Verible only, not
+  compiled by Verilator/slang or pulled into the cocotb runner). All
+  three are validated to exist at parse time.
 - For each implication-style (`|->` / `|=>`) `assert property`, also add a
   `cover property` for the bare antecedent (matching any `disable iff` clause)
   so vacuous passes show up as a coverage hole instead of silently passing.
-- ABV checker modules (`*_abv.sv`) follow the convention of having input
-  ports that mirror the DUT signal names they observe (e.g., an input named
-  `count_o` observing the DUT's output `count_o`) and being instantiated
-  with `.*` for ergonomic signal mirroring. The root `.slang-tidy` globally
-  disables `style-enforce-port-suffix`,
-  `style-no-dot-star-in-port-connection`, and
-  `style-no-implicit-port-name-in-port-connection` to support this pattern.
+- ABV content lives in `rtl/top_abv.sv` as bare SVA (no module wrapper)
+  and is `` `include ``d from `rtl/top.sv` inside `` `ifdef ABV ``.
+  Because it's preprocessor-included, it is **not** listed in
+  `rtl/sources.vf` as a source — instead it appears as a `+verible+`
+  entry so Verible still lints/formats it. The
+  `// verilog_syntax: parse-as-module-body` directive at the top of the
+  file lets Verible parse the labeled assertions as if they were in a
+  module body. slang/slang-tidy/Verilator follow the include with
+  `+define+ABV` set.
 
 ### cocotb and Python
 

@@ -1,2 +1,3 @@
++incdir+rtl
++verible+rtl/top_abv.sv
 rtl/top.sv
-rtl/top_abv.sv

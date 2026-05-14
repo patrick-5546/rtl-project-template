@@ -19,16 +19,59 @@ def project_path_from_env(name: str, project_dir: Path, default: Path) -> Path:
     return path if path.is_absolute() else project_dir / path
 
 
-def project_paths_from_list_file(name: str, project_dir: Path, default: Path) -> list[Path]:
+def project_paths_from_list_file(
+    name: str, project_dir: Path, default: Path
+) -> tuple[list[Path], list[Path]]:
+    """Parse a Verilator-style ``.vf`` source list into sources and include dirs.
+
+    Each non-comment, non-blank line is one of:
+
+    * a path (compilation source, validated as a regular file),
+    * ``+incdir+<dir>`` (preprocessor include directory, validated as
+      an existing directory),
+    * ``+verible+<file>`` (Verible-only file, validated as a file but
+      not returned — the cocotb runner has no use for bare-SVA include
+      files that aren't compilation units).
+
+    Anything else raises.
+    """
     list_file = project_path_from_env(name, project_dir, default)
-    paths: list[Path] = []
+    sources: list[Path] = []
+    includes: list[Path] = []
     for line in list_file.read_text().splitlines():
         entry = line.split("#", maxsplit=1)[0].strip()
         if not entry:
             continue
-        path = Path(entry)
-        paths.append(path if path.is_absolute() else project_dir / path)
-    return paths
+        if entry.startswith("+incdir+"):
+            raw = entry[len("+incdir+") :]
+            path = Path(raw)
+            if not path.is_absolute():
+                path = project_dir / path
+            if not path.is_dir():
+                raise FileNotFoundError(
+                    f"{list_file}: '+incdir+{raw}' does not resolve to a directory ({path})"
+                )
+            includes.append(path)
+        elif entry.startswith("+verible+"):
+            raw = entry[len("+verible+") :]
+            path = Path(raw)
+            if not path.is_absolute():
+                path = project_dir / path
+            if not path.is_file():
+                raise FileNotFoundError(
+                    f"{list_file}: '+verible+{raw}' does not resolve to a file ({path})"
+                )
+            # Validated for parity with the Makefile but not returned.
+        else:
+            path = Path(entry)
+            if not path.is_absolute():
+                path = project_dir / path
+            if not path.is_file():
+                raise FileNotFoundError(
+                    f"{list_file}: '{entry}' does not resolve to a file ({path})"
+                )
+            sources.append(path)
+    return sources, includes
 
 
 def build_and_test(hdl_toplevel: str, test_module: str) -> None:
@@ -65,7 +108,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
         project_dir,
         build_dir / "coverage.dat",
     )
-    sv_sources = project_paths_from_list_file(
+    sv_sources, sv_include_dirs = project_paths_from_list_file(
         "SV_SOURCES_FILE",
         project_dir,
         project_dir / "rtl" / "sources.vf",
@@ -120,6 +163,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     runner = get_runner(simulator)
     runner.build(
         sources=sources,
+        includes=sv_include_dirs,
         defines=defines,
         build_args=build_args,
         hdl_toplevel=hdl_toplevel,

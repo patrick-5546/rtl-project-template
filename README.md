@@ -63,7 +63,7 @@ The default simulation flow is cocotb through pytest with Verilator.
 | Command | Purpose |
 | --- | --- |
 | `make format` | Format Python, Markdown, and SystemVerilog |
-| `make lint` | Run Ruff, ty, basedpyright, Markdown, Verible, and Verilator checks |
+| `make lint` | Run Ruff, ty, basedpyright, Markdown, Verible, Verilator, slang, slang-tidy checks |
 | `make help` | Show available Makefile targets |
 | `make clean` | Remove generated local artifacts |
 
@@ -76,9 +76,9 @@ optional-flow targets for those. See the
 
 Install the default external command-line tools before using the main
 Verilator/GTKWave workflow. Python packages are managed by uv, but Verilator,
-GTKWave, Verible, LCOV, and markdownlint-cli2 need to be available on `PATH`. The
-local Python version is pinned to `3.13` in `.python-version` because the current
-cocotb release does not support Python 3.14.
+GTKWave, Verible, slang, LCOV, and markdownlint-cli2 need to be available on
+`PATH`. The local Python version is pinned to `3.13` in `.python-version`
+because the current cocotb release does not support Python 3.14.
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
@@ -137,21 +137,18 @@ that file exists, `make waves` loads it automatically.
 
 ## Assertion-based verification examples
 
-The optional ABV examples live in `rtl/top_abv.sv`. That file is a standalone
-checker module that `rtl/top.sv` instantiates only when the `ABV` define is
-enabled, so the default RTL behavior remains unchanged. The checker includes SVA
-assertions for reset, enable-low hold, and enable-high increment behavior,
-`cover property` statements for observability, and a `covergroup` with
-coverpoints for `count_o`, `en_i`, and `rst_ni` plus cross-coverage.
+`rtl/top_abv.sv` is a bare-SVA fragment (assertions, antecedent and
+behavior covers, covergroup) that `rtl/top.sv` `` `include ``s inside
+`` `ifdef ABV ``. It's pulled in by the preprocessor so it's listed in
+`rtl/sources.vf` as a `+verible+` entry (so Verible still lints and
+formats it) rather than as a compilation source. The covergroup is
+guarded by `` `ifndef NO_COVERGROUPS ``, which the Makefile defines for
+Verilator (which can't collect covergroup data); a Python mirror in
+`tests/coverage_top.py` (cocotb-coverage) provides the same functional
+coverage on all simulators and must be kept in sync with the SV
+covergroup.
 
-Covergroups are guarded by `` `ifndef NO_COVERGROUPS ``, which the Makefile
-automatically defines for Verilator (since Verilator parses but does not collect
-covergroup data). Override with `NO_COVERGROUPS=0` to include them anyway.
-A Python mirror of the SV covergroup lives in `tests/coverage_top.py` using
-cocotb-coverage, so covergroup data is always collected regardless of simulator.
-The SV and Python definitions must be kept in sync.
-
-Run the default regression with assertions enabled:
+Run the regression with assertions enabled:
 
 ```sh
 make test ABV=1
@@ -186,11 +183,9 @@ generate HTML reports; Questa can also open coverage interactively in its GUI
 
 Neither simulator collects SystemVerilog covergroup data — Verilator parses but
 ignores the syntax, and the Questa Starter Edition requires a paid
-`svverification` license. Covergroups are present in `rtl/top_abv.sv` but
-guarded by `` `ifndef NO_COVERGROUPS ``; the Makefile defines `NO_COVERGROUPS`
-automatically for Verilator. Python-side covergroups via cocotb-coverage
-(`tests/coverage_top.py`) provide equivalent functional coverage on all
-simulators and export an XML report to the build directory. See the
+`svverification` license. Python-side covergroups via cocotb-coverage cover
+this gap on all simulators (see [Assertion-based verification
+examples](#assertion-based-verification-examples)). See the
 [tool comparison](#tool-comparison) for a full coverage breakdown.
 
 ## Optional tools

@@ -1,4 +1,0 @@
-Checks:
-    -style-enforce-port-suffix,
-    -style-no-dot-star-in-port-connection,
-    -style-no-implicit-port-name-in-port-connection
