@@ -86,6 +86,7 @@ help:
 	@echo "  make lint                                     Run all lint/type checks"
 	@echo "  make format                                   Format Python, Markdown, and SystemVerilog"
 	@echo "  make sync                                     Run uv sync"
+	@echo "  make update-py-deps                           Upgrade Python deps (uv lock --upgrade + sync)"
 	@echo "  make clean                                    Remove generated artifacts"
 
 sync:

@@ -44,6 +44,7 @@ The default simulation flow is cocotb through pytest with Verilator.
 | Command | Purpose |
 | --- | --- |
 | `make sync` | Install/update the uv-managed Python environment |
+| `make update-py-deps` | Upgrade Python dependencies in `uv.lock` and re-sync |
 | `make prek-install` | Install the Git pre-commit hook |
 | `make prek-run` | Run all prek hooks manually |
 
