@@ -68,5 +68,21 @@ hooks = [
     language = "system",
     pass_filenames = false,
     priority = 0
+  },
+  {
+    id = "slang-lint",
+    name = "slang lint",
+    entry = "make sv-lint-slang",
+    language = "system",
+    pass_filenames = false,
+    priority = 0
+  },
+  {
+    id = "slang-tidy",
+    name = "slang-tidy",
+    entry = "make sv-tidy-slang",
+    language = "system",
+    pass_filenames = false,
+    priority = 0
   }
 ]

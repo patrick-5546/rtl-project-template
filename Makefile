@@ -11,6 +11,8 @@ GTKWAVE ?= gtkwave
 GTKWAVE_ARGS ?= -o
 JSON2STEMS ?= json2stems
 MARKDOWNLINT ?= markdownlint-cli2
+SLANG ?= slang
+SLANG_TIDY ?= slang-tidy
 VSIM ?= vsim
 VCOVER ?= vcover
 HTML_VIEWER ?= xdg-open
@@ -55,7 +57,8 @@ GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 	open-waves open-waves-questa open-waves-surfer \
 	prek-install prek-run \
 	py-format py-format-check py-lint py-lint-all py-type py-lsp \
-	sv-format sv-format-check sv-lint sv-lint-all sync update-py-deps \
+	sv-format sv-format-check sv-lint sv-lint-all sv-lint-slang sv-tidy-slang \
+	sync update-py-deps \
 	test test-questa verilator-lint \
 	waves waves-questa waves-surfer
 
@@ -154,9 +157,15 @@ sv-lint:
 verilator-lint:
 	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_SOURCES)
 
+sv-lint-slang:
+	$(SLANG) -Werror +define+ABV $(SV_SOURCES)
+
+sv-tidy-slang:
+	$(SLANG_TIDY) +define+ABV $(SV_SOURCES)
+
 py-lint-all: py-format-check py-lint py-type py-lsp
 
-sv-lint-all: sv-format-check sv-lint verilator-lint
+sv-lint-all: sv-format-check sv-lint verilator-lint sv-lint-slang sv-tidy-slang
 
 lint: py-lint-all sv-lint-all md-lint
 

@@ -83,6 +83,7 @@ cocotb release does not support Python 3.14.
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
 | Verilator | Default simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [User guide](https://verilator.org/guide/latest/) |
+| slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | [Releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
 | markdownlint-cli2 | Markdown linting/autofix | [Install](https://github.com/DavidAnson/markdownlint-cli2#install) | [Documentation](https://github.com/DavidAnson/markdownlint-cli2) |
@@ -304,6 +305,7 @@ basedpyright, are locked by uv in `uv.lock`.
 | LCOV | 2.4 |
 | markdownlint-cli2 | 0.22.1 |
 | Questa | 2025.1 |
+| slang | 10.0.0 |
 | Surfer | 0.7.0 |
 | uv | 0.11.8 |
 | Verible | v0.0-4053-g89d4d98a |

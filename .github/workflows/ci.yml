@@ -9,6 +9,7 @@ env:
   VERILATOR_VERSION: v5.048
   VERIBLE_VERSION: v0.0-4053-g89d4d98a
   LCOV_VERSION: v2.4
+  SLANG_VERSION: v10.0
 
 jobs:
   lint-sv:
@@ -42,6 +43,26 @@ jobs:
           curl -fsSL "https://github.com/chipsalliance/verible/releases/download/${VERIBLE_VERSION}/verible-${VERIBLE_VERSION}-linux-static-x86_64.tar.gz" \
             | sudo tar -xz -C /usr/local --strip-components=1
           sudo chmod -R a+rX /usr/local/bin
+
+      - name: Cache slang
+        id: cache-slang
+        uses: actions/cache@v5
+        with:
+          path: /opt/slang
+          key: slang-${{ env.SLANG_VERSION }}
+
+      - name: Build slang
+        if: steps.cache-slang.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake python3
+          git clone https://github.com/MikePopoloski/slang --branch "$SLANG_VERSION" --depth 1 /tmp/slang
+          cd /tmp/slang
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/slang -DSLANG_INCLUDE_TESTS=OFF
+          cmake --build build -j
+          cmake --install build
+
+      - name: Add slang to PATH
+        run: echo "/opt/slang/bin" >> "$GITHUB_PATH"
 
       - run: make sv-lint-all
 

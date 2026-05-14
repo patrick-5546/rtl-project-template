@@ -14,6 +14,13 @@ and tool details. Run `make help` for a quick reference.
 - For each implication-style (`|->` / `|=>`) `assert property`, also add a
   `cover property` for the bare antecedent (matching any `disable iff` clause)
   so vacuous passes show up as a coverage hole instead of silently passing.
+- ABV checker modules (`*_abv.sv`) follow the convention of having input
+  ports that mirror the DUT signal names they observe (e.g., an input named
+  `count_o` observing the DUT's output `count_o`) and being instantiated
+  with `.*` for ergonomic signal mirroring. The root `.slang-tidy` globally
+  disables `style-enforce-port-suffix`,
+  `style-no-dot-star-in-port-connection`, and
+  `style-no-implicit-port-name-in-port-connection` to support this pattern.
 
 ### cocotb and Python
 

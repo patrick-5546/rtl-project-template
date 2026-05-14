@@ -14,15 +14,15 @@ module top_abv #(
 
   reset_clears_counter_a :
   assert property (@(posedge clk_i) !rst_ni |=> count_o == '0)
-  else $fatal("count_o did not clear after reset");
+  else $fatal(1, "count_o did not clear after reset");
 
   enable_low_holds_counter_a :
   assert property (@(posedge clk_i) disable iff (!rst_ni) !en_i |=> count_o == $past(count_o))
-  else $fatal("count_o changed while en_i was low");
+  else $fatal(1, "count_o changed while en_i was low");
 
   enable_high_increments_counter_a :
   assert property (@(posedge clk_i) disable iff (!rst_ni) en_i |=> count_o == $past(count_o) + 1'b1)
-  else $fatal("count_o did not increment while en_i was high");
+  else $fatal(1, "count_o did not increment while en_i was high");
 
   // Antecedent covers (one per implication-style assertion above)
 
