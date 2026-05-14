@@ -58,7 +58,7 @@ jobs:
           git clone https://github.com/MikePopoloski/slang --branch "$SLANG_VERSION" --depth 1 /tmp/slang
           cd /tmp/slang
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/slang -DSLANG_INCLUDE_TESTS=OFF
-          cmake --build build -j
+          cmake --build build -j 2
           cmake --install build
 
       - name: Add slang to PATH
