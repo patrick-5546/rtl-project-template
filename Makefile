@@ -63,9 +63,9 @@ include mk/sim/$(SIM).mk
 	md-format md-lint \
 	open-coverage open-coverage-html open-waves \
 	py-format py-format-check py-lint py-lint-all py-type py-lsp \
-	sv-format sv-format-check sv-lint sv-lint-all sv-lint-slang sv-tidy-slang \
+	sv-format sv-format-check sv-lint sv-lint-all sv-lint-slang sv-tidy-slang sv-lint-verilator \
 	sync update-py-deps \
-	test verilator-lint waves
+	test waves
 
 all: lint test
 
@@ -165,7 +165,7 @@ sv-format-check:
 sv-lint:
 	verible-verilog-lint $(SV_VERIBLE_INPUTS)
 
-verilator-lint:
+sv-lint-verilator:
 	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
 sv-lint-slang:
@@ -176,7 +176,7 @@ sv-tidy-slang:
 
 py-lint-all: py-format-check py-lint py-type py-lsp
 
-sv-lint-all: sv-format-check sv-lint verilator-lint sv-lint-slang sv-tidy-slang
+sv-lint-all: sv-format-check sv-lint sv-lint-verilator sv-lint-slang sv-tidy-slang
 
 lint: py-lint-all sv-lint-all md-lint
 
