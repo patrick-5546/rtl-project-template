@@ -17,6 +17,10 @@ TEST_FILTER ?=
 REBUILD ?= 1
 ABV ?= 0
 HDL_COVERAGE ?= 0
+# VCS-only: gate Verdi FSDB dumping (and the -kdb build flag) on. WAVES=0 skips
+# it. Defined here because the generic `test` recipe always passes it through;
+# tests/runner.py only reads it for the VCS flow.
+WAVES ?= 1
 # SystemVerilog source list (see rtl/sources.vf for the file format).
 SV_SOURCES_FILE ?= rtl/sources.vf
 
@@ -111,6 +115,7 @@ help:
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"
 	@echo "  WAVE= / GTKWAVE_SAVE= / STATE=  Verilator wave file / GTKWave save / Surfer state"
 	@echo "  QUESTA_WAVE= / QUESTA_DO=       Questa WLF / Questa .do layout"
+	@echo "  VCS_WAVE= / VERDI_RC= / WAVES=0 VCS FSDB / Verdi layout / disable FSDB dump"
 	@echo "  HTML_VIEWER=wslview             HTML opener (e.g. wslview on WSL)"
 
 sync:
@@ -126,6 +131,7 @@ update-py-deps:
 test:
 	SIM=$(SIM) \
 		BUILD_DIR="$(BUILD_DIR)" QUESTA_WAVE="$(QUESTA_WAVE)" \
+		VCS_WAVE="$(VCS_WAVE)" WAVES="$(WAVES)" \
 		ABV="$(ABV)" \
 		NO_COVERGROUPS="$(NO_COVERGROUPS)" \
 		HDL_COVERAGE="$(HDL_COVERAGE)" COVERAGE_DAT="$(COVERAGE_DAT)" \
@@ -183,4 +189,4 @@ lint: py-lint-all sv-lint-all md-lint
 format: py-format md-format sv-format
 
 clean:
-	rm -rf build work transcript
+	rm -rf build work transcript verdiLog vdCovLog vdCov.conf novas.rc novas.conf

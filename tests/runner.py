@@ -13,10 +13,14 @@ class RunConfig:
 
     hdl_coverage: bool
     gui: bool
+    waves: bool
     coverage_dat: Path
     questa_wave: Path
     questa_do: Path
     questa_args: list[str]
+    vcs_wave: Path
+    build_dir: Path
+    hdl_toplevel: str
 
 
 @dataclass
@@ -27,6 +31,41 @@ class SimArgs:
     plusargs: list[str] = field(default_factory=list)
     test_args: list[str] = field(default_factory=list)
     pre_cmd: list[str] | None = None
+    sources: list[Path] = field(default_factory=list)
+
+
+def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
+    """Write a Verdi FSDB dump module into *build_dir* and return its path.
+
+    VCS does not auto-dump waveforms, so (mirroring cocotb's Icarus dump-file
+    approach) we generate a tiny top module that opens an FSDB and dumps the
+    *hdl_toplevel* hierarchy.  The ``+fsdbfile=`` plusarg selects the output
+    path; the ``$fsdb*`` system tasks come from VCS's ``-kdb`` flag, so no
+    Verdi PLI (``novas.tab``/``pli.a``) needs to be linked explicitly.
+
+    The module is bracketed with ``// VCS coverage off``/``on`` pragmas so it is
+    excluded from the ``-cm`` coverage model; reports then reflect the design
+    only, instead of being dragged down by this testbench wrapper.
+    """
+    build_dir.mkdir(parents=True, exist_ok=True)
+    dump_module = build_dir / "cocotb_fsdb_dump.sv"
+    contents = (
+        "// VCS coverage off\n"
+        "module cocotb_fsdb_dump;\n"
+        "  initial begin\n"
+        "    string fsdbfile;\n"
+        '    if (!$value$plusargs("fsdbfile=%s", fsdbfile)) fsdbfile = "dump.fsdb";\n'
+        "    $fsdbDumpfile(fsdbfile);\n"
+        f"    $fsdbDumpvars(0, {hdl_toplevel});\n"
+        "  end\n"
+        "endmodule\n"
+        "// VCS coverage on\n"
+    )
+    # Only rewrite when content changes so the file's mtime stays stable and
+    # REBUILD=0 (cocotb's ``outdated`` mtime check) keeps reusing the build.
+    if not dump_module.is_file() or dump_module.read_text() != contents:
+        dump_module.write_text(contents)
+    return dump_module
 
 
 class SimulatorProfile:
@@ -89,8 +128,31 @@ class QuestaProfile(SimulatorProfile):
         return args
 
 
+class VcsProfile(SimulatorProfile):
+    name = "vcs"
+    supports_coverage = True
+
+    def configure(self, cfg: RunConfig) -> SimArgs:
+        args = SimArgs()
+        # cocotb's VCS runner passes no timescale, so VCS would default to 1 s
+        # precision and reject the ns-scale clock; pin it explicitly.
+        args.build_args.append("-timescale=1ns/1ps")
+        if cfg.waves:
+            cfg.vcs_wave.parent.mkdir(parents=True, exist_ok=True)
+            # -kdb gives both the native $fsdb* tasks and the Verdi source DB;
+            # the generated dump module is an extra top alongside the DUT.
+            args.sources.append(write_fsdb_dump_module(cfg.build_dir, cfg.hdl_toplevel))
+            args.build_args.extend(["-kdb", "-top", "cocotb_fsdb_dump"])
+            args.plusargs.append(f"+fsdbfile={cfg.vcs_wave}")
+        if cfg.hdl_coverage:
+            cm_args = ["-cm", "line+cond+fsm+tgl+branch+assert", "-cm_dir", str(cfg.coverage_dat)]
+            args.build_args.extend(cm_args)
+            args.test_args.extend(cm_args)
+        return args
+
+
 SIMULATORS: dict[str, SimulatorProfile] = {
-    profile.name: profile for profile in (VerilatorProfile(), QuestaProfile())
+    profile.name: profile for profile in (VerilatorProfile(), QuestaProfile(), VcsProfile())
 }
 
 
@@ -183,6 +245,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
         project_dir,
         project_dir / "waves" / f"{hdl_toplevel}.do",
     )
+    vcs_wave = project_path_from_env("VCS_WAVE", project_dir, build_dir / "dump.fsdb")
     pythonpath = os.pathsep.join(filter(None, [str(test_dir), os.environ.get("PYTHONPATH", "")]))
     selected_test = os.environ.get("TEST") or None
     test_filter = os.environ.get("TEST_FILTER") or None
@@ -191,6 +254,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     no_covergroups = env_flag("NO_COVERGROUPS", default=False)
     hdl_coverage = env_flag("HDL_COVERAGE", default=False)
     questa_gui = env_flag("QUESTA_GUI", default=False)
+    waves_enabled = env_flag("WAVES", default=True)
     coverage_dat = project_path_from_env(
         "COVERAGE_DAT",
         project_dir,
@@ -227,10 +291,14 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
             RunConfig(
                 hdl_coverage=hdl_coverage,
                 gui=questa_gui,
+                waves=waves_enabled,
                 coverage_dat=coverage_dat,
                 questa_wave=questa_wave,
                 questa_do=questa_do,
                 questa_args=shlex.split(os.environ.get("QUESTA_ARGS", "")),
+                vcs_wave=vcs_wave,
+                build_dir=build_dir,
+                hdl_toplevel=hdl_toplevel,
             )
         )
         if profile
@@ -240,6 +308,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     plusargs = sim_args.plusargs
     test_args = sim_args.test_args
     pre_cmd = sim_args.pre_cmd
+    sources.extend(sim_args.sources)
 
     runner = get_runner(simulator)
     runner.build(

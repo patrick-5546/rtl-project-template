@@ -7,3 +7,10 @@ build/
 work/
 
 transcript
+
+# Verdi/VCS transients written to the invocation directory
+verdiLog/
+vdCovLog/
+vdCov.conf
+novas.rc
+novas.conf

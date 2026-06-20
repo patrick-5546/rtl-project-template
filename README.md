@@ -1,9 +1,5 @@
 # FPGA Project Template
 
-A FPGA project template using SystemVerilog, cocotb, Verilator, Questa,
-GTKWave, Surfer, uv, Ruff, ty, basedpyright, markdownlint-cli2, pytest, and
-Verible.
-
 ## Contents
 
 - `rtl/top.sv`: a parameterized counter top module.
@@ -11,8 +7,7 @@ Verible.
 - `rtl/sources.vf`: source list consumed by the Makefile and cocotb runner.
 - `tests/runner.py`: shared cocotb test runner; provides `build_and_test()` so
   each test file only specifies its DUT.
-- `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest with
-  Verilator or Questa.
+- `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest.
 - `tests/coverage_top.py`: Python functional coverage mirroring the SV
   covergroup in `rtl/top_abv.sv`, using cocotb-coverage.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
@@ -91,16 +86,17 @@ Enable assertions with `ABV=1` (see `make help`).
 
 `make coverage` runs Verilator with line, toggle, FSM, and `cover property`
 coverage, enables `ABV` automatically, and writes an LCOV HTML report; the same
-`coverage SIM=<sim>` pattern works for Questa. See `make help` for the
+`coverage SIM=<sim>` pattern works for Questa and VCS. See `make help` for the
 `coverage`, `open-coverage`, and `open-coverage-html` targets and the
 `HTML_VIEWER` override (e.g. `wslview` on WSL, which needs wslu). `open-coverage`
-opens a simulator's native GUI coverage viewer where one exists (Questa);
-Verilator has none, so use `open-coverage-html` for it.
+opens a simulator's native GUI coverage viewer where one exists (Questa, and
+VCS via Verdi); Verilator has none, so use `open-coverage-html` for it.
 
-Neither simulator collects SystemVerilog covergroup data — Verilator parses but
-ignores the syntax, and the Questa Starter Edition requires a paid
-`svverification` license — so the cocotb-coverage mirror covers this gap on all
-simulators. See the [tool comparison](#tool-comparison) for the full breakdown.
+Verilator and Questa do not collect SystemVerilog covergroup data — Verilator
+parses but ignores the syntax, and the Questa Starter Edition requires a paid
+`svverification` license — so the cocotb-coverage mirror covers this gap on
+those simulators. VCS collects SV covergroups natively. See the
+[tool comparison](#tool-comparison) for the full breakdown.
 
 ## Adding a simulator or viewer
 
@@ -132,19 +128,20 @@ The sections below cover optional simulators and viewers.
 | --- | --- | --- |
 | Verilator | Cycle-based | Default tests, lint, and coverage |
 | Questa | Event-based | Optional vendor-style simulation |
+| VCS | Event-based | Optional vendor-style simulation and coverage |
 
 **Coverage breakdown:**
 
-| Metric | Verilator | Questa |
-| --- | --- | --- |
-| Line / statement | ✅ | ✅ |
-| Branch / condition / expression | — | ✅ |
-| Toggle | ✅ | ✅ |
-| FSM | ✅ | ✅ |
-| `cover property` | ✅ (aka user) | ✅ (aka directive) |
-| `assert property` | — | ✅ |
-| Covergroups (SV) | ❌ (excluded) | ❌ (needs license) |
-| Covergroups (cocotb-coverage) | ✅ | ✅ |
+| Metric | Verilator | Questa | VCS |
+| --- | --- | --- | --- |
+| Line / statement | ✅ | ✅ | ✅ |
+| Branch / condition / expression | — | ✅ | ✅ |
+| Toggle | ✅ | ✅ | ✅ |
+| FSM | ✅ | ✅ | ✅ |
+| `cover property` | ✅ (aka user) | ✅ (aka directive) | ✅ |
+| `assert property` | — | ✅ | ✅ |
+| Covergroups (SV) | ❌ (excluded) | ❌ (needs license) | ✅ |
+| Covergroups (cocotb-coverage) | ✅ | ✅ | ✅ |
 
 **Waveform viewers:**
 
@@ -153,6 +150,7 @@ The sections below cover optional simulators and viewers.
 | GTKWave | VCD, FST, GHW | Yes | Somewhat |
 | Surfer | VCD, FST, GHW | No | No |
 | Questa | WLF | Yes | Yes |
+| Verdi | FSDB | Yes | Yes |
 
 Verilator is the default simulator because it is open-source,
 script-friendly, fast, and easy to run in CI.
@@ -162,11 +160,19 @@ and native interactive debug. The free Altera Starter Edition does not
 include the verification features needed for collecting coverage
 on cover groups (aka directives).
 
+VCS is a commercial simulator with full SystemVerilog support; unlike the
+Questa Starter Edition it collects SV covergroups, reports coverage through
+`urg`, and supports source-linked debug in Verdi.
+
 GTKWave is the default waveform viewer. Source code can be viewed and
 annotated with values from the waveform using the RTLBrowse window.
 
 Surfer is a fast, modern waveform viewer. It is still early in its
 development cycle and does not have many features.
+
+Verdi is the waveform viewer and coverage browser for the VCS flow. It reads
+the FSDB dumped during simulation and the `simv.daidir` knowledge database for
+source-linked debug.
 
 ### Surfer
 
@@ -191,6 +197,19 @@ Select Questa with `SIM=questa` (for `test`, `coverage`, `open-coverage`,
 `make help` for these targets and their `TEST`, `TEST_FILTER`, `REBUILD`, `ABV`,
 `QUESTA_WAVE`, and `QUESTA_DO` overrides.
 
+### VCS
+
+VCS is optional. The Makefile drives cocotb's `vcs` runner internally and keeps
+VCS artifacts under `build/vcs/`, separate from the other simulators. It records
+waveforms in Verdi's native FSDB format with source-linked debug, and loads a
+reusable Verdi restore file (`waves/top.rc`) when present. Waveform viewing and
+the coverage GUI both use Verdi, so `vcs` and `verdi` must be on `PATH`.
+
+Select VCS with `SIM=vcs` (for `test`, `coverage`, `open-coverage`,
+`open-coverage-html`) or `VIEWER=verdi` (for `waves`, `open-waves`). See
+`make help` for these targets and their `TEST`, `TEST_FILTER`, `REBUILD`, `ABV`,
+`WAVES`, `VCS_WAVE`, and `VERDI_RC` overrides.
+
 ## Verified environment
 
 This template was verified on Ubuntu 22.04 with these tool versions:
@@ -206,5 +225,7 @@ Python package versions are locked by uv in `uv.lock`.
 | slang | 10.0.0 |
 | Surfer | 0.7.0 |
 | uv | 0.11.8 |
+| VCS | W-2024.09-SP2-7 |
+| Verdi | W-2024.09-SP2-7 |
 | Verible | v0.0-4053-g89d4d98a |
 | Verilator | 5.048 |
