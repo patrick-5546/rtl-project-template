@@ -39,6 +39,17 @@ obvious from those sources.
 - `cocotb-coverage` does not support keyword arguments in sampling function
   calls; always use positional arguments.
 
+### Simulators and viewers
+
+- The generic Make targets (`test`, `waves`, `open-waves`, `coverage`,
+  `open-coverage`, `open-coverage-html`) take the tool as `SIM=<sim>` or
+  `VIEWER=<viewer>`; tool-specific recipes live in per-tool include files under
+  `mk/sim/<sim>.mk` and `mk/wave/<viewer>.mk`.
+- Adding a simulator means adding both `mk/sim/<sim>.mk` and a matching
+  `SimulatorProfile` in the `tests/runner.py` registry; adding a viewer means
+  adding `mk/wave/<viewer>.mk` (which must declare `WAVE_SIM`). Keep the two
+  sides of a simulator in sync.
+
 ## Gotchas
 
 - Python is pinned to 3.13 (`.python-version`) because cocotb does not support
@@ -47,8 +58,10 @@ obvious from those sources.
   `ruff`/`ty`/`pytest`.
 - Override the Questa GUI executable with `VSIM`, not `MODELSIM`; Questa treats
   `MODELSIM` as a `modelsim.ini` environment variable.
-- Build/test env-var defaults (e.g. `SIM`, `BUILD_DIR`, `REBUILD`) live in both
-  the `Makefile` and `tests/runner.py`; keep them in sync when changing a
+- Build/test env-var defaults are split: shared ones (e.g. `SIM`, `REBUILD`)
+  live in the `Makefile`, simulator-specific ones (e.g. `BUILD_DIR`) in
+  `mk/sim/<sim>.mk`, and the matching cocotb build/test args in the
+  `tests/runner.py` `SIMULATORS` registry; keep them in sync when changing a
   default.
 - Do not commit files from `build/`, and do not add new tools unless necessary
   for the requested change.

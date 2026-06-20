@@ -17,12 +17,12 @@ Verible.
   covergroup in `rtl/top_abv.sv`, using cocotb-coverage.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
 - `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
-- `.surfer/config.toml`: repo-local Surfer configuration.
+- `.surfer/config.toml`: Surfer configuration.
 - `Makefile`: common commands for formatting, linting, type checking,
   simulation, and waveform viewing.
-- `waves/top.surf.ron`: reusable Surfer signal list and layout state.
-- `waves/top.gtkw`: reusable GTKWave save file.
-- `waves/top.do`: reusable Questa wave layout.
+- `mk/sim/<sim>.mk`, `mk/wave/<viewer>.mk`: per-tool Makefile profiles selected
+  by `SIM=` and `VIEWER=` (see [Adding a simulator or viewer](#adding-a-simulator-or-viewer)).
+- `waves/`: reusable per-viewer wave layouts.
 
 Generated simulator artifacts are ignored by Git and should stay under `build/`.
 
@@ -64,6 +64,14 @@ existing simulator build for faster debug loops instead of rebuilding. The wave
 targets also prepare GTKWave's RTL-browser support, so signals link back to
 source, and load a reusable signal/layout file (`waves/top.gtkw`) when present.
 
+The same handful of targets work for every tool: pass the simulator as
+`SIM=<sim>` to `test`, `coverage`, `open-coverage`, and `open-coverage-html`,
+and the waveform viewer as `VIEWER=<viewer>` to `waves` and `open-waves`. Both
+default to the Verilator/GTKWave flow, so `make test` and `make waves` need no
+arguments. `make help` lists the available simulators and viewers, and
+[Adding a simulator or viewer](#adding-a-simulator-or-viewer) explains how to
+extend them.
+
 See `make help` for the `test`, `waves`, and `open-waves` targets and their
 `TEST`, `TEST_FILTER`, `REBUILD`, `WAVE`, and `GTKWAVE_SAVE` overrides.
 
@@ -83,14 +91,34 @@ Enable assertions with `ABV=1` (see `make help`).
 
 `make coverage` runs Verilator with line, toggle, FSM, and `cover property`
 coverage, enables `ABV` automatically, and writes an LCOV HTML report; the same
-`coverage-<sim>` pattern works for Questa. See `make help` for the coverage and
-`open-coverage-*` targets and the `HTML_VIEWER` override (e.g. `wslview` on WSL,
-which needs wslu).
+`coverage SIM=<sim>` pattern works for Questa. See `make help` for the
+`coverage`, `open-coverage`, and `open-coverage-html` targets and the
+`HTML_VIEWER` override (e.g. `wslview` on WSL, which needs wslu). `open-coverage`
+opens a simulator's native GUI coverage viewer where one exists (Questa);
+Verilator has none, so use `open-coverage-html` for it.
 
 Neither simulator collects SystemVerilog covergroup data — Verilator parses but
 ignores the syntax, and the Questa Starter Edition requires a paid
 `svverification` license — so the cocotb-coverage mirror covers this gap on all
 simulators. See the [tool comparison](#tool-comparison) for the full breakdown.
+
+## Adding a simulator or viewer
+
+Tool-specific behavior lives in small per-tool Makefile profiles, so the generic
+targets (`test`, `waves`, `coverage`, ...) stay the same as the tool set grows:
+
+- `mk/sim/<sim>.mk` is included when `SIM=<sim>`. It sets the build directory,
+  wave-file path, and coverage variables, and provides the `coverage`,
+  `open-coverage`, and `open-coverage-html` recipes.
+- `mk/wave/<viewer>.mk` is included when `VIEWER=<viewer>`. It declares
+  `WAVE_SIM` (the simulator whose wave format it reads) and provides the `waves`
+  and `open-waves` recipes.
+
+To add a simulator, copy an existing `mk/sim/*.mk`, adjust it, and add a matching
+`SimulatorProfile` to the registry in `tests/runner.py` (the profile builds the
+cocotb runner's per-simulator build/test arguments). To add a viewer, copy an
+existing `mk/wave/*.mk`. `make help` discovers both automatically, and an unknown
+`SIM`/`VIEWER` is rejected with the list of available tools.
 
 ## Optional tools
 
@@ -146,8 +174,9 @@ Surfer is an optional, modern waveform viewer that reads the same Verilator VCD
 as GTKWave. Install it from the
 [Surfer install guide](https://docs.surfer-project.org/book/#installing-a-specific-version);
 the [user guide](https://docs.surfer-project.org/book/) documents the controls.
-`make waves-surfer` loads a reusable layout (`waves/top.surf.ron`) when present.
-See `make help` for the Surfer targets and their `WAVE` and `STATE` overrides.
+`make waves VIEWER=surfer` loads a reusable layout (`waves/top.surf.ron`) when
+present. See `make help` for the `VIEWER=surfer` targets and their `WAVE` and
+`STATE` overrides.
 
 ### Questa
 
@@ -157,9 +186,10 @@ the native WLF format with source-linked debug (double-click a signal to find
 its RTL driver), and loads a reusable `.do` layout (`waves/top.do`) when
 present. Local install docs are in `$HOME/altera_lite/25.1std/questa_fse/docs`.
 
-See `make help` for the `test-questa`, `waves-questa`, and `open-waves-questa`
-targets and their `TEST`, `TEST_FILTER`, `REBUILD`, `ABV`, `QUESTA_WAVE`, and
-`QUESTA_DO` overrides.
+Select Questa with `SIM=questa` (for `test`, `coverage`, `open-coverage`,
+`open-coverage-html`) or `VIEWER=questa` (for `waves`, `open-waves`). See
+`make help` for these targets and their `TEST`, `TEST_FILTER`, `REBUILD`, `ABV`,
+`QUESTA_WAVE`, and `QUESTA_DO` overrides.
 
 ## Verified environment
 

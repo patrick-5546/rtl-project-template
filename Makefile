@@ -3,34 +3,13 @@
 # flags below are mirrored in tests/runner.py and must be kept in sync.
 UV ?= uv
 PYTEST ?= $(UV) run pytest -s
-SIM ?= verilator
-QUESTA_SIM ?= questa
-# Build output directories; BUILD_DIR auto-selects based on SIM.
-VERILATOR_BUILD_DIR ?= build/verilator
-QUESTA_BUILD_DIR ?= build/questa
-BUILD_DIR ?= $(if $(filter $(QUESTA_SIM),$(SIM)),$(QUESTA_BUILD_DIR),$(VERILATOR_BUILD_DIR))
-SURFER ?= surfer
-GTKWAVE ?= gtkwave
-GTKWAVE_ARGS ?= -o
-JSON2STEMS ?= json2stems
 MARKDOWNLINT ?= markdownlint-cli2
 SLANG ?= slang
 SLANG_TIDY ?= slang-tidy
-VSIM ?= vsim
-VCOVER ?= vcover
 HTML_VIEWER ?= xdg-open
-# Waveform files, viewer state, and GTKWave RTL-browser stems.
-WAVE ?= $(VERILATOR_BUILD_DIR)/dump.vcd
-QUESTA_WAVE ?= $(QUESTA_BUILD_DIR)/vsim.wlf
-STATE ?= waves/top.surf.ron
-GTKWAVE_SAVE ?= waves/top.gtkw
-GTKWAVE_STEMS_TOP ?= top
-GTKWAVE_STEMS_DIR ?= $(VERILATOR_BUILD_DIR)/rtlbrowse
-GTKWAVE_STEMS ?= $(GTKWAVE_STEMS_DIR)/top.stems
-GTKWAVE_STEMS_JSON ?= $(GTKWAVE_STEMS_DIR)/V$(GTKWAVE_STEMS_TOP).tree.json
-GTKWAVE_STEMS_META ?= $(GTKWAVE_STEMS_DIR)/V$(GTKWAVE_STEMS_TOP).tree.meta.json
-# Questa-specific options.
-QUESTA_DO ?= waves/top.do
+# Passed through to tests/runner.py for every simulator; only meaningful for
+# the Questa flow, but kept defined so the generic `test` recipe (and the
+# runner's boolean parsing) always see a concrete 0/1 value.
 QUESTA_GUI ?= 0
 # Test selection and build flags.
 TEST ?=
@@ -38,19 +17,6 @@ TEST_FILTER ?=
 REBUILD ?= 1
 ABV ?= 0
 HDL_COVERAGE ?= 0
-# Verilator parses but ignores SV covergroups, so exclude them there.
-NO_COVERGROUPS ?= $(if $(filter verilator,$(SIM)),1,0)
-# Coverage outputs and HTML pass/fail thresholds.
-COVERAGE_DAT ?= $(BUILD_DIR)/coverage.dat
-QUESTA_COVERAGE_UCDB ?= $(QUESTA_BUILD_DIR)/coverage.ucdb
-COVERAGE_ANNOTATION_DIR ?= $(BUILD_DIR)/coverage_annotated
-COVERAGE_INFO ?= $(BUILD_DIR)/coverage.info
-COVERAGE_HTML_DIR ?= $(VERILATOR_BUILD_DIR)/coverage_html
-COVERAGE_HTML_INDEX ?= $(COVERAGE_HTML_DIR)/index.html
-COVERAGE_MIN_LINES ?= 90
-COVERAGE_MIN_BRANCHES ?= 90
-QUESTA_COVERAGE_HTML_DIR ?= $(QUESTA_BUILD_DIR)/coverage_html
-QUESTA_COVERAGE_HTML_INDEX ?= $(QUESTA_COVERAGE_HTML_DIR)/index.html
 # SystemVerilog source list (see rtl/sources.vf for the file format).
 SV_SOURCES_FILE ?= rtl/sources.vf
 
@@ -69,18 +35,37 @@ $(foreach dir,$(SV_INCLUDE_DIRS),$(if $(wildcard $(dir)/.),,$(error sources.vf: 
 $(foreach src,$(SV_VERIBLE_EXTRAS),$(if $(wildcard $(src)),,$(error sources.vf: '+verible+$(src)' does not resolve to a file)))
 $(foreach src,$(SV_SOURCES),$(if $(wildcard $(src)),,$(error sources.vf: '$(src)' does not resolve to a file)))
 
-GTKWAVE_STEMS_SOURCES = $(SV_SOURCES)
-GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
+# Tool selection. SIM picks a simulator profile from mk/sim/<SIM>.mk; VIEWER
+# picks a waveform-viewer profile from mk/wave/<VIEWER>.mk. Add a simulator or
+# viewer by dropping a new file in those directories (and, for a simulator, a
+# registry entry in tests/runner.py) -- no edits to this Makefile required.
+SIM ?= verilator
+VIEWER ?= gtkwave
+AVAILABLE_SIMS := $(sort $(patsubst mk/sim/%.mk,%,$(wildcard mk/sim/*.mk)))
+AVAILABLE_VIEWERS := $(sort $(patsubst mk/wave/%.mk,%,$(wildcard mk/wave/*.mk)))
 
-.PHONY: all clean coverage coverage-questa format gtkwave-stems help lint \
+ifeq ($(filter $(VIEWER),$(AVAILABLE_VIEWERS)),)
+$(error Unknown VIEWER '$(VIEWER)'. Available: $(AVAILABLE_VIEWERS))
+endif
+# Include the viewer first so WAVE_SIM is known: a waveform belongs to the
+# simulator that produced it, so wave targets must run under the viewer's sim.
+include mk/wave/$(VIEWER).mk
+ifneq ($(filter waves open-waves,$(MAKECMDGOALS)),)
+SIM := $(WAVE_SIM)
+endif
+
+ifeq ($(filter $(SIM),$(AVAILABLE_SIMS)),)
+$(error Unknown SIM '$(SIM)'. Available: $(AVAILABLE_SIMS))
+endif
+include mk/sim/$(SIM).mk
+
+.PHONY: all clean coverage format gtkwave-stems help lint \
 	md-format md-lint \
-	open-coverage-html open-coverage-questa open-coverage-questa-html \
-	open-waves open-waves-questa open-waves-surfer \
+	open-coverage open-coverage-html open-waves \
 	py-format py-format-check py-lint py-lint-all py-type py-lsp \
 	sv-format sv-format-check sv-lint sv-lint-all sv-lint-slang sv-tidy-slang \
 	sync update-py-deps \
-	test test-questa verilator-lint \
-	waves waves-questa waves-surfer
+	test verilator-lint waves
 
 all: lint test
 
@@ -91,29 +76,22 @@ help:
 	@echo "  sync                            Install/update the uv-managed Python env"
 	@echo "  update-py-deps                  Upgrade Python deps (uv lock --upgrade + sync)"
 	@echo ""
-	@echo "Test (default sim: Verilator):"
-	@echo "  test                            Run the full cocotb regression"
+	@echo "Test (default sim: verilator):"
+	@echo "  test [SIM=questa]               Run the full cocotb regression"
 	@echo "  test TEST=enable_high_counts    Run one cocotb test by exact name"
 	@echo "  test TEST_FILTER='enable_.*'    Run cocotb tests matching a regex"
 	@echo "  test REBUILD=0                  Reuse the existing simulator build"
 	@echo "  test ABV=1                      Run with SVA assertions enabled"
 	@echo "  test ABV=1 HDL_COVERAGE=1       Instrument coverage without a report"
-	@echo "  test-questa [TEST=...]          Run the regression with Questa"
 	@echo ""
-	@echo "Waveforms:"
-	@echo "  waves [TEST=...]                Run tests, then open GTKWave"
-	@echo "  open-waves                      Open the existing waveform in GTKWave"
-	@echo "  waves-surfer [TEST=...]         Run tests, then open Surfer"
-	@echo "  open-waves-surfer               Open the existing waveform in Surfer"
-	@echo "  waves-questa [TEST=...]         Run tests in the live Questa GUI"
-	@echo "  open-waves-questa               Open the existing WLF in Questa"
+	@echo "Waveforms (default viewer: gtkwave):"
+	@echo "  waves [VIEWER=surfer|questa]    Run tests, then open the waveform viewer"
+	@echo "  open-waves [VIEWER=...]         Open the existing waveform in the viewer"
 	@echo ""
-	@echo "Coverage:"
-	@echo "  coverage                        Run Verilator full coverage + HTML report"
-	@echo "  open-coverage-html              Open the existing Verilator coverage HTML"
-	@echo "  coverage-questa                 Run Questa full coverage + reports"
-	@echo "  open-coverage-questa            Open Questa coverage in the GUI"
-	@echo "  open-coverage-questa-html       Open Questa coverage as HTML"
+	@echo "Coverage (default sim: verilator):"
+	@echo "  coverage [SIM=questa]           Run full coverage + report"
+	@echo "  open-coverage [SIM=questa]      Open coverage in the simulator's GUI viewer"
+	@echo "  open-coverage-html [SIM=...]    Open the coverage HTML report"
 	@echo ""
 	@echo "Quality:"
 	@echo "  lint                            Run all lint/type checks (py, sv, md)"
@@ -122,13 +100,16 @@ help:
 	@echo "  clean                           Remove generated local artifacts"
 	@echo "  help                            Show this message"
 	@echo ""
+	@echo "Tool selection:"
+	@echo "  SIM=<sim>                       Simulator (default verilator); available: $(AVAILABLE_SIMS)"
+	@echo "  VIEWER=<viewer>                 Waveform viewer (default gtkwave); available: $(AVAILABLE_VIEWERS)"
+	@echo ""
 	@echo "Common variables (override as VAR=value):"
-	@echo "  SIM=verilator|questa            Simulator (default verilator)"
 	@echo "  TEST= / TEST_FILTER=            Select one test by exact name / by regex"
 	@echo "  REBUILD=0                       Reuse the existing build instead of rebuilding"
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"
-	@echo "  WAVE= / GTKWAVE_SAVE= / STATE=  Waveform file / GTKWave save / Surfer state"
+	@echo "  WAVE= / GTKWAVE_SAVE= / STATE=  Verilator wave file / GTKWave save / Surfer state"
 	@echo "  QUESTA_WAVE= / QUESTA_DO=       Questa WLF / Questa .do layout"
 	@echo "  HTML_VIEWER=wslview             HTML opener (e.g. wslview on WSL)"
 
@@ -140,7 +121,8 @@ update-py-deps:
 	$(UV) sync
 
 # Build the RTL and run the cocotb tests via pytest. Configuration is passed
-# through to tests/runner.py as environment variables.
+# through to tests/runner.py as environment variables. Simulator-specific
+# values (BUILD_DIR, NO_COVERGROUPS, QUESTA_*, ...) come from mk/sim/$(SIM).mk.
 test:
 	SIM=$(SIM) \
 		BUILD_DIR="$(BUILD_DIR)" QUESTA_WAVE="$(QUESTA_WAVE)" \
@@ -150,13 +132,6 @@ test:
 		SV_SOURCES_FILE="$(SV_SOURCES_FILE)" \
 		QUESTA_GUI="$(QUESTA_GUI)" QUESTA_DO="$(QUESTA_DO)" \
 		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(PYTEST)
-
-test-questa:
-	$(MAKE) test SIM="$(QUESTA_SIM)" BUILD_DIR="$(QUESTA_BUILD_DIR)" \
-		QUESTA_WAVE="$(QUESTA_WAVE)" TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" \
-		REBUILD="$(REBUILD)" \
-		PYTEST="$(UV) run pytest -s --timeout=0" UV="$(UV)" ABV="$(ABV)" \
-		QUESTA_GUI="$(QUESTA_GUI)" QUESTA_DO="$(QUESTA_DO)"
 
 py-format:
 	$(UV) run ruff format .
@@ -206,100 +181,6 @@ sv-lint-all: sv-format-check sv-lint verilator-lint sv-lint-slang sv-tidy-slang
 lint: py-lint-all sv-lint-all md-lint
 
 format: py-format md-format sv-format
-
-coverage:
-	$(MAKE) test SIM=verilator BUILD_DIR="$(VERILATOR_BUILD_DIR)" \
-		ABV=1 HDL_COVERAGE=1 COVERAGE_DAT="$(COVERAGE_DAT)" \
-		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" \
-		PYTEST="$(PYTEST)" UV="$(UV)"
-	rm -rf "$(COVERAGE_ANNOTATION_DIR)"
-	verilator_coverage --annotate "$(COVERAGE_ANNOTATION_DIR)" \
-		--annotate-all --annotate-points --annotate-min 1 --include-reset-arcs \
-		"$(COVERAGE_DAT)"
-	verilator_coverage --write-info "$(COVERAGE_INFO)" \
-		--include-reset-arcs \
-		"$(COVERAGE_DAT)"
-	rm -rf "$(COVERAGE_HTML_DIR)"
-	genhtml --branch-coverage --no-function-coverage --show-details \
-		--legend --title "Verilator coverage" --prefix "$(CURDIR)" \
-		--fail-under-lines $(COVERAGE_MIN_LINES) \
-		--fail-under-branches $(COVERAGE_MIN_BRANCHES) \
-		--output-directory "$(COVERAGE_HTML_DIR)" \
-		"$(COVERAGE_INFO)"
-	@echo "Coverage data: $(COVERAGE_DAT)"
-	@echo "Annotated report: $(COVERAGE_ANNOTATION_DIR)"
-	@echo "HTML report: $(COVERAGE_HTML_INDEX)"
-
-coverage-questa:
-	$(MAKE) test-questa ABV=1 HDL_COVERAGE=1 \
-		COVERAGE_DAT="$(QUESTA_COVERAGE_UCDB)" \
-		QUESTA_ARGS="-extendedtogglemode 1" \
-		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)"
-	$(VCOVER) report -summary "$(QUESTA_COVERAGE_UCDB)"
-	rm -rf "$(QUESTA_COVERAGE_HTML_DIR)"
-	$(VCOVER) report -html -details -output "$(QUESTA_COVERAGE_HTML_DIR)" "$(QUESTA_COVERAGE_UCDB)"
-	@echo "Coverage UCDB: $(QUESTA_COVERAGE_UCDB)"
-	@echo "HTML report: $(QUESTA_COVERAGE_HTML_INDEX)"
-
-open-coverage-questa:
-	@test -f "$(QUESTA_COVERAGE_UCDB)" || { echo "UCDB '$(QUESTA_COVERAGE_UCDB)' not found. Run 'make coverage-questa' first."; exit 1; }
-	$(VSIM) -viewcov "$(QUESTA_COVERAGE_UCDB)"
-
-open-coverage-questa-html:
-	@test -f "$(QUESTA_COVERAGE_HTML_INDEX)" || { echo "HTML report '$(QUESTA_COVERAGE_HTML_INDEX)' not found. Run 'make coverage-questa' first."; exit 1; }
-	$(HTML_VIEWER) "$(QUESTA_COVERAGE_HTML_INDEX)"
-
-open-coverage-html:
-	@test -f "$(COVERAGE_HTML_INDEX)" || { echo "HTML report '$(COVERAGE_HTML_INDEX)' not found. Run 'make coverage' first."; exit 1; }
-	$(HTML_VIEWER) "$(COVERAGE_HTML_INDEX)"
-
-waves: test
-	$(MAKE) open-waves WAVE="$(WAVE)" GTKWAVE_SAVE="$(GTKWAVE_SAVE)" \
-		GTKWAVE="$(GTKWAVE)" GTKWAVE_ARGS="$(GTKWAVE_ARGS)" \
-		GTKWAVE_STEMS="$(GTKWAVE_STEMS)"
-
-open-waves:
-	@test -f "$(WAVE)" || { echo "Waveform '$(WAVE)' not found. Run 'make test' first."; exit 1; }
-	$(MAKE) gtkwave-stems GTKWAVE_STEMS="$(GTKWAVE_STEMS)"
-	if test -f "$(GTKWAVE_SAVE)"; then \
-		$(GTKWAVE) $(GTKWAVE_ARGS) -t "$(GTKWAVE_STEMS)" "$(WAVE)" "$(GTKWAVE_SAVE)"; \
-	else \
-		$(GTKWAVE) $(GTKWAVE_ARGS) -t "$(GTKWAVE_STEMS)" "$(WAVE)"; \
-	fi
-
-waves-surfer: test
-	$(MAKE) open-waves-surfer WAVE="$(WAVE)" STATE="$(STATE)" SURFER="$(SURFER)"
-
-open-waves-surfer:
-	@test -f "$(WAVE)" || { echo "Waveform '$(WAVE)' not found. Run 'make test' first."; exit 1; }
-	if test -f "$(STATE)"; then \
-		$(SURFER) --state-file "$(STATE)" "$(WAVE)"; \
-	else \
-		$(SURFER) "$(WAVE)"; \
-	fi
-
-# Generate GTKWave RTL-browser "stems" so waveform signals link back to source.
-gtkwave-stems:
-	mkdir -p "$(GTKWAVE_STEMS_DIR)" "$(dir $(GTKWAVE_STEMS))"
-	verilator -Wno-fatal --json-only --bbox-sys --timing --sv \
-		--top-module "$(GTKWAVE_STEMS_TOP)" --Mdir "$(GTKWAVE_STEMS_DIR)" \
-		$(SV_INCLUDE_FLAGS) $(GTKWAVE_STEMS_DEFINES) $(GTKWAVE_STEMS_SOURCES)
-	$(JSON2STEMS) "$(GTKWAVE_STEMS_META)" "$(GTKWAVE_STEMS_JSON)" "$(GTKWAVE_STEMS)"
-	@echo "GTKWave stems: $(GTKWAVE_STEMS)"
-
-waves-questa:
-	$(MAKE) test-questa QUESTA_GUI=1 QUESTA_DO="$(QUESTA_DO)" \
-		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" \
-		QUESTA_ARGS="-voptargs=+acc -debugdb" \
-		QUESTA_WAVE="$(QUESTA_WAVE)" ABV="$(ABV)" UV="$(UV)"
-
-open-waves-questa:
-	@test -f "$(QUESTA_WAVE)" || { echo "Waveform '$(QUESTA_WAVE)' not found. Run 'make test-questa' first."; exit 1; }
-	if test -f "$(QUESTA_DO)"; then \
-		$(VSIM) -view "$(QUESTA_WAVE)" -do "$(QUESTA_DO)"; \
-	else \
-		$(VSIM) -view "$(QUESTA_WAVE)"; \
-	fi
 
 clean:
 	rm -rf build work transcript

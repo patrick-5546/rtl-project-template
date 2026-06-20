@@ -1,9 +1,97 @@
 import os
 import re
 import shlex
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from cocotb_tools.runner import get_runner
+
+
+@dataclass
+class RunConfig:
+    """Inputs the per-simulator profiles use to build their arguments."""
+
+    hdl_coverage: bool
+    gui: bool
+    coverage_dat: Path
+    questa_wave: Path
+    questa_do: Path
+    questa_args: list[str]
+
+
+@dataclass
+class SimArgs:
+    """Per-simulator arguments handed to the cocotb runner."""
+
+    build_args: list[str] = field(default_factory=list)
+    plusargs: list[str] = field(default_factory=list)
+    test_args: list[str] = field(default_factory=list)
+    pre_cmd: list[str] | None = None
+
+
+class SimulatorProfile:
+    """Base class for per-simulator build/test argument construction.
+
+    Add a simulator by subclassing this, setting ``name`` (and the
+    ``supports_*`` capability flags), implementing :meth:`configure`, and adding
+    an instance to ``SIMULATORS``. This is the Python mirror of the per-tool
+    Makefile profiles in ``mk/sim/<name>.mk``. Simulators that cocotb supports
+    but that have no profile here still run with default arguments.
+    """
+
+    name: str = ""
+    supports_coverage: bool = False
+    supports_gui: bool = False
+
+    def configure(self, cfg: RunConfig) -> SimArgs:
+        return SimArgs()
+
+
+class VerilatorProfile(SimulatorProfile):
+    name = "verilator"
+    supports_coverage = True
+
+    def configure(self, cfg: RunConfig) -> SimArgs:
+        args = SimArgs()
+        if cfg.hdl_coverage:
+            args.build_args.append("--coverage")
+            args.plusargs.append(f"+verilator+coverage+file+{cfg.coverage_dat}")
+        return args
+
+
+class QuestaProfile(SimulatorProfile):
+    name = "questa"
+    supports_coverage = True
+    supports_gui = True
+
+    def configure(self, cfg: RunConfig) -> SimArgs:
+        args = SimArgs()
+        if cfg.hdl_coverage:
+            args.build_args.extend(["-cover", "bcesfx"])
+        cfg.questa_wave.parent.mkdir(parents=True, exist_ok=True)
+        args.test_args = [
+            *cfg.questa_args,
+            "-wlf",
+            str(cfg.questa_wave),
+            "-nowlfdeleteonquit",
+        ]
+        if cfg.hdl_coverage:
+            args.test_args.append("-coverage")
+        if cfg.gui:
+            gui_commands = ["log -recursive /*", "run -all"]
+            if cfg.hdl_coverage:
+                gui_commands.insert(0, f"coverage save -onexit {cfg.coverage_dat}")
+            if cfg.questa_do.is_file():
+                gui_commands.append(f"source {{{cfg.questa_do.as_posix()}}}")
+            args.pre_cmd = ["; ".join(gui_commands)]
+        elif cfg.hdl_coverage:
+            args.pre_cmd = [f"coverage save -onexit {cfg.coverage_dat}"]
+        return args
+
+
+SIMULATORS: dict[str, SimulatorProfile] = {
+    profile.name: profile for profile in (VerilatorProfile(), QuestaProfile())
+}
 
 
 def env_flag(name: str, *, default: bool) -> bool:
@@ -117,10 +205,13 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
         raise ValueError("Set either TEST or TEST_FILTER, not both.")
     if selected_test:
         test_filter = rf"(^|.*\.){re.escape(selected_test)}$"
-    if hdl_coverage and simulator not in ("verilator", "questa"):
-        raise ValueError("HDL_COVERAGE=1 is supported for the Verilator and Questa flows.")
-    if questa_gui and simulator != "questa":
-        raise ValueError("QUESTA_GUI=1 is supported for the Questa flow.")
+    profile = SIMULATORS.get(simulator)
+    if hdl_coverage and not (profile and profile.supports_coverage):
+        supported = ", ".join(sorted(n for n, p in SIMULATORS.items() if p.supports_coverage))
+        raise ValueError(f"HDL_COVERAGE=1 is supported for these simulators: {supported}.")
+    if questa_gui and not (profile and profile.supports_gui):
+        supported = ", ".join(sorted(n for n, p in SIMULATORS.items() if p.supports_gui))
+        raise ValueError(f"QUESTA_GUI=1 is supported for these simulators: {supported}.")
 
     sources = [*sv_sources]
     defines: dict[str, object] = {}
@@ -129,36 +220,26 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     if no_covergroups:
         defines["NO_COVERGROUPS"] = 1
 
-    build_args: list[str] = []
-    plusargs: list[str] = []
-    pre_cmd: list[str] | None = None
-    test_args: list[str] = []
     if hdl_coverage:
         coverage_dat.parent.mkdir(parents=True, exist_ok=True)
-        if simulator == "verilator":
-            build_args.append("--coverage")
-            plusargs.append(f"+verilator+coverage+file+{coverage_dat}")
-        elif simulator == "questa":
-            build_args.extend(["-cover", "bcesfx"])
-    if simulator == "questa":
-        questa_wave.parent.mkdir(parents=True, exist_ok=True)
-        test_args = [
-            *shlex.split(os.environ.get("QUESTA_ARGS", "")),
-            "-wlf",
-            str(questa_wave),
-            "-nowlfdeleteonquit",
-        ]
-        if hdl_coverage:
-            test_args.append("-coverage")
-        if questa_gui:
-            gui_commands = ["log -recursive /*", "run -all"]
-            if hdl_coverage:
-                gui_commands.insert(0, f"coverage save -onexit {coverage_dat}")
-            if questa_do.is_file():
-                gui_commands.append(f"source {{{questa_do.as_posix()}}}")
-            pre_cmd = ["; ".join(gui_commands)]
-        elif hdl_coverage:
-            pre_cmd = [f"coverage save -onexit {coverage_dat}"]
+    sim_args = (
+        profile.configure(
+            RunConfig(
+                hdl_coverage=hdl_coverage,
+                gui=questa_gui,
+                coverage_dat=coverage_dat,
+                questa_wave=questa_wave,
+                questa_do=questa_do,
+                questa_args=shlex.split(os.environ.get("QUESTA_ARGS", "")),
+            )
+        )
+        if profile
+        else SimArgs()
+    )
+    build_args = sim_args.build_args
+    plusargs = sim_args.plusargs
+    test_args = sim_args.test_args
+    pre_cmd = sim_args.pre_cmd
 
     runner = get_runner(simulator)
     runner.build(
