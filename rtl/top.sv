@@ -1,3 +1,11 @@
+// top: parameterized counter with synchronous active-low reset and enable.
+//
+// On each rising clk_i edge: count_o clears to zero when rst_ni is asserted
+// (low), increments by one when en_i is high, and otherwise holds its value.
+// It wraps from all-ones back to zero. WIDTH sets the output width.
+//
+// With `+define+ABV`, top_abv.sv is `include`d to add SVA assertions and a
+// covergroup over this module's signals.
 module top #(
     parameter int unsigned WIDTH = 8
 ) (

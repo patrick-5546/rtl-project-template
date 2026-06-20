@@ -6,9 +6,8 @@ Verible.
 
 ## Contents
 
-- `rtl/top.sv`: a parameterized counter/LED-style top module.
-- `rtl/top_abv.sv`: optional assertion-based verification examples for
-  `rtl/top.sv`.
+- `rtl/top.sv`: a parameterized counter top module.
+- `rtl/top_abv.sv`: assertion-based verification examples for `rtl/top.sv`.
 - `rtl/sources.vf`: source list consumed by the Makefile and cocotb runner.
 - `tests/runner.py`: shared cocotb test runner; provides `build_and_test()` so
   each test file only specifies its DUT.
@@ -30,38 +29,14 @@ Generated simulator artifacts are ignored by Git and should stay under `build/`.
 ## Quick start
 
 ```sh
-make sync
-make test
-make lint
+make sync   # install/update the uv-managed Python environment
+make test   # run the full cocotb regression with Verilator
+make lint   # run all lint and type checks
 ```
 
-The default simulation flow is cocotb through pytest with Verilator.
-
-**Setup:**
-
-| Command | Purpose |
-| --- | --- |
-| `make sync` | Install/update the uv-managed Python environment |
-| `make update-py-deps` | Upgrade Python dependencies in `uv.lock` and re-sync |
-
-**Workflow:**
-
-| Command | Purpose |
-| --- | --- |
-| `make test` | Run the full cocotb regression with Verilator |
-| `make coverage` | Run Verilator full coverage and generate reports |
-| `make open-coverage-html` | Open the existing Verilator coverage HTML report |
-| `make waves` | Run tests, then open a fresh waveform in GTKWave |
-| `make open-waves` | Open the existing waveform without rerunning tests |
-
-**Quality:**
-
-| Command | Purpose |
-| --- | --- |
-| `make format` | Format Python, Markdown, and SystemVerilog |
-| `make lint` | Run Ruff, ty, basedpyright, Markdown, Verible, Verilator, slang, slang-tidy checks |
-| `make help` | Show available Makefile targets |
-| `make clean` | Remove generated local artifacts |
+The default simulation flow is cocotb through pytest with Verilator. Run
+`make help` for the full command reference: every target and override variable
+is documented there.
 
 ## Tool installation and Python notes
 
@@ -83,101 +58,39 @@ because the current cocotb release does not support Python 3.14.
 
 ## Default workflow: Verilator and GTKWave
 
-Run the full Verilator regression:
+The default simulation flow is cocotb through pytest with Verilator; waveforms
+open in GTKWave. Select individual tests by exact name or regex, and reuse an
+existing simulator build for faster debug loops instead of rebuilding. The wave
+targets also prepare GTKWave's RTL-browser support, so signals link back to
+source, and load a reusable signal/layout file (`waves/top.gtkw`) when present.
 
-```sh
-make test
-```
+See `make help` for the `test`, `waves`, and `open-waves` targets and their
+`TEST`, `TEST_FILTER`, `REBUILD`, `WAVE`, and `GTKWAVE_SAVE` overrides.
 
-Select one test by exact name or regular expression:
+## Assertion-based verification
 
-```sh
-make test TEST=enable_high_counts
-make test TEST_FILTER='enable_.*'
-```
+`rtl/top_abv.sv` holds optional SVA assertions and a covergroup for
+`rtl/top.sv`. It is a bare-SVA fragment that `top.sv` `` `include ``s under
+`` `ifdef ABV ``; its header comment explains how it is structured and why it
+is a `+verible+` entry in `rtl/sources.vf` rather than a compilation source. A
+Python covergroup mirror in `tests/coverage_top.py` (cocotb-coverage) provides
+the same functional coverage on simulators that cannot collect SV covergroups,
+and must be kept in sync with it.
 
-By default, tests rebuild the simulator before running. For faster debug loops
-after a successful build, reuse the existing simulator build:
-
-```sh
-make test TEST=enable_high_counts REBUILD=0
-```
-
-Use run-then-open targets when you want a fresh waveform:
-
-```sh
-make waves TEST=enable_high_counts
-```
-
-Use open-only targets when you just want to inspect the existing waveform:
-
-```sh
-make open-waves
-```
-
-Override either path if needed:
-
-```sh
-make waves WAVE=build/verilator/other.vcd GTKWAVE_SAVE=waves/other.gtkw
-```
-
-The wave targets also prepare GTKWave's RTL browser support, so source
-browsing is available when using GTKWave's source-navigation menu actions.
-Reusable GTKWave signal/layout state should be saved as `waves/top.gtkw`. If
-that file exists, `make waves` loads it automatically.
-
-## Assertion-based verification examples
-
-`rtl/top_abv.sv` is a bare-SVA fragment (assertions, antecedent and
-behavior covers, covergroup) that `rtl/top.sv` `` `include ``s inside
-`` `ifdef ABV ``. It's pulled in by the preprocessor so it's listed in
-`rtl/sources.vf` as a `+verible+` entry (so Verible still lints and
-formats it) rather than as a compilation source. The covergroup is
-guarded by `` `ifndef NO_COVERGROUPS ``, which the Makefile defines for
-Verilator (which can't collect covergroup data); a Python mirror in
-`tests/coverage_top.py` (cocotb-coverage) provides the same functional
-coverage on all simulators and must be kept in sync with the SV
-covergroup.
-
-Run the regression with assertions enabled:
-
-```sh
-make test ABV=1
-```
+Enable assertions with `ABV=1` (see `make help`).
 
 ## Coverage
 
-Run full coverage (line, toggle, FSM, and `cover property` user coverage):
-
-```sh
-make coverage
-make open-coverage-html
-```
-
-`make coverage` enables ABV automatically so assertions and `cover property`
-checks are included. Override the HTML viewer when needed.
-For WSL, install wslu and use `wslview`.
-
-```sh
-make open-coverage-html HTML_VIEWER=wslview
-```
-
-You can also run with coverage instrumentation without generating reports:
-
-```sh
-make test ABV=1 HDL_COVERAGE=1
-```
-
-The same `make coverage-<sim>` pattern works for Questa. Both simulators
-generate HTML reports; Questa can also open coverage interactively in its GUI
-(`make open-coverage-questa`) or as HTML (`make open-coverage-questa-html`).
+`make coverage` runs Verilator with line, toggle, FSM, and `cover property`
+coverage, enables `ABV` automatically, and writes an LCOV HTML report; the same
+`coverage-<sim>` pattern works for Questa. See `make help` for the coverage and
+`open-coverage-*` targets and the `HTML_VIEWER` override (e.g. `wslview` on WSL,
+which needs wslu).
 
 Neither simulator collects SystemVerilog covergroup data — Verilator parses but
 ignores the syntax, and the Questa Starter Edition requires a paid
-`svverification` license. Python-side covergroups via cocotb-coverage cover
-this gap on all simulators (see [Assertion-based verification
-examples](#assertion-based-verification-examples)). See the
-[tool comparison](#tool-comparison) for a full coverage breakdown.
+`svverification` license — so the cocotb-coverage mirror covers this gap on all
+simulators. See the [tool comparison](#tool-comparison) for the full breakdown.
 
 ## Optional tools
 
@@ -229,54 +142,24 @@ development cycle and does not have many features.
 
 ### Surfer
 
-Surfer is optional and can view the same Verilator VCD used by GTKWave. Install
-it from the [Surfer install guide](https://docs.surfer-project.org/book/#installing-a-specific-version);
-the [user guide](https://docs.surfer-project.org/book/) documents viewer controls.
+Surfer is an optional, modern waveform viewer that reads the same Verilator VCD
+as GTKWave. Install it from the
+[Surfer install guide](https://docs.surfer-project.org/book/#installing-a-specific-version);
+the [user guide](https://docs.surfer-project.org/book/) documents the controls.
+`make waves-surfer` loads a reusable layout (`waves/top.surf.ron`) when present.
+See `make help` for the Surfer targets and their `WAVE` and `STATE` overrides.
 
-```sh
-make waves-surfer
-make waves-surfer TEST=enable_high_counts
-make open-waves-surfer
-```
+### Questa
 
-Reusable Surfer signal/layout state should be saved as `waves/top.surf.ron`. If
-that file exists, `make waves-surfer` loads it automatically. Override either
-path if needed:
+Questa is optional. The Makefile drives cocotb's `questa` runner internally and
+keeps Questa artifacts under `build/questa/`, separate from Verilator's. It uses
+the native WLF format with source-linked debug (double-click a signal to find
+its RTL driver), and loads a reusable `.do` layout (`waves/top.do`) when
+present. Local install docs are in `$HOME/altera_lite/25.1std/questa_fse/docs`.
 
-```sh
-make waves-surfer WAVE=build/verilator/other.vcd STATE=waves/other.surf.ron
-```
-
-### Questa usage
-
-Questa is optional. The Makefile uses cocotb's `questa` runner internally and
-keeps Questa artifacts separate from Verilator artifacts under
-`build/questa/`. Local documentation for this install is in
-`$HOME/altera_lite/25.1std/questa_fse/docs`.
-
-Run the same regression with Questa:
-
-```sh
-make test-questa
-```
-
-Target-specific Questa runs use the same test selection variables:
-`TEST`, `TEST_FILTER`, `REBUILD`, and `ABV`.
-
-Questa uses its native WLF waveform format. Use `make waves-questa` for a
-live GUI simulation with source-linked debug
-(double-clicking a signal to find its RTL driver). Use `make open-waves-questa`
-to inspect an existing WLF without rerunning simulation.
-
-Reusable Questa wave layouts can be saved as a `.do` file such as
-`waves/top.do`. If that file exists, `make waves-questa` sources it in the
-live GUI after `run -all`, and `make open-waves-questa` loads it when opening
-an existing WLF. Override the WLF or `.do` path if needed:
-
-```sh
-make waves-questa QUESTA_DO=waves/other.do
-make open-waves-questa QUESTA_WAVE=build/questa/other.wlf QUESTA_DO=waves/other.do
-```
+See `make help` for the `test-questa`, `waves-questa`, and `open-waves-questa`
+targets and their `TEST`, `TEST_FILTER`, `REBUILD`, `ABV`, `QUESTA_WAVE`, and
+`QUESTA_DO` overrides.
 
 ## Verified environment
 

@@ -1,3 +1,10 @@
+# SystemVerilog source list (Verilator command-file syntax). Consumed by the
+# Makefile and tests/runner.py. Each non-comment, non-blank line is one of:
+#   <path>           a compilation source (Verilator/slang/cocotb and Verible)
+#   +incdir+<dir>    a preprocessor include search directory
+#   +verible+<file>  a Verible-only file: linted/formatted but not compiled
+#                    (for bare-SVA fragments that are `include`d elsewhere)
+# Every referenced path is validated to exist when this file is parsed.
 +incdir+rtl
 +verible+rtl/top_abv.sv
 rtl/top.sv
