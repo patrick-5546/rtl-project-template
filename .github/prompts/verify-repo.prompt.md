@@ -47,8 +47,7 @@ Run the Questa regression (block these if Questa is not installed):
   `QUESTA_GUI`, `QUESTA_WAVE`, `QUESTA_DO`, `SV_SOURCES_FILE`,
   `COVERAGE_DAT`) between the Makefile and
   `tests/runner.py`.
-- Verify every prek hook calls a valid Makefile target and that all
-  lint sub-targets are covered.
+- Verify that all lint sub-targets are covered.
 - Verify `rtl/sources.vf` lists files that exist,
   and every `.sv` file in `rtl/` appears in it.
 - Confirm `.gitignore` covers `build/`, `work/`, and transient files.

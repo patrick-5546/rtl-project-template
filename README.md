@@ -17,7 +17,6 @@ Verible.
 - `tests/coverage_top.py`: Python functional coverage mirroring the SV
   covergroup in `rtl/top_abv.sv`, using cocotb-coverage.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
-- `prek.toml`: local hooks that reuse the repository's lint and type-check targets.
 - `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
 - `.surfer/config.toml`: repo-local Surfer configuration.
 - `Makefile`: common commands for formatting, linting, type checking,
@@ -32,7 +31,6 @@ Generated simulator artifacts are ignored by Git and should stay under `build/`.
 
 ```sh
 make sync
-make prek-install
 make test
 make lint
 ```
@@ -45,8 +43,6 @@ The default simulation flow is cocotb through pytest with Verilator.
 | --- | --- |
 | `make sync` | Install/update the uv-managed Python environment |
 | `make update-py-deps` | Upgrade Python dependencies in `uv.lock` and re-sync |
-| `make prek-install` | Install the Git pre-commit hook |
-| `make prek-run` | Run all prek hooks manually |
 
 **Workflow:**
 
@@ -66,11 +62,6 @@ The default simulation flow is cocotb through pytest with Verilator.
 | `make lint` | Run Ruff, ty, basedpyright, Markdown, Verible, Verilator, slang, slang-tidy checks |
 | `make help` | Show available Makefile targets |
 | `make clean` | Remove generated local artifacts |
-
-The prek hooks call the existing Makefile lint and type-check targets.
-They do not run simulation or waveform viewers; use `make test` and the
-optional-flow targets for those. See the
-[prek documentation](https://prek.j178.dev/) for hook usage details.
 
 ## Tool installation and Python notes
 
@@ -291,8 +282,7 @@ make open-waves-questa QUESTA_WAVE=build/questa/other.wlf QUESTA_DO=waves/other.
 
 This template was verified on Ubuntu 22.04 with these tool versions:
 
-Python package versions, including cocotb, prek, pytest, Ruff, ty, and
-basedpyright, are locked by uv in `uv.lock`.
+Python package versions are locked by uv in `uv.lock`.
 
 | Tool | Verified version |
 | --- | --- |

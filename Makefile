@@ -1,5 +1,4 @@
 UV ?= uv
-PREK ?= $(UV) run prek
 PYTEST ?= $(UV) run pytest -s
 SIM ?= verilator
 QUESTA_SIM ?= questa
@@ -65,7 +64,6 @@ GTKWAVE_STEMS_DEFINES = $(if $(filter 1 true yes on,$(ABV)),+define+ABV)
 	md-format md-lint \
 	open-coverage-html open-coverage-questa open-coverage-questa-html \
 	open-waves open-waves-questa open-waves-surfer \
-	prek-install prek-run \
 	py-format py-format-check py-lint py-lint-all py-type py-lsp \
 	sv-format sv-format-check sv-lint sv-lint-all sv-lint-slang sv-tidy-slang \
 	sync update-py-deps \
@@ -94,8 +92,6 @@ help:
 	@echo "  make open-waves                               Open existing waveform in GTKWave"
 	@echo "  make open-waves-surfer                        Open existing waveform in Surfer"
 	@echo "  make open-waves-questa                        Open existing WLF in Questa"
-	@echo "  make prek-install                             Install the Git pre-commit hook"
-	@echo "  make prek-run                                 Run all prek hooks"
 	@echo "  make lint                                     Run all lint/type checks"
 	@echo "  make format                                   Format Python, Markdown, and SystemVerilog"
 	@echo "  make sync                                     Run uv sync"
@@ -108,12 +104,6 @@ sync:
 update-py-deps:
 	$(UV) lock --upgrade
 	$(UV) sync
-
-prek-install:
-	$(PREK) install
-
-prek-run:
-	$(PREK) run --all-files
 
 test:
 	SIM=$(SIM) \
