@@ -27,11 +27,9 @@ timeout = 30
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
 
 [tool.ruff.lint]
-select = ["B", "E", "F", "I", "SIM", "UP"]
+extend-select = ["B", "E501", "I", "SIM", "UP"]
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
-pythonVersion = "3.13"
