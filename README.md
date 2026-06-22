@@ -26,50 +26,37 @@ Generated simulator artifacts are ignored by Git and should stay under `build/`.
 
 ```sh
 make sync   # install/update the uv-managed Python environment
-make test   # run the full cocotb regression with Verilator
+make test   # run the full cocotb regression
 make lint   # run all lint and type checks
 ```
 
-The default simulation flow is cocotb through pytest with Verilator. Run
-`make help` for the full command reference: every target and override variable
-is documented there.
+The simulation flow is cocotb through pytest. The same handful of targets work
+for every tool: pass the simulator as `SIM=<sim>` to `test`, `coverage`,
+`open-coverage`, and `open-coverage-html`, and the waveform viewer as
+`VIEWER=<viewer>` to `waves` and `open-waves`. Select individual tests by exact
+name or regex, and reuse an existing simulator build for faster debug loops
+instead of rebuilding. Run `make help` for the full command reference: every
+target and override variable, plus the available simulators and viewers, is
+documented there.
 
 ## Tool installation and Python notes
 
-Install the default external command-line tools before using the main
-Verilator/GTKWave workflow. Python packages are managed by uv, but Verilator,
-GTKWave, Verible, slang, LCOV, and markdownlint-cli2 need to be available on
-`PATH`. The local Python version is pinned to `3.13` in `.python-version`
-because the current cocotb release does not support Python 3.14.
+Install the external command-line tools for the simulators and viewers you plan
+to use. Python packages are managed by uv, but Verilator, GTKWave, Surfer,
+Verible, slang, LCOV, and markdownlint-cli2 need to be available on `PATH`. The
+local Python version is pinned to `3.13` in `.python-version` because the
+current cocotb release does not support Python 3.14.
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
-| Verilator | Default simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [User guide](https://verilator.org/guide/latest/) |
+| Verilator | Simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [User guide](https://verilator.org/guide/latest/) |
 | slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | [Releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
 | markdownlint-cli2 | Markdown linting/autofix | [Install](https://github.com/DavidAnson/markdownlint-cli2#install) | [Documentation](https://github.com/DavidAnson/markdownlint-cli2) |
-| GTKWave | Default waveform viewer | [Build from source](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
+| GTKWave | Waveform viewer | [Build from source](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
+| Surfer | Waveform viewer | [Install guide](https://docs.surfer-project.org/book/#installing-a-specific-version) | [User guide](https://docs.surfer-project.org/book/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
-
-## Default workflow: Verilator and GTKWave
-
-The default simulation flow is cocotb through pytest with Verilator; waveforms
-open in GTKWave. Select individual tests by exact name or regex, and reuse an
-existing simulator build for faster debug loops instead of rebuilding. The wave
-targets also prepare GTKWave's RTL-browser support, so signals link back to
-source, and load a reusable signal/layout file (`waves/top.gtkw`) when present.
-
-The same handful of targets work for every tool: pass the simulator as
-`SIM=<sim>` to `test`, `coverage`, `open-coverage`, and `open-coverage-html`,
-and the waveform viewer as `VIEWER=<viewer>` to `waves` and `open-waves`. Both
-default to the Verilator/GTKWave flow, so `make test` and `make waves` need no
-arguments. `make help` lists the available simulators and viewers, and
-[Adding a simulator or viewer](#adding-a-simulator-or-viewer) explains how to
-extend them.
-
-See `make help` for the `test`, `waves`, and `open-waves` targets and their
-`TEST`, `TEST_FILTER`, `REBUILD`, `WAVE`, and `GTKWAVE_SAVE` overrides.
 
 ## Assertion-based verification
 
@@ -120,19 +107,15 @@ in `flow/viewers.py` and register it in `VIEWERS` (declaring its `wave_sim`).
 `make help` lists both automatically, and an unknown `SIM`/`VIEWER` is rejected
 with the list of available tools.
 
-## Optional tools
-
-The sections below cover optional simulators and viewers.
-
-### Tool comparison
+## Tool comparison
 
 **Simulators:**
 
 | Tool | Model | Used here for |
 | --- | --- | --- |
-| Verilator | Cycle-based | Default tests, lint, and coverage |
-| Questa | Event-based | Optional vendor-style simulation |
-| VCS | Event-based | Optional vendor-style simulation and coverage |
+| Verilator | Cycle-based | Tests, lint, and coverage |
+| Questa | Event-based | Vendor-style simulation |
+| VCS | Event-based | Vendor-style simulation and coverage |
 
 **Coverage breakdown:**
 
@@ -156,63 +139,42 @@ The sections below cover optional simulators and viewers.
 | Questa | WLF | Yes | Yes |
 | Verdi | FSDB | Yes | Yes |
 
-Verilator is the default simulator because it is open-source,
-script-friendly, fast, and easy to run in CI.
+Verilator is an open-source, cycle-based simulator that is fast,
+script-friendly, and easy to run in CI.
 
-Questa is a commercial simulator with broad SystemVerilog support
-and native interactive debug. The free Altera Starter Edition does not
-include the verification features needed for collecting coverage
-on cover groups (aka directives).
+Questa is a commercial, event-based simulator with broad SystemVerilog support
+and native interactive debug. The free Altera
+Starter Edition does not include the verification features needed for collecting
+coverage on cover groups (aka directives). Waveforms use the native WLF format
+with source-linked debug (double-click a signal to find its RTL driver) and load
+a reusable `.do` layout (`waves/top.do`) when present; local install docs are
+under `$HOME/altera_lite/25.1std/questa_fse/docs`. Select it with `SIM=questa`
+or `VIEWER=questa` (see `make help` for the `QUESTA_WAVE` and `QUESTA_DO`
+overrides).
 
-VCS is a commercial simulator with full SystemVerilog support; unlike the
-Questa Starter Edition it collects SV covergroups, reports coverage through
-`urg`, and supports source-linked debug in Verdi.
+VCS is a commercial, event-based simulator with full SystemVerilog support.
+Unlike the Questa Starter Edition it collects SV covergroups,
+reports coverage through `urg`, and supports source-linked debug in Verdi. It
+records waveforms in Verdi's native FSDB format and loads a reusable restore
+file (`waves/top.rc`) when present; waveform viewing and the coverage GUI both
+use Verdi, so `vcs` and `verdi` must be on `PATH`. Select it with `SIM=vcs` or
+`VIEWER=verdi` (see `make help` for the `VCS_WAVE`, `VERDI_RC`, and `WAVES=0`
+overrides).
 
-GTKWave is the default waveform viewer. Source code can be viewed and
-annotated with values from the waveform using the RTLBrowse window.
+GTKWave reads Verilator's VCD output and can view and annotate source with
+values from the waveform through its RTLBrowse window; the wave targets prepare
+that RTL-browser support so signals link back to source, and load a reusable
+layout (`waves/top.gtkw`) when present. See `make help` for the `WAVE` and
+`GTKWAVE_SAVE` overrides.
 
-Surfer is a fast, modern waveform viewer. It is still early in its
-development cycle and does not have many features.
+Surfer is a fast, modern waveform viewer that reads the same Verilator VCD as
+GTKWave; it is still early in development and has fewer features.
+`make waves VIEWER=surfer` loads a reusable layout (`waves/top.surf.ron`) when
+present (see `make help` for the `WAVE` and `STATE` overrides).
 
 Verdi is the waveform viewer and coverage browser for the VCS flow. It reads
 the FSDB dumped during simulation and the `simv.daidir` knowledge database for
 source-linked debug.
-
-### Surfer
-
-Surfer is an optional, modern waveform viewer that reads the same Verilator VCD
-as GTKWave. Install it from the
-[Surfer install guide](https://docs.surfer-project.org/book/#installing-a-specific-version);
-the [user guide](https://docs.surfer-project.org/book/) documents the controls.
-`make waves VIEWER=surfer` loads a reusable layout (`waves/top.surf.ron`) when
-present. See `make help` for the `VIEWER=surfer` targets and their `WAVE` and
-`STATE` overrides.
-
-### Questa
-
-Questa is optional. The Makefile drives cocotb's `questa` runner internally and
-keeps Questa artifacts under `build/questa/`, separate from Verilator's. It uses
-the native WLF format with source-linked debug (double-click a signal to find
-its RTL driver), and loads a reusable `.do` layout (`waves/top.do`) when
-present. Local install docs are in `$HOME/altera_lite/25.1std/questa_fse/docs`.
-
-Select Questa with `SIM=questa` (for `test`, `coverage`, `open-coverage`,
-`open-coverage-html`) or `VIEWER=questa` (for `waves`, `open-waves`). See
-`make help` for these targets and their `TEST`, `TEST_FILTER`, `REBUILD`, `ABV`,
-`QUESTA_WAVE`, and `QUESTA_DO` overrides.
-
-### VCS
-
-VCS is optional. The Makefile drives cocotb's `vcs` runner internally and keeps
-VCS artifacts under `build/vcs/`, separate from the other simulators. It records
-waveforms in Verdi's native FSDB format with source-linked debug, and loads a
-reusable Verdi restore file (`waves/top.rc`) when present. Waveform viewing and
-the coverage GUI both use Verdi, so `vcs` and `verdi` must be on `PATH`.
-
-Select VCS with `SIM=vcs` (for `test`, `coverage`, `open-coverage`,
-`open-coverage-html`) or `VIEWER=verdi` (for `waves`, `open-waves`). See
-`make help` for these targets and their `TEST`, `TEST_FILTER`, `REBUILD`, `ABV`,
-`WAVES`, `VCS_WAVE`, and `VERDI_RC` overrides.
 
 ## Verified environment
 

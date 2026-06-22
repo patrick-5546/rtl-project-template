@@ -25,8 +25,6 @@ obvious from those sources.
 
 - Use modern cocotb APIs: `unit="ns"`, not the deprecated `units="ns"`.
 - Keep tests deterministic and focused on externally visible RTL behavior.
-- Verilator is the default simulator; Questa runs via cocotb's `SIM=questa`
-  runner internally.
 - New test files go in `tests/` as `test_<module>.py`. Import `build_and_test`
   from `flow.runner` and add a one-line pytest entry point:
   `build_and_test(hdl_toplevel="<module>", test_module=Path(__file__).stem)`.
@@ -41,8 +39,6 @@ obvious from those sources.
 
 ## Gotchas
 
-- Python is pinned to 3.13 (`.python-version`) because cocotb does not support
-  3.14.
 - Run Python tools through uv (`uv run ...`) or the Makefile targets, never bare
   `ruff`/`ty`/`pytest`.
 - Override the Questa GUI executable with `VSIM`, not `MODELSIM`; Questa treats
