@@ -1,7 +1,9 @@
+import logging
 import os
 import re
 import shlex
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -63,6 +65,52 @@ def run(cmd: list[str]) -> None:
     result = subprocess.run(cmd)
     if result.returncode != 0:
         raise SystemExit(result.returncode)
+
+
+class _CommandEchoFormatter(logging.Formatter):
+    """Render cocotb runner command logs in the project's ``+ <cmd>`` style.
+
+    cocotb's runner logs every subprocess it launches as
+    ``"Running command %s in directory %s"`` (the command is the first log
+    argument); reformat those to match the ``+ <cmd>`` echoes :func:`run`
+    already prints for the coverage/waveform tools. Any other record (e.g.
+    ``"Removing: ..."``) is passed through unchanged, so a future cocotb wording
+    change still prints the command rather than hiding it.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        if (
+            record.msg == "Running command %s in directory %s"
+            and isinstance(record.args, tuple)
+            and record.args
+        ):
+            return f"+ {record.args[0]}"
+        return record.getMessage()
+
+
+def echo_runner_commands(runner_log: logging.Logger) -> None:
+    """Make cocotb's actual build/sim subprocess commands print to stdout.
+
+    cocotb logs each command it runs (verilator, make, the simulator
+    executable, vsim, vcs/simv) at ``INFO``, but with no INFO handler configured
+    those records are dropped by Python's default WARNING-only "last resort"
+    handler (and pytest's log capture hides them too). Attach a stdout handler
+    so every shell command is visible, matching the ``+ <cmd>`` echoes used for
+    the coverage and waveform tools. ``propagate`` is disabled so the records
+    bypass pytest's capture and are not printed twice.
+
+    Idempotent: cocotb's per-simulator loggers are process-global singletons and
+    :func:`build_and_test` runs once per test file, so only one handler is ever
+    attached.
+    """
+    marker = "_flow_command_echo"
+    if any(getattr(handler, marker, False) for handler in runner_log.handlers):
+        return
+    handler = logging.StreamHandler(sys.stdout)
+    setattr(handler, marker, True)
+    handler.setFormatter(_CommandEchoFormatter())
+    runner_log.addHandler(handler)
+    runner_log.propagate = False
 
 
 def require(path: Path, hint: str, *, kind: str = "file") -> None:
@@ -237,6 +285,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     sources.extend(sim_args.sources)
 
     runner = get_runner(simulator)
+    echo_runner_commands(runner.log)
     runner.build(
         sources=sources,
         includes=sv_include_dirs,
