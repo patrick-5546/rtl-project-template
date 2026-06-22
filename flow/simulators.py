@@ -74,6 +74,12 @@ class SimulatorProfile:
     # Questa's GUI flow and VCS's slower build/run should not be killed by
     # pytest-timeout.
     disable_pytest_timeout: bool = False
+    # Some simulators (e.g. Questa's ``vsim``) run cocotb's Python embedded
+    # behind their own transcript, so cocotb's ``sys.stdout.isatty()`` color
+    # check fails and it strips ANSI -- unlike Verilator/VCS, which run a native
+    # executable on the real terminal. ``build_and_test`` re-enables color for
+    # these on a TTY so the output matches.
+    forces_ansi_on_tty: bool = False
 
     def configure(self, cfg: RunConfig) -> SimArgs:
         return SimArgs()
@@ -185,6 +191,7 @@ class QuestaProfile(SimulatorProfile):
     supports_coverage = True
     supports_gui = True
     disable_pytest_timeout = True
+    forces_ansi_on_tty = True
 
     def configure(self, cfg: RunConfig) -> SimArgs:
         args = SimArgs()

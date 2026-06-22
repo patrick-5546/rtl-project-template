@@ -296,6 +296,20 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
         always=rebuild,
         waves=True,
     )
+    extra_env = {"PYTHONPATH": pythonpath}
+    # vsim wraps cocotb's stdout (its transcript), so cocotb's TTY check fails
+    # and it strips ANSI color that Verilator/VCS keep. On a real terminal (not
+    # GUI, and only if the user hasn't pinned color via COCOTB_ANSI_OUTPUT or
+    # NO_COLOR), force color so Questa output matches the other simulators.
+    if (
+        profile
+        and profile.forces_ansi_on_tty
+        and not questa_gui
+        and sys.stdout.isatty()
+        and "COCOTB_ANSI_OUTPUT" not in os.environ
+        and not os.environ.get("NO_COLOR")
+    ):
+        extra_env["COCOTB_ANSI_OUTPUT"] = "1"
     runner.test(
         hdl_toplevel=hdl_toplevel,
         test_module=test_module,
@@ -303,7 +317,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
         build_dir=build_dir,
         waves=not questa_gui,
         gui=questa_gui,
-        extra_env={"PYTHONPATH": pythonpath},
+        extra_env=extra_env,
         test_args=test_args,
         plusargs=plusargs,
         pre_cmd=pre_cmd,
