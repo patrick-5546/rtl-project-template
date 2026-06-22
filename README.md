@@ -39,6 +39,10 @@ instead of rebuilding. Run `make help` for the full command reference: every
 target and override variable, plus the available simulators and viewers, is
 documented there.
 
+Linters and formatters run per tool as `<lint|format>-<py|sv|md>-<tool>`
+targets; skip any tool with its `ENABLE_<TOOL>=0` flag (e.g.
+`make lint ENABLE_SLANG=0`).
+
 ## Tool installation and Python notes
 
 Install the external command-line tools for the simulators and viewers you plan
