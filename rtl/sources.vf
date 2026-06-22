@@ -1,5 +1,5 @@
 # SystemVerilog source list (Verilator command-file syntax). Consumed by the
-# Makefile and tests/runner.py. Each non-comment, non-blank line is one of:
+# Makefile and flow/runner.py. Each non-comment, non-blank line is one of:
 #   <path>           a compilation source (Verilator/slang/cocotb and Verible)
 #   +incdir+<dir>    a preprocessor include search directory
 #   +verible+<file>  a Verible-only file: linted/formatted but not compiled

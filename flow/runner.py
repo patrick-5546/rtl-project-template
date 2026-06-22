@@ -1,6 +1,7 @@
 import os
 import re
 import shlex
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -34,134 +35,47 @@ class SimArgs:
     sources: list[Path] = field(default_factory=list)
 
 
-def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
-    """Write a Verdi FSDB dump module into *build_dir* and return its path.
-
-    VCS does not auto-dump waveforms, so (mirroring cocotb's Icarus dump-file
-    approach) we generate a tiny top module that opens an FSDB and dumps the
-    *hdl_toplevel* hierarchy.  The ``+fsdbfile=`` plusarg selects the output
-    path; the ``$fsdb*`` system tasks come from VCS's ``-kdb`` flag, so no
-    Verdi PLI (``novas.tab``/``pli.a``) needs to be linked explicitly.
-
-    The module is bracketed with ``// VCS coverage off``/``on`` pragmas so it is
-    excluded from the ``-cm`` coverage model; reports then reflect the design
-    only, instead of being dragged down by this testbench wrapper.
-    """
-    build_dir.mkdir(parents=True, exist_ok=True)
-    dump_module = build_dir / "cocotb_fsdb_dump.sv"
-    contents = (
-        "// VCS coverage off\n"
-        "module cocotb_fsdb_dump;\n"
-        "  initial begin\n"
-        "    string fsdbfile;\n"
-        '    if (!$value$plusargs("fsdbfile=%s", fsdbfile)) fsdbfile = "dump.fsdb";\n'
-        "    $fsdbDumpfile(fsdbfile);\n"
-        f"    $fsdbDumpvars(0, {hdl_toplevel});\n"
-        f"    $fsdbDumpSVA(0, {hdl_toplevel});\n"
-        "  end\n"
-        "endmodule\n"
-        "// VCS coverage on\n"
-    )
-    # Only rewrite when content changes so the file's mtime stays stable and
-    # REBUILD=0 (cocotb's ``outdated`` mtime check) keeps reusing the build.
-    if not dump_module.is_file() or dump_module.read_text() != contents:
-        dump_module.write_text(contents)
-    return dump_module
-
-
-class SimulatorProfile:
-    """Base class for per-simulator build/test argument construction.
-
-    Add a simulator by subclassing this, setting ``name`` (and the
-    ``supports_*`` capability flags), implementing :meth:`configure`, and adding
-    an instance to ``SIMULATORS``. This is the Python mirror of the per-tool
-    Makefile profiles in ``mk/sim/<name>.mk``. Simulators that cocotb supports
-    but that have no profile here still run with default arguments.
-    """
-
-    name: str = ""
-    supports_coverage: bool = False
-    supports_gui: bool = False
-
-    def configure(self, cfg: RunConfig) -> SimArgs:
-        return SimArgs()
-
-
-class VerilatorProfile(SimulatorProfile):
-    name = "verilator"
-    supports_coverage = True
-
-    def configure(self, cfg: RunConfig) -> SimArgs:
-        args = SimArgs()
-        if cfg.hdl_coverage:
-            args.build_args.append("--coverage")
-            args.plusargs.append(f"+verilator+coverage+file+{cfg.coverage_dat}")
-        return args
-
-
-class QuestaProfile(SimulatorProfile):
-    name = "questa"
-    supports_coverage = True
-    supports_gui = True
-
-    def configure(self, cfg: RunConfig) -> SimArgs:
-        args = SimArgs()
-        if cfg.hdl_coverage:
-            args.build_args.extend(["-cover", "bcesfx"])
-        cfg.questa_wave.parent.mkdir(parents=True, exist_ok=True)
-        args.test_args = [
-            *cfg.questa_args,
-            "-wlf",
-            str(cfg.questa_wave),
-            "-nowlfdeleteonquit",
-        ]
-        if cfg.hdl_coverage:
-            args.test_args.append("-coverage")
-        if cfg.gui:
-            gui_commands = ["log -recursive /*", "run -all"]
-            if cfg.hdl_coverage:
-                gui_commands.insert(0, f"coverage save -onexit {cfg.coverage_dat}")
-            if cfg.questa_do.is_file():
-                gui_commands.append(f"source {{{cfg.questa_do.as_posix()}}}")
-            args.pre_cmd = ["; ".join(gui_commands)]
-        elif cfg.hdl_coverage:
-            args.pre_cmd = [f"coverage save -onexit {cfg.coverage_dat}"]
-        return args
-
-
-class VcsProfile(SimulatorProfile):
-    name = "vcs"
-    supports_coverage = True
-
-    def configure(self, cfg: RunConfig) -> SimArgs:
-        args = SimArgs()
-        # cocotb's VCS runner passes no timescale, so VCS would default to 1 s
-        # precision and reject the ns-scale clock; pin it explicitly.
-        args.build_args.append("-timescale=1ns/1ps")
-        if cfg.waves:
-            cfg.vcs_wave.parent.mkdir(parents=True, exist_ok=True)
-            # -kdb gives both the native $fsdb* tasks and the Verdi source DB;
-            # the generated dump module is an extra top alongside the DUT.
-            args.sources.append(write_fsdb_dump_module(cfg.build_dir, cfg.hdl_toplevel))
-            args.build_args.extend(["-kdb", "-top", "cocotb_fsdb_dump"])
-            args.plusargs.append(f"+fsdbfile={cfg.vcs_wave}")
-        if cfg.hdl_coverage:
-            cm_args = ["-cm", "line+cond+fsm+tgl+branch+assert", "-cm_dir", str(cfg.coverage_dat)]
-            args.build_args.extend(cm_args)
-            args.test_args.extend(cm_args)
-        return args
-
-
-SIMULATORS: dict[str, SimulatorProfile] = {
-    profile.name: profile for profile in (VerilatorProfile(), QuestaProfile(), VcsProfile())
-}
-
-
 def env_flag(name: str, *, default: bool) -> bool:
     value = os.environ.get(name)
     if value is None:
         return default
     return value.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def env_str(name: str, default: str) -> str:
+    """Return environment variable *name*, or *default* when unset/empty.
+
+    Used by the simulator and viewer profiles to make tool executables (``VSIM``,
+    ``VERDI``, ``GTKWAVE``, ``HTML_VIEWER``, ...) overridable from the
+    environment (e.g. ``make ... VERDI=/path/to/verdi``).
+    """
+    value = os.environ.get(name)
+    return value if value else default
+
+
+def run(cmd: list[str]) -> None:
+    """Echo and run *cmd*, raising :class:`SystemExit` on a non-zero exit.
+
+    Shared by the simulator/viewer profiles and the CLI to drive external tools
+    (coverage reporters, waveform viewers) the way the old Makefile recipes did.
+    """
+    print("+ " + shlex.join(cmd), flush=True)
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+
+
+def require(path: Path, hint: str, *, kind: str = "file") -> None:
+    """Exit with a helpful message when *path* (a file or directory) is missing."""
+    ok = path.is_dir() if kind == "dir" else path.is_file()
+    if not ok:
+        raise SystemExit(f"{path} not found. {hint}")
+
+
+def open_html(index: Path, *, hint: str) -> None:
+    """Open an HTML report *index* with ``$HTML_VIEWER`` (default xdg-open)."""
+    require(index, hint)
+    run([env_str("HTML_VIEWER", "xdg-open"), str(index)])
 
 
 def project_path_from_env(name: str, project_dir: Path, default: Path) -> Path:
@@ -230,11 +144,18 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
 
     All other configuration (SIM, BUILD_DIR, TEST, ABV, HDL_COVERAGE,
     QUESTA_GUI, etc.) is read from environment variables, matching the
-    existing Makefile-driven workflow.
+    Makefile-driven workflow. Per-simulator defaults (covergroup support,
+    coverage-artifact path, build/test arguments) come from the matching
+    profile in :mod:`flow.simulators`.
     """
+    # Lazy import: ``flow.simulators`` imports this module, so importing it at
+    # module scope would be circular.
+    from flow.simulators import SIMULATORS
+
     project_dir = Path(__file__).resolve().parents[1]
-    test_dir = Path(__file__).resolve().parent
+    test_dir = project_dir / "tests"
     simulator = os.environ.get("SIM", "verilator")
+    profile = SIMULATORS.get(simulator)
     build_dir = project_path_from_env("BUILD_DIR", project_dir, project_dir / "build" / simulator)
     questa_wave = project_path_from_env(
         "QUESTA_WAVE",
@@ -247,20 +168,25 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
         project_dir / "waves" / f"{hdl_toplevel}.do",
     )
     vcs_wave = project_path_from_env("VCS_WAVE", project_dir, build_dir / "dump.fsdb")
-    pythonpath = os.pathsep.join(filter(None, [str(test_dir), os.environ.get("PYTHONPATH", "")]))
+    # The cocotb sim subprocess loads the test module from ``test_dir`` and must
+    # also import the ``flow`` package (via ``project_dir``); expose both.
+    pythonpath = os.pathsep.join(
+        filter(None, [str(project_dir), str(test_dir), os.environ.get("PYTHONPATH", "")])
+    )
     selected_test = os.environ.get("TEST") or None
     test_filter = os.environ.get("TEST_FILTER") or None
     rebuild = env_flag("REBUILD", default=True)
     abv = env_flag("ABV", default=False)
-    no_covergroups = env_flag("NO_COVERGROUPS", default=False)
+    no_covergroups = env_flag(
+        "NO_COVERGROUPS", default=profile.no_covergroups if profile else False
+    )
     hdl_coverage = env_flag("HDL_COVERAGE", default=False)
     questa_gui = env_flag("QUESTA_GUI", default=False)
     waves_enabled = env_flag("WAVES", default=True)
-    coverage_dat = project_path_from_env(
-        "COVERAGE_DAT",
-        project_dir,
-        build_dir / "coverage.dat",
+    default_coverage = (
+        profile.coverage_data_path(build_dir) if profile else build_dir / "coverage.dat"
     )
+    coverage_dat = project_path_from_env("COVERAGE_DAT", project_dir, default_coverage)
     sv_sources, sv_include_dirs = project_paths_from_list_file(
         "SV_SOURCES_FILE",
         project_dir,
@@ -270,7 +196,6 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
         raise ValueError("Set either TEST or TEST_FILTER, not both.")
     if selected_test:
         test_filter = rf"(^|.*\.){re.escape(selected_test)}$"
-    profile = SIMULATORS.get(simulator)
     if hdl_coverage and not (profile and profile.supports_coverage):
         supported = ", ".join(sorted(n for n, p in SIMULATORS.items() if p.supports_coverage))
         raise ValueError(f"HDL_COVERAGE=1 is supported for these simulators: {supported}.")

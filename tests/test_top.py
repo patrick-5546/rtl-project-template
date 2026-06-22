@@ -4,7 +4,8 @@ from typing import Any
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
-from runner import build_and_test, env_flag
+
+from flow.runner import build_and_test, env_flag
 
 _ABV = env_flag("ABV", default=False)
 

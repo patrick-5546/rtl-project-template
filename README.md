@@ -4,19 +4,20 @@
 
 - `rtl/top.sv`: a parameterized counter top module.
 - `rtl/top_abv.sv`: assertion-based verification examples for `rtl/top.sv`.
-- `rtl/sources.vf`: source list consumed by the Makefile and cocotb runner.
-- `tests/runner.py`: shared cocotb test runner; provides `build_and_test()` so
-  each test file only specifies its DUT.
+- `rtl/sources.vf`: source list.
 - `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest.
 - `tests/coverage_top.py`: Python functional coverage mirroring the SV
   covergroup in `rtl/top_abv.sv`, using cocotb-coverage.
+- `flow/`: the build/run/view flow that the Makefile dispatches to:
+  `runner.py` (cocotb `build_and_test()`), `simulators.py` and `viewers.py`
+  (per-tool profiles), and `cli.py` (the
+  command-line entry point the Makefile calls). See
+  [Adding a simulator or viewer](#adding-a-simulator-or-viewer).
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
 - `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
 - `.surfer/config.toml`: Surfer configuration.
 - `Makefile`: common commands for formatting, linting, type checking,
   simulation, and waveform viewing.
-- `mk/sim/<sim>.mk`, `mk/wave/<viewer>.mk`: per-tool Makefile profiles selected
-  by `SIM=` and `VIEWER=` (see [Adding a simulator or viewer](#adding-a-simulator-or-viewer)).
 - `waves/`: reusable per-viewer wave layouts.
 
 Generated simulator artifacts are ignored by Git and should stay under `build/`.
@@ -100,21 +101,24 @@ those simulators. VCS collects SV covergroups natively. See the
 
 ## Adding a simulator or viewer
 
-Tool-specific behavior lives in small per-tool Makefile profiles, so the generic
+Tool-specific behavior lives in the Python `flow/` package, so the generic
 targets (`test`, `waves`, `coverage`, ...) stay the same as the tool set grows:
 
-- `mk/sim/<sim>.mk` is included when `SIM=<sim>`. It sets the build directory,
-  wave-file path, and coverage variables, and provides the `coverage`,
-  `open-coverage`, and `open-coverage-html` recipes.
-- `mk/wave/<viewer>.mk` is included when `VIEWER=<viewer>`. It declares
-  `WAVE_SIM` (the simulator whose wave format it reads) and provides the `waves`
-  and `open-waves` recipes.
+- `flow/simulators.py` defines a `SimulatorProfile` per simulator: its build
+  directory and coverage-artifact defaults, the cocotb runner build/test
+  arguments, and the `coverage`, `open-coverage`, and `open-coverage-html`
+  behavior.
+- `flow/viewers.py` defines a `ViewerProfile` per viewer: the `wave_sim` whose
+  format it reads, whether it is a live-GUI flow, and the `waves` and
+  `open-waves` behavior.
+- `flow/cli.py` is the dispatcher the Makefile calls; it runs the cocotb
+  regression through pytest and then drives the selected profile.
 
-To add a simulator, copy an existing `mk/sim/*.mk`, adjust it, and add a matching
-`SimulatorProfile` to the registry in `tests/runner.py` (the profile builds the
-cocotb runner's per-simulator build/test arguments). To add a viewer, copy an
-existing `mk/wave/*.mk`. `make help` discovers both automatically, and an unknown
-`SIM`/`VIEWER` is rejected with the list of available tools.
+To add a simulator, subclass `SimulatorProfile` in `flow/simulators.py` and
+register it in the `SIMULATORS` dict. To add a viewer, subclass `ViewerProfile`
+in `flow/viewers.py` and register it in `VIEWERS` (declaring its `wave_sim`).
+`make help` lists both automatically, and an unknown `SIM`/`VIEWER` is rejected
+with the list of available tools.
 
 ## Optional tools
 

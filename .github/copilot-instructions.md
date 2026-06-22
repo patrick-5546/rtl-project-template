@@ -28,7 +28,7 @@ obvious from those sources.
 - Verilator is the default simulator; Questa runs via cocotb's `SIM=questa`
   runner internally.
 - New test files go in `tests/` as `test_<module>.py`. Import `build_and_test`
-  from `runner` and add a one-line pytest entry point:
+  from `flow.runner` and add a one-line pytest entry point:
   `build_and_test(hdl_toplevel="<module>", test_module=Path(__file__).stem)`.
 
 ### Coverage
@@ -39,17 +39,6 @@ obvious from those sources.
 - `cocotb-coverage` does not support keyword arguments in sampling function
   calls; always use positional arguments.
 
-### Simulators and viewers
-
-- The generic Make targets (`test`, `waves`, `open-waves`, `coverage`,
-  `open-coverage`, `open-coverage-html`) take the tool as `SIM=<sim>` or
-  `VIEWER=<viewer>`; tool-specific recipes live in per-tool include files under
-  `mk/sim/<sim>.mk` and `mk/wave/<viewer>.mk`.
-- Adding a simulator means adding both `mk/sim/<sim>.mk` and a matching
-  `SimulatorProfile` in the `tests/runner.py` registry; adding a viewer means
-  adding `mk/wave/<viewer>.mk` (which must declare `WAVE_SIM`). Keep the two
-  sides of a simulator in sync.
-
 ## Gotchas
 
 - Python is pinned to 3.13 (`.python-version`) because cocotb does not support
@@ -58,11 +47,12 @@ obvious from those sources.
   `ruff`/`ty`/`pytest`.
 - Override the Questa GUI executable with `VSIM`, not `MODELSIM`; Questa treats
   `MODELSIM` as a `modelsim.ini` environment variable.
-- Build/test env-var defaults are split: shared ones (e.g. `SIM`, `REBUILD`)
-  live in the `Makefile`, simulator-specific ones (e.g. `BUILD_DIR`) in
-  `mk/sim/<sim>.mk`, and the matching cocotb build/test args in the
-  `tests/runner.py` `SIMULATORS` registry; keep them in sync when changing a
-  default.
+- Build/test configuration is read from environment variables: shared defaults
+  (e.g. `SIM`, `REBUILD`, `ABV`) come from `flow/runner.py`'s `build_and_test`,
+  and simulator-specific defaults (build dir, coverage-artifact path, build/test
+  args) from the matching `SimulatorProfile` in `flow/simulators.py`. The
+  `Makefile` only selects `SIM`/`VIEWER` and forwards command-line overrides
+  through the environment.
 - Do not commit files from `build/`, and do not add new tools unless necessary
   for the requested change.
 - When you change behavior, check whether the README, `make help`, source

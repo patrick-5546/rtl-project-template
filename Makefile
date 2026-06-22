@@ -1,31 +1,25 @@
 # Configuration variables. Override any of these on the command line as
-# VAR=value (run `make help` for the common ones). Defaults for the build/test
-# flags below are mirrored in tests/runner.py and must be kept in sync.
+# VAR=value (run `make help` for the common ones). Simulator and waveform-viewer
+# behavior -- the build/test/coverage/wave commands and their defaults -- lives
+# in the Python `flow/` package, which the sim/wave targets below dispatch to.
 UV ?= uv
-PYTEST ?= $(UV) run pytest -s
 MARKDOWNLINT ?= markdownlint-cli2
 SLANG ?= slang
 SLANG_TIDY ?= slang-tidy
-HTML_VIEWER ?= xdg-open
-# Passed through to tests/runner.py for every simulator; only meaningful for
-# the Questa flow, but kept defined so the generic `test` recipe (and the
-# runner's boolean parsing) always see a concrete 0/1 value.
-QUESTA_GUI ?= 0
-# Test selection and build flags.
-TEST ?=
-TEST_FILTER ?=
-REBUILD ?= 1
-ABV ?= 0
-HDL_COVERAGE ?= 0
-# VCS-only: gate Verdi FSDB dumping (and the -kdb build flag) on. WAVES=0 skips
-# it. Defined here because the generic `test` recipe always passes it through;
-# tests/runner.py only reads it for the VCS flow.
-WAVES ?= 1
-# SystemVerilog source list (see rtl/sources.vf for the file format).
+
+# The flow CLI (flow/cli.py) runs the tests, coverage, and waveform viewers; the
+# sim/wave targets below are thin wrappers around it.
+FLOW := $(UV) run python -m flow.cli
+
+# SystemVerilog source list (see rtl/sources.vf for the file format). Exported
+# so the flow package reads the same list the SV lint/format targets parse below.
 SV_SOURCES_FILE ?= rtl/sources.vf
+export SV_SOURCES_FILE
 
 # Parse sources.vf into compile sources, +incdir+ dirs, and +verible+ extras,
-# then validate (below) that every referenced path exists.
+# then validate (below) that every referenced path exists. The flow package
+# parses the same file for the cocotb runner; this copy serves the SystemVerilog
+# lint/format targets, which must stay usable without the cocotb environment.
 read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1)))
 
 SV_ENTRIES := $(call read_sources,$(SV_SOURCES_FILE))
@@ -39,31 +33,15 @@ $(foreach dir,$(SV_INCLUDE_DIRS),$(if $(wildcard $(dir)/.),,$(error sources.vf: 
 $(foreach src,$(SV_VERIBLE_EXTRAS),$(if $(wildcard $(src)),,$(error sources.vf: '+verible+$(src)' does not resolve to a file)))
 $(foreach src,$(SV_SOURCES),$(if $(wildcard $(src)),,$(error sources.vf: '$(src)' does not resolve to a file)))
 
-# Tool selection. SIM picks a simulator profile from mk/sim/<SIM>.mk; VIEWER
-# picks a waveform-viewer profile from mk/wave/<VIEWER>.mk. Add a simulator or
-# viewer by dropping a new file in those directories (and, for a simulator, a
-# registry entry in tests/runner.py) -- no edits to this Makefile required.
+# Tool selection. SIM picks a simulator profile (flow/simulators.py) for the
+# test/coverage targets; VIEWER picks a viewer profile (flow/viewers.py) for the
+# wave targets. Unknown values are rejected by the flow CLI with the list of
+# available tools. Add a simulator or viewer by registering a profile in those
+# modules -- no edits to this Makefile required.
 SIM ?= verilator
 VIEWER ?= gtkwave
-AVAILABLE_SIMS := $(sort $(patsubst mk/sim/%.mk,%,$(wildcard mk/sim/*.mk)))
-AVAILABLE_VIEWERS := $(sort $(patsubst mk/wave/%.mk,%,$(wildcard mk/wave/*.mk)))
 
-ifeq ($(filter $(VIEWER),$(AVAILABLE_VIEWERS)),)
-$(error Unknown VIEWER '$(VIEWER)'. Available: $(AVAILABLE_VIEWERS))
-endif
-# Include the viewer first so WAVE_SIM is known: a waveform belongs to the
-# simulator that produced it, so wave targets must run under the viewer's sim.
-include mk/wave/$(VIEWER).mk
-ifneq ($(filter waves open-waves,$(MAKECMDGOALS)),)
-SIM := $(WAVE_SIM)
-endif
-
-ifeq ($(filter $(SIM),$(AVAILABLE_SIMS)),)
-$(error Unknown SIM '$(SIM)'. Available: $(AVAILABLE_SIMS))
-endif
-include mk/sim/$(SIM).mk
-
-.PHONY: all clean coverage format gtkwave-stems help lint \
+.PHONY: all clean coverage format help lint \
 	md-format md-lint \
 	open-coverage open-coverage-html open-waves \
 	py-format py-format-check py-lint py-lint-all py-type py-lsp \
@@ -105,8 +83,8 @@ help:
 	@echo "  help                            Show this message"
 	@echo ""
 	@echo "Tool selection:"
-	@echo "  SIM=<sim>                       Simulator (default verilator); available: $(AVAILABLE_SIMS)"
-	@echo "  VIEWER=<viewer>                 Waveform viewer (default gtkwave); available: $(AVAILABLE_VIEWERS)"
+	@echo "  SIM=<sim>                       Simulator (default $(SIM)); available: $$($(FLOW) list-sims | tr '\n' ' ')"
+	@echo "  VIEWER=<viewer>                 Waveform viewer (default $(VIEWER)); available: $$($(FLOW) list-viewers | tr '\n' ' ')"
 	@echo ""
 	@echo "Common variables (override as VAR=value):"
 	@echo "  TEST= / TEST_FILTER=            Select one test by exact name / by regex"
@@ -125,19 +103,28 @@ update-py-deps:
 	$(UV) lock --upgrade
 	$(UV) sync
 
-# Build the RTL and run the cocotb tests via pytest. Configuration is passed
-# through to tests/runner.py as environment variables. Simulator-specific
-# values (BUILD_DIR, NO_COVERGROUPS, QUESTA_*, ...) come from mk/sim/$(SIM).mk.
+# Build the RTL and run the cocotb tests. flow/cli.py sets up the per-simulator
+# pytest invocation (the supported cocotb runner path); command-line VAR=value
+# overrides (ABV, TEST, TEST_FILTER, REBUILD, ...) reach it through the
+# environment, which GNU Make exports automatically.
 test:
-	SIM=$(SIM) \
-		BUILD_DIR="$(BUILD_DIR)" QUESTA_WAVE="$(QUESTA_WAVE)" \
-		VCS_WAVE="$(VCS_WAVE)" WAVES="$(WAVES)" \
-		ABV="$(ABV)" \
-		NO_COVERGROUPS="$(NO_COVERGROUPS)" \
-		HDL_COVERAGE="$(HDL_COVERAGE)" COVERAGE_DAT="$(COVERAGE_DAT)" \
-		SV_SOURCES_FILE="$(SV_SOURCES_FILE)" \
-		QUESTA_GUI="$(QUESTA_GUI)" QUESTA_DO="$(QUESTA_DO)" \
-		TEST="$(TEST)" TEST_FILTER="$(TEST_FILTER)" REBUILD="$(REBUILD)" $(PYTEST)
+	$(FLOW) test --sim $(SIM)
+
+coverage:
+	$(MAKE) test SIM=$(SIM) ABV=1 HDL_COVERAGE=1
+	$(FLOW) report-coverage --sim $(SIM)
+
+open-coverage:
+	$(FLOW) open-coverage --sim $(SIM)
+
+open-coverage-html:
+	$(FLOW) open-coverage-html --sim $(SIM)
+
+waves:
+	$(FLOW) waves --viewer $(VIEWER)
+
+open-waves:
+	$(FLOW) open-waves --viewer $(VIEWER)
 
 py-format:
 	$(UV) run ruff format .
