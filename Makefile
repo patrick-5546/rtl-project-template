@@ -67,7 +67,7 @@ help:
 	@echo "  test ABV=1 HDL_COVERAGE=1       Instrument coverage without a report"
 	@echo ""
 	@echo "Waveforms (default viewer: gtkwave):"
-	@echo "  waves [VIEWER=surfer|questa]    Run tests, then open the waveform viewer"
+	@echo "  waves [VIEWER=questa]           Run tests, then open the waveform viewer"
 	@echo "  open-waves [VIEWER=...]         Open the existing waveform in the viewer"
 	@echo ""
 	@echo "Coverage (default sim: verilator):"
