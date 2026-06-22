@@ -7,6 +7,18 @@ MARKDOWNLINT ?= markdownlint-cli2
 SLANG ?= slang
 SLANG_TIDY ?= slang-tidy
 
+# Per-tool enable flags for the lint/format aggregates. Set any to 0 to drop
+# that tool from `lint`/`format` (and the per-language `lint-<lang>` /
+# `format-<lang>` groups); the per-tool target itself stays directly invokable.
+ENABLE_RUFF ?= 1
+ENABLE_TY ?= 1
+ENABLE_BASEDPYRIGHT ?= 1
+ENABLE_MARKDOWNLINT ?= 1
+ENABLE_VERIBLE ?= 1
+ENABLE_VERILATOR ?= 1
+ENABLE_SLANG ?= 1
+ENABLE_SLANG_TIDY ?= 1
+
 # The flow CLI (flow/cli.py) runs the tests, coverage, and waveform viewers; the
 # sim/wave targets below are thin wrappers around it.
 FLOW := $(UV) run python -m flow.cli
@@ -42,10 +54,11 @@ SIM ?= verilator
 VIEWER ?= gtkwave
 
 .PHONY: all clean coverage format help lint \
-	md-format md-lint \
+	lint-py lint-sv lint-md format-py format-sv format-md \
+	format-py-ruff lint-py-ruff lint-py-ty lint-py-basedpyright \
+	format-md-markdownlint lint-md-markdownlint \
+	format-sv-verible lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy \
 	open-coverage open-coverage-html open-waves \
-	py-format py-format-check py-lint py-lint-all py-type py-lsp \
-	sv-format sv-format-check sv-lint sv-lint-all sv-lint-slang sv-tidy-slang sv-lint-verilator \
 	sync update-py-deps \
 	test waves
 
@@ -77,10 +90,21 @@ help:
 	@echo ""
 	@echo "Quality:"
 	@echo "  lint                            Run all lint/type checks (py, sv, md)"
+	@echo "  lint-<py|sv|md>                 Run lint/type checks for one language"
 	@echo "  format                          Format Python, Markdown, and SystemVerilog"
+	@echo "  format-<py|sv|md>               Format one language"
 	@echo "  all                             Run lint + test (default target)"
 	@echo "  clean                           Remove generated local artifacts"
 	@echo "  help                            Show this message"
+	@echo ""
+	@echo "Per-tool quality targets (<lint|format>-<lang>-<tool>):"
+	@echo "  lint-py-ruff lint-py-ty lint-py-basedpyright  format-py-ruff"
+	@echo "  lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy  format-sv-verible"
+	@echo "  lint-md-markdownlint  format-md-markdownlint"
+	@echo ""
+	@echo "Tool enable flags (default 1; set 0 to skip a tool in lint/format):"
+	@echo "  ENABLE_RUFF ENABLE_TY ENABLE_BASEDPYRIGHT ENABLE_MARKDOWNLINT"
+	@echo "  ENABLE_VERIBLE ENABLE_VERILATOR ENABLE_SLANG ENABLE_SLANG_TIDY"
 	@echo ""
 	@echo "Tool selection:"
 	@echo "  SIM=<sim>                       Simulator; available: $$($(FLOW) list-sims | tr '\n' ' ')"
@@ -126,54 +150,92 @@ waves:
 open-waves:
 	$(FLOW) open-waves --viewer $(VIEWER)
 
-py-format:
+format-py-ruff:
 	$(UV) run ruff format .
 
-py-format-check:
+lint-py-ruff:
 	$(UV) run ruff format --check .
-
-py-lint:
 	$(UV) run ruff check .
 
-py-type:
+lint-py-ty:
 	$(UV) run ty check
 
-py-lsp:
+lint-py-basedpyright:
 	$(UV) run basedpyright
 
-md-lint:
-	$(MARKDOWNLINT)
-
-md-format:
+format-md-markdownlint:
 	$(MARKDOWNLINT) --fix
 
-sv-format:
+lint-md-markdownlint:
+	$(MARKDOWNLINT)
+
+format-sv-verible:
 	verible-verilog-format --inplace $(SV_VERIBLE_INPUTS)
 
-sv-format-check:
+lint-sv-verible:
 	@for source in $(SV_VERIBLE_INPUTS); do \
 		verible-verilog-format --verify "$$source" || exit $$?; \
 	done
-
-sv-lint:
 	verible-verilog-lint $(SV_VERIBLE_INPUTS)
 
-sv-lint-verilator:
+lint-sv-verilator:
 	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
-sv-lint-slang:
+lint-sv-slang:
 	$(SLANG) -Werror +define+ABV $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
-sv-tidy-slang:
+lint-sv-slang-tidy:
 	$(SLANG_TIDY) +define+ABV $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
-py-lint-all: py-format-check py-lint py-type py-lsp
+# Per-tool ENABLE_<TOOL> flags select which targets the language aggregates run;
+# a disabled tool drops out of `lint`/`format` but its target stays invokable.
+LINT_PY_TARGETS :=
+FORMAT_PY_TARGETS :=
+ifeq ($(ENABLE_RUFF),1)
+LINT_PY_TARGETS += lint-py-ruff
+FORMAT_PY_TARGETS += format-py-ruff
+endif
+ifeq ($(ENABLE_TY),1)
+LINT_PY_TARGETS += lint-py-ty
+endif
+ifeq ($(ENABLE_BASEDPYRIGHT),1)
+LINT_PY_TARGETS += lint-py-basedpyright
+endif
 
-sv-lint-all: sv-format-check sv-lint sv-lint-verilator sv-lint-slang sv-tidy-slang
+LINT_MD_TARGETS :=
+FORMAT_MD_TARGETS :=
+ifeq ($(ENABLE_MARKDOWNLINT),1)
+LINT_MD_TARGETS += lint-md-markdownlint
+FORMAT_MD_TARGETS += format-md-markdownlint
+endif
 
-lint: py-lint-all sv-lint-all md-lint
+LINT_SV_TARGETS :=
+FORMAT_SV_TARGETS :=
+ifeq ($(ENABLE_VERIBLE),1)
+LINT_SV_TARGETS += lint-sv-verible
+FORMAT_SV_TARGETS += format-sv-verible
+endif
+ifeq ($(ENABLE_VERILATOR),1)
+LINT_SV_TARGETS += lint-sv-verilator
+endif
+ifeq ($(ENABLE_SLANG),1)
+LINT_SV_TARGETS += lint-sv-slang
+endif
+ifeq ($(ENABLE_SLANG_TIDY),1)
+LINT_SV_TARGETS += lint-sv-slang-tidy
+endif
 
-format: py-format md-format sv-format
+lint-py: $(LINT_PY_TARGETS)
+lint-sv: $(LINT_SV_TARGETS)
+lint-md: $(LINT_MD_TARGETS)
+
+format-py: $(FORMAT_PY_TARGETS)
+format-sv: $(FORMAT_SV_TARGETS)
+format-md: $(FORMAT_MD_TARGETS)
+
+lint: lint-py lint-sv lint-md
+
+format: format-py format-sv format-md
 
 clean:
 	rm -rf build work transcript verdiLog vdCovLog vdCov.conf novas.rc novas.conf

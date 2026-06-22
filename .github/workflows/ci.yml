@@ -64,7 +64,7 @@ jobs:
       - name: Add slang to PATH
         run: echo "/opt/slang/bin" >> "$GITHUB_PATH"
 
-      - run: make sv-lint-all
+      - run: make lint-sv
 
   lint-py:
     runs-on: ubuntu-latest
@@ -77,7 +77,7 @@ jobs:
 
       - run: uv sync
 
-      - run: make py-lint-all
+      - run: make lint-py
 
   lint-md:
     runs-on: ubuntu-latest
@@ -87,7 +87,7 @@ jobs:
       - name: Install markdownlint-cli2
         run: sudo npm install -g markdownlint-cli2
 
-      - run: make md-lint
+      - run: make lint-md
 
   coverage:
     runs-on: ubuntu-latest
