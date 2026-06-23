@@ -14,11 +14,19 @@ Add a simulator by subclassing :class:`SimulatorProfile`, implementing the
 capabilities it supports, and registering an instance in :data:`SIMULATORS`.
 """
 
-import shlex
 import shutil
 from pathlib import Path
 
-from flow.runner import RunConfig, SimArgs, env_str, open_html, require, run
+from flow.runner import (
+    RunConfig,
+    SimArgs,
+    env_str,
+    open_html,
+    require,
+    run,
+    verdi_command,
+    vsim_exe,
+)
 
 
 def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
@@ -118,9 +126,6 @@ class VerilatorProfile(SimulatorProfile):
             args.build_args.append("--coverage")
             args.plusargs.append(f"+verilator+coverage+file+{cfg.coverage_dat}")
         return args
-
-    def coverage_data_path(self, build_dir: Path) -> Path:
-        return build_dir / "coverage.dat"
 
     def coverage_html_index(self, build_dir: Path) -> Path:
         return build_dir / "coverage_html" / "index.html"
@@ -236,7 +241,7 @@ class QuestaProfile(SimulatorProfile):
 
     def open_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
         require(coverage_data, "Run 'make coverage SIM=questa' first.")
-        run([env_str("VSIM", "vsim"), "-viewcov", str(coverage_data)])
+        run([vsim_exe(), "-viewcov", str(coverage_data)])
 
 
 class VcsProfile(SimulatorProfile):
@@ -280,9 +285,7 @@ class VcsProfile(SimulatorProfile):
 
     def open_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
         require(coverage_data, "Run 'make coverage SIM=vcs' first.", kind="dir")
-        verdi = env_str("VERDI", "verdi")
-        verdi_args = shlex.split(env_str("VERDI_ARGS", "-nologo"))
-        run([verdi, *verdi_args, "-cov", "-covdir", str(coverage_data)])
+        run([*verdi_command(), "-cov", "-covdir", str(coverage_data)])
 
 
 def _print_total_coverage_summary(dashboard_txt: Path) -> None:

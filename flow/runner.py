@@ -6,8 +6,20 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from cocotb_tools.runner import get_runner
+
+if TYPE_CHECKING:
+    from flow.simulators import SimulatorProfile
+
+# Default tool/DUT selections. Each is duplicated only by the matching Makefile
+# selector (``SIM``/``VIEWER``/``DUT``): these copies are the single source the
+# CLI argparse defaults and the runner share, and the fallback used when the flow
+# runs without the Makefile (e.g. a bare ``uv run pytest``).
+DEFAULT_SIM = "verilator"
+DEFAULT_VIEWER = "gtkwave"
+DEFAULT_DUT = "top"
 
 
 @dataclass
@@ -132,6 +144,59 @@ def project_path_from_env(name: str, project_dir: Path, default: Path) -> Path:
     return path if path.is_absolute() else project_dir / path
 
 
+def dut_toplevel(default: str = DEFAULT_DUT) -> str:
+    """Top-level module name, overridable via the ``DUT`` environment variable.
+
+    The flow CLI forwards ``DUT`` (from ``make ... DUT=<module>``) into the
+    pytest subprocess; when it is unset (e.g. a bare ``pytest`` run) the caller's
+    *default* -- a test file's ``hdl_toplevel`` argument -- is used.
+    """
+    return env_str("DUT", default)
+
+
+def default_build_dir(project_dir: Path, simulator: str) -> Path:
+    """``$BUILD_DIR`` override, or the per-simulator ``build/<sim>`` default."""
+    return project_path_from_env("BUILD_DIR", project_dir, project_dir / "build" / simulator)
+
+
+def default_coverage_dat(
+    project_dir: Path, build_dir: Path, profile: "SimulatorProfile | None"
+) -> Path:
+    """``$COVERAGE_DAT`` override, or the profile's coverage artifact under *build_dir*."""
+    base = profile.coverage_data_path(build_dir) if profile else build_dir / "coverage.dat"
+    return project_path_from_env("COVERAGE_DAT", project_dir, base)
+
+
+def default_verilator_wave(project_dir: Path, build_dir: Path) -> Path:
+    """``$WAVE`` override, or the Verilator ``dump.vcd`` under *build_dir*."""
+    return project_path_from_env("WAVE", project_dir, build_dir / "dump.vcd")
+
+
+def default_vcs_wave(project_dir: Path, build_dir: Path) -> Path:
+    """``$VCS_WAVE`` override, or the VCS ``dump.fsdb`` under *build_dir*."""
+    return project_path_from_env("VCS_WAVE", project_dir, build_dir / "dump.fsdb")
+
+
+def default_questa_wave(project_dir: Path, build_dir: Path) -> Path:
+    """``$QUESTA_WAVE`` override, or the Questa ``vsim.wlf`` under *build_dir*."""
+    return project_path_from_env("QUESTA_WAVE", project_dir, build_dir / "vsim.wlf")
+
+
+def default_questa_do(project_dir: Path, dut: str) -> Path:
+    """``$QUESTA_DO`` override, or the ``waves/<dut>.do`` layout for *dut*."""
+    return project_path_from_env("QUESTA_DO", project_dir, project_dir / "waves" / f"{dut}.do")
+
+
+def vsim_exe() -> str:
+    """The ``vsim`` executable, overridable via ``$VSIM``."""
+    return env_str("VSIM", "vsim")
+
+
+def verdi_command() -> list[str]:
+    """``verdi`` plus ``$VERDI_ARGS`` (default ``-nologo``) as a command prefix."""
+    return [env_str("VERDI", "verdi"), *shlex.split(env_str("VERDI_ARGS", "-nologo"))]
+
+
 def project_paths_from_list_file(
     name: str, project_dir: Path, default: Path
 ) -> tuple[list[Path], list[Path]]:
@@ -190,6 +255,12 @@ def project_paths_from_list_file(
 def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     """Build RTL and run cocotb tests for *hdl_toplevel*.
 
+    *hdl_toplevel* is the default top module; the ``DUT`` environment variable
+    (set by the flow CLI from ``make ... DUT=<module>``) overrides it, so
+    ``make test DUT=<module>`` retargets the build/test, the GTKWave stems, and
+    the ``waves/<DUT>.*`` layouts from one place. ``DUT`` applies process-wide,
+    so in a project with several test files it forces a single top module.
+
     All other configuration (SIM, BUILD_DIR, TEST, ABV, HDL_COVERAGE,
     QUESTA_GUI, etc.) is read from environment variables, matching the
     Makefile-driven workflow. Per-simulator defaults (covergroup support,
@@ -200,22 +271,15 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     # module scope would be circular.
     from flow.simulators import SIMULATORS
 
+    hdl_toplevel = dut_toplevel(hdl_toplevel)
     project_dir = Path(__file__).resolve().parents[1]
     test_dir = project_dir / "tests"
-    simulator = os.environ.get("SIM", "verilator")
+    simulator = env_str("SIM", DEFAULT_SIM)
     profile = SIMULATORS.get(simulator)
-    build_dir = project_path_from_env("BUILD_DIR", project_dir, project_dir / "build" / simulator)
-    questa_wave = project_path_from_env(
-        "QUESTA_WAVE",
-        project_dir,
-        project_dir / "build" / "questa" / "vsim.wlf",
-    )
-    questa_do = project_path_from_env(
-        "QUESTA_DO",
-        project_dir,
-        project_dir / "waves" / f"{hdl_toplevel}.do",
-    )
-    vcs_wave = project_path_from_env("VCS_WAVE", project_dir, build_dir / "dump.fsdb")
+    build_dir = default_build_dir(project_dir, simulator)
+    questa_wave = default_questa_wave(project_dir, build_dir)
+    questa_do = default_questa_do(project_dir, hdl_toplevel)
+    vcs_wave = default_vcs_wave(project_dir, build_dir)
     # The cocotb sim subprocess loads the test module from ``test_dir`` and must
     # also import the ``flow`` package (via ``project_dir``); expose both.
     pythonpath = os.pathsep.join(
@@ -231,10 +295,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     hdl_coverage = env_flag("HDL_COVERAGE", default=False)
     questa_gui = env_flag("QUESTA_GUI", default=False)
     waves_enabled = env_flag("WAVES", default=True)
-    default_coverage = (
-        profile.coverage_data_path(build_dir) if profile else build_dir / "coverage.dat"
-    )
-    coverage_dat = project_path_from_env("COVERAGE_DAT", project_dir, default_coverage)
+    coverage_dat = default_coverage_dat(project_dir, build_dir, profile)
     sv_sources, sv_include_dirs = project_paths_from_list_file(
         "SV_SOURCES_FILE",
         project_dir,

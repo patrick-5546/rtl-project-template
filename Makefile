@@ -53,6 +53,12 @@ $(foreach src,$(SV_SOURCES),$(if $(wildcard $(src)),,$(error sources.vf: '$(src)
 SIM ?= verilator
 VIEWER ?= gtkwave
 
+# Top-level module under test. Passed to the flow CLI (which forwards it to the
+# cocotb runner and the waveform viewers: GTKWave stems and the waves/<DUT>.*
+# layouts) so every command targets the same module; override as
+# `make test DUT=<module>`.
+DUT ?= top
+
 .PHONY: all clean coverage format help lint \
 	lint-py lint-sv lint-md format-py format-sv format-md \
 	format-py-ruff lint-py-ruff lint-py-ty lint-py-basedpyright \
@@ -111,6 +117,7 @@ help:
 	@echo "  VIEWER=<viewer>                 Waveform viewer; available: $$($(FLOW) list-viewers | tr '\n' ' ')"
 	@echo ""
 	@echo "Common variables (override as VAR=value):"
+	@echo "  DUT=<module>                    Top module to build/test/view"
 	@echo "  TEST= / TEST_FILTER=            Select one test by exact name / by regex"
 	@echo "  REBUILD=0                       Reuse the existing build instead of rebuilding"
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
@@ -132,10 +139,10 @@ update-py-deps:
 # overrides (ABV, TEST, TEST_FILTER, REBUILD, ...) reach it through the
 # environment, which GNU Make exports automatically.
 test:
-	$(FLOW) test --sim $(SIM)
+	$(FLOW) test --sim $(SIM) --dut $(DUT)
 
 coverage:
-	$(MAKE) test SIM=$(SIM) ABV=1 HDL_COVERAGE=1
+	$(MAKE) test SIM=$(SIM) DUT=$(DUT) ABV=1 HDL_COVERAGE=1
 	$(FLOW) report-coverage --sim $(SIM)
 
 open-coverage:
@@ -145,10 +152,10 @@ open-coverage-html:
 	$(FLOW) open-coverage-html --sim $(SIM)
 
 waves:
-	$(FLOW) waves --viewer $(VIEWER)
+	$(FLOW) waves --viewer $(VIEWER) --dut $(DUT)
 
 open-waves:
-	$(FLOW) open-waves --viewer $(VIEWER)
+	$(FLOW) open-waves --viewer $(VIEWER) --dut $(DUT)
 
 format-py-ruff:
 	$(UV) run ruff format .

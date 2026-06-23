@@ -12,7 +12,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from flow.runner import project_path_from_env
+from flow.runner import (
+    DEFAULT_DUT,
+    DEFAULT_SIM,
+    DEFAULT_VIEWER,
+    default_build_dir,
+    default_coverage_dat,
+)
 from flow.simulators import SIMULATORS, SimulatorProfile
 from flow.viewers import VIEWERS, ViewerProfile
 
@@ -36,24 +42,27 @@ def _viewer(name: str) -> ViewerProfile:
 
 
 def _build_dir(simulator: str) -> Path:
-    return project_path_from_env("BUILD_DIR", PROJECT_DIR, PROJECT_DIR / "build" / simulator)
+    return default_build_dir(PROJECT_DIR, simulator)
 
 
 def _coverage_data(profile: SimulatorProfile, build_dir: Path) -> Path:
-    return project_path_from_env("COVERAGE_DAT", PROJECT_DIR, profile.coverage_data_path(build_dir))
+    return default_coverage_dat(PROJECT_DIR, build_dir, profile)
 
 
-def run_regression(simulator: str, *, extra_env: dict[str, str] | None = None) -> None:
+def run_regression(simulator: str, *, dut: str, extra_env: dict[str, str] | None = None) -> None:
     """Run the cocotb regression for *simulator* via pytest.
 
+    *simulator* and *dut* are forwarded to the pytest subprocess as the
+    ``SIM``/``DUT`` environment variables (the channel into ``build_and_test``);
     ``ABV``/``TEST``/``REBUILD``/... are inherited from the environment (the
-    Makefile exports command-line ``VAR=value`` overrides); *extra_env* layers on
+    Makefile exports command-line ``VAR=value`` overrides). *extra_env* layers on
     the values this command forces (e.g. ``QUESTA_GUI=1`` for the live-GUI wave
     flow).
     """
     profile = _sim(simulator)
     env = os.environ.copy()
     env["SIM"] = simulator
+    env["DUT"] = dut
     if extra_env:
         env.update(extra_env)
     cmd = [sys.executable, "-m", "pytest", "-s", *profile.pytest_args()]
@@ -64,7 +73,7 @@ def run_regression(simulator: str, *, extra_env: dict[str, str] | None = None) -
 
 
 def cmd_test(args: argparse.Namespace) -> None:
-    run_regression(args.sim)
+    run_regression(args.sim, dut=args.dut)
 
 
 def cmd_report_coverage(args: argparse.Namespace) -> None:
@@ -90,16 +99,18 @@ def cmd_waves(args: argparse.Namespace) -> None:
     if viewer.live_gui:
         # The interactive run *is* the wave view (e.g. Questa's GUI).
         run_regression(
-            viewer.wave_sim, extra_env={"QUESTA_GUI": "1", **viewer.waves_run_env(PROJECT_DIR)}
+            viewer.wave_sim,
+            dut=args.dut,
+            extra_env={"QUESTA_GUI": "1", **viewer.waves_run_env(PROJECT_DIR)},
         )
     else:
-        run_regression(viewer.wave_sim)
-        viewer.open_waves(PROJECT_DIR, build_dir)
+        run_regression(viewer.wave_sim, dut=args.dut)
+        viewer.open_waves(PROJECT_DIR, build_dir, args.dut)
 
 
 def cmd_open_waves(args: argparse.Namespace) -> None:
     viewer = _viewer(args.viewer)
-    viewer.open_waves(PROJECT_DIR, _build_dir(viewer.wave_sim))
+    viewer.open_waves(PROJECT_DIR, _build_dir(viewer.wave_sim), args.dut)
 
 
 def cmd_list_sims(args: argparse.Namespace) -> None:
@@ -114,19 +125,24 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="flow", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
+    test_parser = sub.add_parser("test")
+    test_parser.add_argument("--sim", default=DEFAULT_SIM)
+    test_parser.add_argument("--dut", default=DEFAULT_DUT)
+    test_parser.set_defaults(func=cmd_test)
+
     for name, func in (
-        ("test", cmd_test),
         ("report-coverage", cmd_report_coverage),
         ("open-coverage", cmd_open_coverage),
         ("open-coverage-html", cmd_open_coverage_html),
     ):
         p = sub.add_parser(name)
-        p.add_argument("--sim", default="verilator")
+        p.add_argument("--sim", default=DEFAULT_SIM)
         p.set_defaults(func=func)
 
     for name, func in (("waves", cmd_waves), ("open-waves", cmd_open_waves)):
         p = sub.add_parser(name)
-        p.add_argument("--viewer", default="gtkwave")
+        p.add_argument("--viewer", default=DEFAULT_VIEWER)
+        p.add_argument("--dut", default=DEFAULT_DUT)
         p.set_defaults(func=func)
 
     sub.add_parser("list-sims").set_defaults(func=cmd_list_sims)

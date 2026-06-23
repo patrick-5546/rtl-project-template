@@ -14,12 +14,18 @@ import shlex
 from pathlib import Path
 
 from flow.runner import (
+    default_questa_do,
+    default_questa_wave,
+    default_vcs_wave,
+    default_verilator_wave,
     env_flag,
     env_str,
     project_path_from_env,
     project_paths_from_list_file,
     require,
     run,
+    verdi_command,
+    vsim_exe,
 )
 
 
@@ -40,7 +46,7 @@ class ViewerProfile:
         """Extra environment for the ``waves`` regression (live-GUI viewers)."""
         return {}
 
-    def open_waves(self, project_dir: Path, build_dir: Path) -> None:
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
         raise NotImplementedError
 
 
@@ -48,23 +54,23 @@ class GtkwaveProfile(ViewerProfile):
     name = "gtkwave"
     wave_sim = "verilator"
 
-    def open_waves(self, project_dir: Path, build_dir: Path) -> None:
-        wave = project_path_from_env("WAVE", project_dir, build_dir / "dump.vcd")
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
+        wave = default_verilator_wave(project_dir, build_dir)
         require(wave, "Run 'make test' first.")
-        stems = self._generate_stems(project_dir, build_dir)
+        stems = self._generate_stems(project_dir, build_dir, dut)
         gtkwave = env_str("GTKWAVE", "gtkwave")
         gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", "-o"))
         save = project_path_from_env(
-            "GTKWAVE_SAVE", project_dir, project_dir / "waves" / "top.gtkw"
+            "GTKWAVE_SAVE", project_dir, project_dir / "waves" / f"{dut}.gtkw"
         )
         cmd = [gtkwave, *gtkwave_args, "-t", str(stems), str(wave)]
         if save.is_file():
             cmd.append(str(save))
         run(cmd)
 
-    def _generate_stems(self, project_dir: Path, build_dir: Path) -> Path:
+    def _generate_stems(self, project_dir: Path, build_dir: Path, dut: str) -> Path:
         """Generate GTKWave RTL-browser "stems" so signals link back to source."""
-        top = env_str("GTKWAVE_STEMS_TOP", "top")
+        top = env_str("GTKWAVE_STEMS_TOP", dut)
         stems_dir = build_dir / "rtlbrowse"
         stems = stems_dir / f"{top}.stems"
         tree_json = stems_dir / f"V{top}.tree.json"
@@ -102,11 +108,13 @@ class SurferProfile(ViewerProfile):
     name = "surfer"
     wave_sim = "verilator"
 
-    def open_waves(self, project_dir: Path, build_dir: Path) -> None:
-        wave = project_path_from_env("WAVE", project_dir, build_dir / "dump.vcd")
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
+        wave = default_verilator_wave(project_dir, build_dir)
         require(wave, "Run 'make test' first.")
         surfer = env_str("SURFER", "surfer")
-        state = project_path_from_env("STATE", project_dir, project_dir / "waves" / "top.surf.ron")
+        state = project_path_from_env(
+            "STATE", project_dir, project_dir / "waves" / f"{dut}.surf.ron"
+        )
         cmd = [surfer]
         if state.is_file():
             cmd.extend(["--state-file", str(state)])
@@ -123,12 +131,11 @@ class QuestaViewerProfile(ViewerProfile):
         # The live GUI needs full visibility (+acc) and the debug database.
         return {"QUESTA_ARGS": "-voptargs=+acc -debugdb"}
 
-    def open_waves(self, project_dir: Path, build_dir: Path) -> None:
-        questa_wave = project_path_from_env("QUESTA_WAVE", project_dir, build_dir / "vsim.wlf")
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
+        questa_wave = default_questa_wave(project_dir, build_dir)
         require(questa_wave, "Run 'make test SIM=questa' first.")
-        vsim = env_str("VSIM", "vsim")
-        do = project_path_from_env("QUESTA_DO", project_dir, project_dir / "waves" / "top.do")
-        cmd = [vsim, "-view", str(questa_wave)]
+        do = default_questa_do(project_dir, dut)
+        cmd = [vsim_exe(), "-view", str(questa_wave)]
         if do.is_file():
             cmd.extend(["-do", str(do)])
         run(cmd)
@@ -138,14 +145,12 @@ class VerdiProfile(ViewerProfile):
     name = "verdi"
     wave_sim = "vcs"
 
-    def open_waves(self, project_dir: Path, build_dir: Path) -> None:
-        vcs_wave = project_path_from_env("VCS_WAVE", project_dir, build_dir / "dump.fsdb")
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
+        vcs_wave = default_vcs_wave(project_dir, build_dir)
         require(vcs_wave, "Run 'make test SIM=vcs' first.")
-        verdi = env_str("VERDI", "verdi")
-        verdi_args = shlex.split(env_str("VERDI_ARGS", "-nologo"))
         daidir = project_path_from_env("VCS_DAIDIR", project_dir, build_dir / "simv.daidir")
-        rc = project_path_from_env("VERDI_RC", project_dir, project_dir / "waves" / "top.rc")
-        cmd = [verdi, *verdi_args, "-dbdir", str(daidir), "-ssf", str(vcs_wave)]
+        rc = project_path_from_env("VERDI_RC", project_dir, project_dir / "waves" / f"{dut}.rc")
+        cmd = [*verdi_command(), "-dbdir", str(daidir), "-ssf", str(vcs_wave)]
         if rc.is_file():
             cmd.extend(["-sswr", str(rc)])
         run(cmd)

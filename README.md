@@ -18,7 +18,7 @@
 - `.surfer/config.toml`: Surfer configuration.
 - `Makefile`: common commands for formatting, linting, type checking,
   simulation, and waveform viewing.
-- `waves/`: reusable per-viewer wave layouts.
+- `waves/`: reusable per-viewer wave layouts, named `<DUT>.*` (e.g. `top.gtkw`).
 
 Generated simulator artifacts are ignored by Git and should stay under `build/`.
 
@@ -33,7 +33,8 @@ make lint   # run all lint and type checks
 The simulation flow is cocotb through pytest. The same handful of targets work
 for every tool: pass the simulator as `SIM=<sim>` to `test`, `coverage`,
 `open-coverage`, and `open-coverage-html`, and the waveform viewer as
-`VIEWER=<viewer>` to `waves` and `open-waves`. Select individual tests by exact
+`VIEWER=<viewer>` to `waves` and `open-waves`. Point the whole flow at a
+different top module with `DUT=<module>`. Select individual tests by exact
 name or regex, and reuse an existing simulator build for faster debug loops
 instead of rebuilding. Run `make help` for the full command reference: every
 target and override variable, plus the available simulators and viewers, is
@@ -95,10 +96,9 @@ those simulators. VCS collects SV covergroups natively. See the
 Tool-specific behavior lives in the Python `flow/` package, so the generic
 targets (`test`, `waves`, `coverage`, ...) stay the same as the tool set grows:
 
-- `flow/simulators.py` defines a `SimulatorProfile` per simulator: its build
-  directory and coverage-artifact defaults, the cocotb runner build/test
-  arguments, and the `coverage`, `open-coverage`, and `open-coverage-html`
-  behavior.
+- `flow/simulators.py` defines a `SimulatorProfile` per simulator: its
+  coverage-artifact default, the cocotb runner build/test arguments, and the
+  `coverage`, `open-coverage`, and `open-coverage-html` behavior.
 - `flow/viewers.py` defines a `ViewerProfile` per viewer: the `wave_sim` whose
   format it reads, whether it is a live-GUI flow, and the `waves` and
   `open-waves` behavior.
@@ -151,7 +151,7 @@ and native interactive debug. The free Altera
 Starter Edition does not include the verification features needed for collecting
 coverage on cover groups (aka directives). Waveforms use the native WLF format
 with source-linked debug (double-click a signal to find its RTL driver) and load
-a reusable `.do` layout (`waves/top.do`) when present; local install docs are
+a reusable `.do` layout (`waves/<DUT>.do`) when present; local install docs are
 under `$HOME/altera_lite/25.1std/questa_fse/docs`. Select it with `SIM=questa`
 or `VIEWER=questa` (see `make help` for the `QUESTA_WAVE` and `QUESTA_DO`
 overrides).
@@ -160,7 +160,7 @@ VCS is a commercial, event-based simulator with full SystemVerilog support.
 Unlike the Questa Starter Edition it collects SV covergroups,
 reports coverage through `urg`, and supports source-linked debug in Verdi. It
 records waveforms in Verdi's native FSDB format and loads a reusable restore
-file (`waves/top.rc`) when present; waveform viewing and the coverage GUI both
+file (`waves/<DUT>.rc`) when present; waveform viewing and the coverage GUI both
 use Verdi, so `vcs` and `verdi` must be on `PATH`. Select it with `SIM=vcs` or
 `VIEWER=verdi` (see `make help` for the `VCS_WAVE`, `VERDI_RC`, and `WAVES=0`
 overrides).
@@ -168,12 +168,12 @@ overrides).
 GTKWave reads Verilator's VCD output and can view and annotate source with
 values from the waveform through its RTLBrowse window; the wave targets prepare
 that RTL-browser support so signals link back to source, and load a reusable
-layout (`waves/top.gtkw`) when present. See `make help` for the `WAVE` and
+layout (`waves/<DUT>.gtkw`) when present. See `make help` for the `WAVE` and
 `GTKWAVE_SAVE` overrides.
 
 Surfer is a fast, modern waveform viewer that reads the same Verilator VCD as
 GTKWave; it is still early in development and has fewer features.
-`make waves VIEWER=surfer` loads a reusable layout (`waves/top.surf.ron`) when
+`make waves VIEWER=surfer` loads a reusable layout (`waves/<DUT>.surf.ron`) when
 present (see `make help` for the `WAVE` and `STATE` overrides).
 
 Verdi is the waveform viewer and coverage browser for the VCS flow. It reads

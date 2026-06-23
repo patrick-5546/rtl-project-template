@@ -28,6 +28,8 @@ obvious from those sources.
 - New test files go in `tests/` as `test_<module>.py`. Import `build_and_test`
   from `flow.runner` and add a one-line pytest entry point:
   `build_and_test(hdl_toplevel="<module>", test_module=Path(__file__).stem)`.
+  The `DUT` value (forwarded by the flow CLI from `make ... DUT=<module>`)
+  overrides `hdl_toplevel` at run time.
 
 ### Coverage
 
@@ -43,11 +45,14 @@ obvious from those sources.
   `ruff`/`ty`/`pytest`.
 - Override the Questa GUI executable with `VSIM`, not `MODELSIM`; Questa treats
   `MODELSIM` as a `modelsim.ini` environment variable.
-- Build/test configuration is read from environment variables: shared defaults
-  (e.g. `SIM`, `REBUILD`, `ABV`) come from `flow/runner.py`'s `build_and_test`,
-  and simulator-specific defaults (build dir, coverage-artifact path, build/test
-  args) from the matching `SimulatorProfile` in `flow/simulators.py`. The
-  `Makefile` only selects `SIM`/`VIEWER` and forwards command-line overrides
+- Build/test configuration is read from environment variables. The flow's
+  single-source defaults live in `flow/runner.py` -- the `SIM`/`VIEWER`/`DUT`
+  selectors (`DEFAULT_*`) and the `default_*` build-dir/coverage/wave-path
+  helpers shared by `cli.py`, `simulators.py`, and `viewers.py` -- while
+  per-simulator specifics (build/test args, coverage artifact) stay in the
+  matching `SimulatorProfile` in `flow/simulators.py`. The `Makefile` selects
+  `SIM`/`VIEWER`/`DUT` and passes them to the flow CLI as flags (only
+  `SV_SOURCES_FILE` is exported); other command-line overrides reach the flow
   through the environment.
 - Do not commit files from `build/`, and do not add new tools unless necessary
   for the requested change.
