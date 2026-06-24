@@ -23,12 +23,8 @@ ENABLE_SLANG_TIDY ?= 1
 # sim/wave targets below are thin wrappers around it.
 FLOW := $(UV) run python -m flow.cli
 
-# SystemVerilog source list (see rtl/sources.vf for the file format). Exported
-# so the flow package reads the same list the SV lint/format targets parse below.
+# File lists.
 SV_SOURCES_FILE ?= rtl/sources.vf
-export SV_SOURCES_FILE
-
-# Standalone Verible input list.
 SV_VERIBLE_FILE ?= rtl/verible.vf
 
 # Extract compile sources + include dirs from sources.vf and the full Verible
@@ -144,15 +140,15 @@ update-py-deps:
 # overrides (ABV, TEST, TEST_FILTER, REBUILD, ...) reach it through the
 # environment, which GNU Make exports automatically.
 test:
-	$(FLOW) test --sim $(SIM) --dut $(DUT)
+	$(FLOW) test --sim $(SIM) --dut $(DUT) --sources-file $(SV_SOURCES_FILE)
 
 # Run every DUT's tests in one pytest invocation (each test file builds its own
 # module; see flow/runner.build_and_test). DUT=all disables the per-file filter.
 test-all:
-	$(FLOW) test --sim $(SIM) --dut all
+	$(FLOW) test --sim $(SIM) --dut all --sources-file $(SV_SOURCES_FILE)
 
 coverage:
-	$(MAKE) test SIM=$(SIM) DUT=$(DUT) ABV=1 HDL_COVERAGE=1
+	$(MAKE) test SIM=$(SIM) DUT=$(DUT) SV_SOURCES_FILE=$(SV_SOURCES_FILE) ABV=1 HDL_COVERAGE=1
 	$(FLOW) report-coverage --sim $(SIM) --dut $(DUT)
 
 # Coverage is per-DUT (one report per build dir), so sweep each discovered DUT.
@@ -168,10 +164,10 @@ open-coverage-html:
 	$(FLOW) open-coverage-html --sim $(SIM) --dut $(DUT)
 
 waves:
-	$(FLOW) waves --viewer $(VIEWER) --dut $(DUT)
+	$(FLOW) waves --viewer $(VIEWER) --dut $(DUT) --sources-file $(SV_SOURCES_FILE)
 
 open-waves:
-	$(FLOW) open-waves --viewer $(VIEWER) --dut $(DUT)
+	$(FLOW) open-waves --viewer $(VIEWER) --dut $(DUT) --sources-file $(SV_SOURCES_FILE)
 
 format-py-ruff:
 	$(UV) run ruff format .

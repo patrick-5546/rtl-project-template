@@ -16,10 +16,12 @@ from flow.runner import (
     ALL_DUTS,
     DEFAULT_DUT,
     DEFAULT_SIM,
+    DEFAULT_SOURCES_FILE,
     DEFAULT_VIEWER,
     default_build_dir,
     default_coverage_dat,
     discover_duts,
+    resolve_project_path,
 )
 from flow.simulators import SIMULATORS, SimulatorProfile
 from flow.viewers import VIEWERS, ViewerProfile
@@ -52,20 +54,32 @@ def _coverage_data(profile: SimulatorProfile, build_dir: Path) -> Path:
     return default_coverage_dat(PROJECT_DIR, build_dir, profile)
 
 
-def run_regression(simulator: str, *, dut: str, extra_env: dict[str, str] | None = None) -> None:
+def _sources_file(args: argparse.Namespace) -> Path:
+    """Resolve the ``--sources-file`` flag against the project root."""
+    return resolve_project_path(args.sources_file, PROJECT_DIR, PROJECT_DIR / DEFAULT_SOURCES_FILE)
+
+
+def run_regression(
+    simulator: str,
+    *,
+    dut: str,
+    sources_file: str,
+    extra_env: dict[str, str] | None = None,
+) -> None:
     """Run the cocotb regression for *simulator* via pytest.
 
-    *simulator* and *dut* are forwarded to the pytest subprocess as the
-    ``SIM``/``DUT`` environment variables (the channel into ``build_and_test``);
-    ``ABV``/``TEST``/``REBUILD``/... are inherited from the environment (the
-    Makefile exports command-line ``VAR=value`` overrides). *extra_env* layers on
-    the values this command forces (e.g. ``QUESTA_GUI=1`` for the live-GUI wave
-    flow).
+    *simulator*, *dut*, and *sources_file* are forwarded to the pytest subprocess
+    as the ``SIM``/``DUT``/``SV_SOURCES_FILE`` environment variables (the channel
+    into ``build_and_test``); ``ABV``/``TEST``/``REBUILD``/... are inherited from
+    the environment (the Makefile exports command-line ``VAR=value`` overrides).
+    *extra_env* layers on the values this command forces (e.g. ``QUESTA_GUI=1``
+    for the live-GUI wave flow).
     """
     profile = _sim(simulator)
     env = os.environ.copy()
     env["SIM"] = simulator
     env["DUT"] = dut
+    env["SV_SOURCES_FILE"] = sources_file
     if extra_env:
         env.update(extra_env)
     cmd = [sys.executable, "-m", "pytest", "-s", *profile.pytest_args()]
@@ -80,7 +94,7 @@ def cmd_test(args: argparse.Namespace) -> None:
     if args.dut != ALL_DUTS and args.dut not in duts:
         available = ", ".join(duts) or "(none)"
         raise SystemExit(f"Unknown DUT '{args.dut}'. Available: {available}")
-    run_regression(args.sim, dut=args.dut)
+    run_regression(args.sim, dut=args.dut, sources_file=args.sources_file)
 
 
 def cmd_report_coverage(args: argparse.Namespace) -> None:
@@ -103,21 +117,25 @@ def cmd_open_coverage_html(args: argparse.Namespace) -> None:
 def cmd_waves(args: argparse.Namespace) -> None:
     viewer = _viewer(args.viewer)
     build_dir = _build_dir(args.dut, viewer.wave_sim)
+    sources_file = _sources_file(args)
     if viewer.live_gui:
         # The interactive run *is* the wave view (e.g. Questa's GUI).
         run_regression(
             viewer.wave_sim,
             dut=args.dut,
+            sources_file=args.sources_file,
             extra_env={"QUESTA_GUI": "1", **viewer.waves_run_env(PROJECT_DIR)},
         )
     else:
-        run_regression(viewer.wave_sim, dut=args.dut)
-        viewer.open_waves(PROJECT_DIR, build_dir, args.dut)
+        run_regression(viewer.wave_sim, dut=args.dut, sources_file=args.sources_file)
+        viewer.open_waves(PROJECT_DIR, build_dir, args.dut, sources_file)
 
 
 def cmd_open_waves(args: argparse.Namespace) -> None:
     viewer = _viewer(args.viewer)
-    viewer.open_waves(PROJECT_DIR, _build_dir(args.dut, viewer.wave_sim), args.dut)
+    viewer.open_waves(
+        PROJECT_DIR, _build_dir(args.dut, viewer.wave_sim), args.dut, _sources_file(args)
+    )
 
 
 def cmd_list_sims(args: argparse.Namespace) -> None:
@@ -139,6 +157,7 @@ def main(argv: list[str] | None = None) -> None:
     test_parser = sub.add_parser("test")
     test_parser.add_argument("--sim", default=DEFAULT_SIM)
     test_parser.add_argument("--dut", default=DEFAULT_DUT)
+    test_parser.add_argument("--sources-file", default=DEFAULT_SOURCES_FILE)
     test_parser.set_defaults(func=cmd_test)
 
     for name, func in (
@@ -155,6 +174,7 @@ def main(argv: list[str] | None = None) -> None:
         p = sub.add_parser(name)
         p.add_argument("--viewer", default=DEFAULT_VIEWER)
         p.add_argument("--dut", default=DEFAULT_DUT)
+        p.add_argument("--sources-file", default=DEFAULT_SOURCES_FILE)
         p.set_defaults(func=func)
 
     sub.add_parser("list-sims").set_defaults(func=cmd_list_sims)

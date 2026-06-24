@@ -45,7 +45,7 @@ class ViewerProfile:
         """Extra environment for the ``waves`` regression (live-GUI viewers)."""
         return {}
 
-    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str, sources_file: Path) -> None:
         raise NotImplementedError
 
 
@@ -53,10 +53,10 @@ class GtkwaveProfile(ViewerProfile):
     name = "gtkwave"
     wave_sim = "verilator"
 
-    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str, sources_file: Path) -> None:
         wave = default_verilator_wave(project_dir, build_dir)
         require(wave, "Run 'make test' first.")
-        stems = self._generate_stems(project_dir, build_dir, dut)
+        stems = self._generate_stems(project_dir, build_dir, dut, sources_file)
         gtkwave = env_str("GTKWAVE", "gtkwave")
         gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", "-o"))
         save = project_path_from_env(
@@ -67,16 +67,15 @@ class GtkwaveProfile(ViewerProfile):
             cmd.append(str(save))
         run(cmd)
 
-    def _generate_stems(self, project_dir: Path, build_dir: Path, dut: str) -> Path:
+    def _generate_stems(
+        self, project_dir: Path, build_dir: Path, dut: str, sources_file: Path
+    ) -> Path:
         """Generate GTKWave RTL-browser "stems" so signals link back to source."""
         top = env_str("GTKWAVE_STEMS_TOP", dut)
         stems_dir = build_dir / "rtlbrowse"
         stems = stems_dir / f"{top}.stems"
         tree_json = stems_dir / f"V{top}.tree.json"
         tree_meta = stems_dir / f"V{top}.tree.meta.json"
-        sources_file = project_path_from_env(
-            "SV_SOURCES_FILE", project_dir, project_dir / "rtl" / "sources.vf"
-        )
         verilator = env_str("VERILATOR", "verilator")
         json2stems = env_str("JSON2STEMS", "json2stems")
         defines = ["+define+ABV=1"] if env_flag("ABV", default=False) else []
@@ -107,7 +106,7 @@ class SurferProfile(ViewerProfile):
     name = "surfer"
     wave_sim = "verilator"
 
-    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str, sources_file: Path) -> None:
         wave = default_verilator_wave(project_dir, build_dir)
         require(wave, "Run 'make test' first.")
         surfer = env_str("SURFER", "surfer")
@@ -130,7 +129,7 @@ class QuestaViewerProfile(ViewerProfile):
         # The live GUI needs full visibility (+acc) and the debug database.
         return {"QUESTA_ARGS": "-voptargs=+acc -debugdb"}
 
-    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str, sources_file: Path) -> None:
         questa_wave = default_questa_wave(project_dir, build_dir)
         require(questa_wave, "Run 'make test SIM=questa' first.")
         do = default_questa_do(project_dir, dut)
@@ -144,7 +143,7 @@ class VerdiProfile(ViewerProfile):
     name = "verdi"
     wave_sim = "vcs"
 
-    def open_waves(self, project_dir: Path, build_dir: Path, dut: str) -> None:
+    def open_waves(self, project_dir: Path, build_dir: Path, dut: str, sources_file: Path) -> None:
         vcs_wave = default_vcs_wave(project_dir, build_dir)
         require(vcs_wave, "Run 'make test SIM=vcs' first.")
         daidir = project_path_from_env("VCS_DAIDIR", project_dir, build_dir / "simv.daidir")

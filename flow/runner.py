@@ -13,13 +13,15 @@ from cocotb_tools.runner import get_runner
 if TYPE_CHECKING:
     from flow.simulators import SimulatorProfile
 
-# Default tool/DUT selections. Each is duplicated only by the matching Makefile
-# selector (``SIM``/``VIEWER``/``DUT``): these copies are the single source the
-# CLI argparse defaults and the runner share, and the fallback used when the flow
-# runs without the Makefile (e.g. a bare ``uv run pytest``).
+# Default tool/DUT selections and SV filelist. Each is duplicated only by the
+# matching Makefile selector (``SIM``/``VIEWER``/``DUT``/``SV_SOURCES_FILE``):
+# these copies are the single source the CLI argparse defaults and the runner
+# share, and the fallback used when the flow runs without the Makefile (e.g. a
+# bare ``uv run pytest``).
 DEFAULT_SIM = "verilator"
 DEFAULT_VIEWER = "gtkwave"
 DEFAULT_DUT = "top"
+DEFAULT_SOURCES_FILE = "rtl/sources.vf"
 
 # Sentinel ``DUT`` value meaning "every DUT": ``make test-all`` passes it so each
 # collected ``tests/test_*.py`` builds and runs its own module instead of being
@@ -145,10 +147,20 @@ def open_html(index: Path, *, hint: str) -> None:
     run([env_str("HTML_VIEWER", "xdg-open"), str(index)])
 
 
-def project_path_from_env(name: str, project_dir: Path, default: Path) -> Path:
-    value = os.environ.get(name)
+def resolve_project_path(value: str | None, project_dir: Path, default: Path) -> Path:
+    """Resolve *value* (or *default* when empty) against *project_dir*.
+
+    A relative path is taken relative to *project_dir* (the repo root); an
+    absolute path is used unchanged. Shared by the ``$VAR`` environment lookups
+    (:func:`project_path_from_env`) and the flow CLI's path flags (e.g.
+    ``--sources-file``).
+    """
     path = Path(value) if value else default
     return path if path.is_absolute() else project_dir / path
+
+
+def project_path_from_env(name: str, project_dir: Path, default: Path) -> Path:
+    return resolve_project_path(os.environ.get(name), project_dir, default)
 
 
 def dut_from_test_module(test_module: str) -> str:
@@ -186,6 +198,16 @@ def default_coverage_dat(
     """``$COVERAGE_DAT`` override, or the profile's coverage artifact under *build_dir*."""
     base = profile.coverage_data_path(build_dir) if profile else build_dir / "coverage.dat"
     return project_path_from_env("COVERAGE_DAT", project_dir, base)
+
+
+def default_sources_file(project_dir: Path) -> Path:
+    """``$SV_SOURCES_FILE`` override, or the ``rtl/sources.vf`` filelist.
+
+    The flow CLI sets ``SV_SOURCES_FILE`` in the regression subprocess from its
+    ``--sources-file`` flag (the channel the Makefile passes ``SV_SOURCES_FILE``
+    through), so this resolves the same list the SV lint/format targets parse.
+    """
+    return project_path_from_env("SV_SOURCES_FILE", project_dir, project_dir / DEFAULT_SOURCES_FILE)
 
 
 def default_verilator_wave(project_dir: Path, build_dir: Path) -> Path:
@@ -271,9 +293,7 @@ def build_and_test(test_module: str) -> None:
     questa_gui = env_flag("QUESTA_GUI", default=False)
     waves_enabled = env_flag("WAVES", default=True)
     coverage_dat = default_coverage_dat(project_dir, build_dir, profile)
-    sources_file = project_path_from_env(
-        "SV_SOURCES_FILE", project_dir, project_dir / "rtl" / "sources.vf"
-    )
+    sources_file = default_sources_file(project_dir)
     require(sources_file, "Set SV_SOURCES_FILE to a valid filelist (see rtl/sources.vf).")
     if selected_test and test_filter:
         raise ValueError("Set either TEST or TEST_FILTER, not both.")

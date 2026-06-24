@@ -44,14 +44,14 @@ obvious from those sources.
 - Override the Questa GUI executable with `VSIM`, not `MODELSIM`; Questa treats
   `MODELSIM` as a `modelsim.ini` environment variable.
 - Build/test configuration is read from environment variables. The flow's
-  single-source defaults live in `flow/runner.py` -- the `SIM`/`VIEWER`/`DUT`
-  selectors (`DEFAULT_*`) and the `default_*` build-dir/coverage/wave-path
-  helpers shared by `cli.py`, `simulators.py`, and `viewers.py` -- while
-  per-simulator specifics (build/test args, coverage artifact) stay in the
-  matching `SimulatorProfile` in `flow/simulators.py`. The `Makefile` selects
-  `SIM`/`VIEWER`/`DUT` and passes them to the flow CLI as flags (only
-  `SV_SOURCES_FILE` is exported); other command-line overrides reach the flow
-  through the environment.
+  single-source defaults live in `flow/runner.py` -- the
+  `SIM`/`VIEWER`/`DUT`/`SV_SOURCES_FILE` selectors (`DEFAULT_*`) and the
+  `default_*` build-dir/coverage/sources/wave-path helpers shared by `cli.py`,
+  `simulators.py`, and `viewers.py` -- while per-simulator specifics (build/test
+  args, coverage artifact) stay in the matching `SimulatorProfile` in
+  `flow/simulators.py`. The `Makefile` selects
+  `SIM`/`VIEWER`/`DUT`/`SV_SOURCES_FILE` and passes them to the flow CLI as
+  flags; other command-line overrides reach the flow through the environment.
 - Do not commit files from `build/`, and do not add new tools unless necessary
   for the requested change.
 - When you change behavior, check whether the README, `make help`, source
