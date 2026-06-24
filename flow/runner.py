@@ -222,16 +222,10 @@ def project_paths_from_list_file(
 ) -> tuple[list[Path], list[Path]]:
     """Parse a Verilator-style ``.vf`` source list into sources and include dirs.
 
-    Each non-comment, non-blank line is one of:
-
-    * a path (compilation source, validated as a regular file),
-    * ``+incdir+<dir>`` (preprocessor include directory, validated as
-      an existing directory),
-    * ``+verible+<file>`` (Verible-only file, validated as a file but
-      not returned — the cocotb runner has no use for bare-SVA include
-      files that aren't compilation units).
-
-    Anything else raises.
+    ``rtl/sources.vf`` documents the line format: ``+incdir+`` entries become
+    include directories and bare paths become sources, each resolved relative to
+    *project_dir* and validated to exist. Any other ``+`` directive raises
+    (Verible-only files belong in ``rtl/verible.vf``, not here).
     """
     list_file = project_path_from_env(name, project_dir, default)
     sources: list[Path] = []
@@ -250,16 +244,11 @@ def project_paths_from_list_file(
                     f"{list_file}: '+incdir+{raw}' does not resolve to a directory ({path})"
                 )
             includes.append(path)
-        elif entry.startswith("+verible+"):
-            raw = entry[len("+verible+") :]
-            path = Path(raw)
-            if not path.is_absolute():
-                path = project_dir / path
-            if not path.is_file():
-                raise FileNotFoundError(
-                    f"{list_file}: '+verible+{raw}' does not resolve to a file ({path})"
-                )
-            # Validated for parity with the Makefile but not returned.
+        elif entry.startswith("+"):
+            raise ValueError(
+                f"{list_file}: unrecognized directive {entry!r} "
+                "(only '+incdir+<dir>' and bare source paths are supported)"
+            )
         else:
             path = Path(entry)
             if not path.is_absolute():

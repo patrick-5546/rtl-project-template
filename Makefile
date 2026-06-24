@@ -28,22 +28,26 @@ FLOW := $(UV) run python -m flow.cli
 SV_SOURCES_FILE ?= rtl/sources.vf
 export SV_SOURCES_FILE
 
-# Parse sources.vf into compile sources, +incdir+ dirs, and +verible+ extras,
-# then validate (below) that every referenced path exists. The flow package
-# parses the same file for the cocotb runner; this copy serves the SystemVerilog
-# lint/format targets, which must stay usable without the cocotb environment.
+# Verible-only source list (see rtl/verible.vf). Unlike SV_SOURCES_FILE it is
+# not exported, since only the Verible lint/format targets below read it.
+SV_VERIBLE_FILE ?= rtl/verible.vf
+
+# Extract compile sources + include dirs from sources.vf and the Verible-only
+# inputs from verible.vf, then validate (below) that every path exists. The flow
+# package parses sources.vf itself; this copy keeps the SV lint/format targets
+# usable without the cocotb environment.
 read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1)))
 
 SV_ENTRIES := $(call read_sources,$(SV_SOURCES_FILE))
 SV_INCLUDE_DIRS := $(patsubst +incdir+%,%,$(filter +incdir+%,$(SV_ENTRIES)))
-SV_VERIBLE_EXTRAS := $(patsubst +verible+%,%,$(filter +verible+%,$(SV_ENTRIES)))
 SV_SOURCES := $(filter-out +%,$(SV_ENTRIES))
 SV_INCLUDE_FLAGS := $(addprefix -I,$(SV_INCLUDE_DIRS))
+SV_VERIBLE_EXTRAS := $(call read_sources,$(SV_VERIBLE_FILE))
 SV_VERIBLE_INPUTS := $(SV_SOURCES) $(SV_VERIBLE_EXTRAS)
 
 $(foreach dir,$(SV_INCLUDE_DIRS),$(if $(wildcard $(dir)/.),,$(error sources.vf: '+incdir+$(dir)' does not resolve to a directory)))
-$(foreach src,$(SV_VERIBLE_EXTRAS),$(if $(wildcard $(src)),,$(error sources.vf: '+verible+$(src)' does not resolve to a file)))
 $(foreach src,$(SV_SOURCES),$(if $(wildcard $(src)),,$(error sources.vf: '$(src)' does not resolve to a file)))
+$(foreach src,$(SV_VERIBLE_EXTRAS),$(if $(wildcard $(src)),,$(error verible.vf: '$(src)' does not resolve to a file)))
 
 # Tool selection. SIM picks a simulator profile (flow/simulators.py) for the
 # test/coverage targets; VIEWER picks a viewer profile (flow/viewers.py) for the

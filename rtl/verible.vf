@@ -1,0 +1,6 @@
+# Verible-only SystemVerilog source list: bare-SVA fragments that are `include`d
+# into a module under an `ifdef (e.g. ABV) rather than compiled standalone. The
+# Makefile's Verible lint/format targets read these in addition to the compile
+# sources in rtl/sources.vf; the simulators and the cocotb flow never see them.
+# Each non-comment, non-blank line is a bare file path, validated to exist.
+rtl/top_abv.sv

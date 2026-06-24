@@ -1,9 +1,9 @@
 // top_abv: assertion-based verification for top.sv (bare SVA, no module
 // wrapper). It is `include`d into module top inside `ifdef ABV, so it
 // references top's clk_i/rst_ni/en_i/count_o and WIDTH directly. It is not a
-// compilation unit on its own: rtl/sources.vf lists it as a +verible+ entry
-// (Verible lints and formats it) rather than as a source. The directive above
-// lets Verible parse these labeled items as a module body.
+// compilation unit on its own: rtl/verible.vf lists it (Verible lints and
+// formats it) instead of rtl/sources.vf, which holds compilation sources. The
+// directive above lets Verible parse these labeled items as a module body.
 //
 // Conventions: each implication assertion has a matching antecedent
 // `cover property` (with the same `disable iff`) so vacuous passes surface as

@@ -15,8 +15,8 @@ obvious from those sources.
 - New RTL goes in `rtl/` and must be listed in `rtl/sources.vf` (that file's
   header documents the entry syntax).
 - ABV files are bare SVA `` `include ``d under `` `ifdef ABV ``; follow the
-  pattern in `rtl/top_abv.sv` (see its header) and add them as `+verible+`
-  entries in `rtl/sources.vf`.
+  pattern in `rtl/top_abv.sv` and list them in `rtl/verible.vf` (not
+  `rtl/sources.vf`).
 - For each implication-style (`|->` / `|=>`) `assert property`, also add a
   `cover property` for the bare antecedent (matching any `disable iff` clause)
   so vacuous passes show up as a coverage hole instead of silently passing.

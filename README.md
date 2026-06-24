@@ -4,7 +4,8 @@
 
 - `rtl/top.sv`: a parameterized counter top module.
 - `rtl/top_abv.sv`: assertion-based verification examples for `rtl/top.sv`.
-- `rtl/sources.vf`: source list.
+- `rtl/sources.vf`: compilation source list (paths and `+incdir+` dirs).
+- `rtl/verible.vf`: extra Verible-only inputs (bare-SVA `` `include `` fragments).
 - `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest.
 - `tests/coverage_top.py`: Python functional coverage mirroring the SV
   covergroup in `rtl/top_abv.sv`, using cocotb-coverage.
@@ -69,14 +70,10 @@ current cocotb release does not support Python 3.14.
 ## Assertion-based verification
 
 `rtl/top_abv.sv` holds optional SVA assertions and a covergroup for
-`rtl/top.sv`. It is a bare-SVA fragment that `top.sv` `` `include ``s under
-`` `ifdef ABV ``; its header comment explains how it is structured and why it
-is a `+verible+` entry in `rtl/sources.vf` rather than a compilation source. A
-Python covergroup mirror in `tests/coverage_top.py` (cocotb-coverage) provides
-the same functional coverage on simulators that cannot collect SV covergroups,
-and must be kept in sync with it.
-
-Enable assertions with `ABV=1` (see `make help`).
+`rtl/top.sv`, `` `include ``d under `` `ifdef ABV `` (see its header for the
+structure). A Python covergroup mirror in `tests/coverage_top.py`
+(cocotb-coverage) provides the same functional coverage on simulators that
+cannot collect SV covergroups. Enable assertions with `ABV=1` (see `make help`).
 
 ## Coverage
 
