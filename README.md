@@ -4,7 +4,7 @@
 
 - `rtl/top.sv`: a parameterized counter top module.
 - `rtl/top_abv.sv`: assertion-based verification examples for `rtl/top.sv`.
-- `rtl/sources.vf`: compilation source list.
+- `rtl/sources.vf`: compilation source list (the default `SV_SOURCES_FILE`).
 - `rtl/verible.vf`: Verible source list.
 - `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest.
 - `tests/coverage_top.py`: Python functional coverage mirroring the SV
@@ -40,9 +40,12 @@ to pick a specific DUT, which also selects the target for `waves`, `coverage`,
 and the `open-*` commands. Multiple test files can target the same module via
 the `test_<module>__<variant>.py` naming convention. Select individual tests by exact
 name or regex, and reuse an existing simulator build for faster debug loops
-instead of rebuilding. Run `make help` for the full command reference: every
-target and override variable, plus the available simulators and viewers, is
-documented there.
+instead of rebuilding. Point `SV_SOURCES_FILE` at one or more space-separated
+`.vf` filelists to compile additional RTL (e.g.
+`make test SV_SOURCES_FILE='rtl/sources.vf rtl/extra.vf'`); each filelist is
+handed to the simulator with its own `-f`. Run `make help` for the full command
+reference: every target and override variable, plus the available simulators and
+viewers, is documented there.
 
 Linters and formatters run per tool as `<lint|format>-<py|sv|md>-<tool>`
 targets; skip any tool with its `ENABLE_<TOOL>=0` flag (e.g.

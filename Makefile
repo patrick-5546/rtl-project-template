@@ -23,15 +23,20 @@ ENABLE_SLANG_TIDY ?= 1
 # sim/wave targets below are thin wrappers around it.
 FLOW := $(UV) run python -m flow.cli
 
-# File lists.
+# File lists. SV_SOURCES_FILE may name several whitespace-separated filelists;
+# each is handed to the simulators with its own `-f`, and all are parsed together
+# below for the SV lint/format targets.
 SV_SOURCES_FILE ?= rtl/sources.vf
 SV_VERIBLE_FILE ?= rtl/verible.vf
 
-# Extract compile sources + include dirs from sources.vf and the full Verible
-# input list from verible.vf, then validate (below) that every path exists. The
-# flow package hands sources.vf to the simulators with `-f`; these independent
-# parses keep the SV lint/format targets usable without the cocotb environment.
+# Extract compile sources + include dirs from the source filelist(s) and the full
+# Verible input list from verible.vf, then validate (below) that every path
+# exists. The flow package hands each filelist to the simulators with `-f`; these
+# independent parses keep the SV lint/format targets usable without the cocotb
+# environment.
 read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1)))
+
+$(foreach f,$(SV_SOURCES_FILE),$(if $(wildcard $(f)),,$(error SV_SOURCES_FILE: '$(f)' does not resolve to a file)))
 
 SV_ENTRIES := $(call read_sources,$(SV_SOURCES_FILE))
 SV_INCLUDE_DIRS := $(patsubst +incdir+%,%,$(filter +incdir+%,$(SV_ENTRIES)))
@@ -40,8 +45,8 @@ SV_SOURCES := $(filter-out +%,$(SV_ENTRIES))
 SV_INCLUDE_FLAGS := $(addprefix -I,$(SV_INCLUDE_DIRS))
 SV_VERIBLE_INPUTS := $(call read_sources,$(SV_VERIBLE_FILE))
 
-$(foreach dir,$(SV_INCLUDE_DIRS),$(if $(wildcard $(dir)/.),,$(error sources.vf: '+incdir+$(dir)' does not resolve to a directory)))
-$(foreach src,$(SV_SOURCES),$(if $(wildcard $(src)),,$(error sources.vf: '$(src)' does not resolve to a file)))
+$(foreach dir,$(SV_INCLUDE_DIRS),$(if $(wildcard $(dir)/.),,$(error SV_SOURCES_FILE: '+incdir+$(dir)' does not resolve to a directory)))
+$(foreach src,$(SV_SOURCES),$(if $(wildcard $(src)),,$(error SV_SOURCES_FILE: '$(src)' does not resolve to a file)))
 $(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: '$(src)' does not resolve to a file)))
 
 # Tool selection. SIM picks a simulator profile (flow/simulators.py) for the
@@ -119,6 +124,7 @@ help:
 	@echo ""
 	@echo "Common variables (override as VAR=value):"
 	@echo "  DUT=<module>                    Module to build/test/view; available: $$($(FLOW) list-duts | tr '\n' ' ')"
+	@echo "  SV_SOURCES_FILE='a.vf b.vf'     SystemVerilog filelist(s); space-separated for several"
 	@echo "  TEST= / TEST_FILTER=            Select one test by exact name / by regex"
 	@echo "  REBUILD=0                       Reuse the existing build instead of rebuilding"
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
@@ -140,15 +146,15 @@ update-py-deps:
 # overrides (ABV, TEST, TEST_FILTER, REBUILD, ...) reach it through the
 # environment, which GNU Make exports automatically.
 test:
-	$(FLOW) test --sim $(SIM) --dut $(DUT) --sources-file $(SV_SOURCES_FILE)
+	$(FLOW) test --sim $(SIM) --dut $(DUT) --sources-file '$(SV_SOURCES_FILE)'
 
 # Run every DUT's tests in one pytest invocation (each test file builds its own
 # module; see flow/runner.build_and_test). DUT=all disables the per-file filter.
 test-all:
-	$(FLOW) test --sim $(SIM) --dut all --sources-file $(SV_SOURCES_FILE)
+	$(FLOW) test --sim $(SIM) --dut all --sources-file '$(SV_SOURCES_FILE)'
 
 coverage:
-	$(MAKE) test SIM=$(SIM) DUT=$(DUT) SV_SOURCES_FILE=$(SV_SOURCES_FILE) ABV=1 HDL_COVERAGE=1
+	$(MAKE) test SIM=$(SIM) DUT=$(DUT) SV_SOURCES_FILE='$(SV_SOURCES_FILE)' ABV=1 HDL_COVERAGE=1
 	$(FLOW) report-coverage --sim $(SIM) --dut $(DUT)
 
 # Coverage is per-DUT (one report per build dir), so sweep each discovered DUT.
@@ -164,10 +170,10 @@ open-coverage-html:
 	$(FLOW) open-coverage-html --sim $(SIM) --dut $(DUT)
 
 waves:
-	$(FLOW) waves --viewer $(VIEWER) --dut $(DUT) --sources-file $(SV_SOURCES_FILE)
+	$(FLOW) waves --viewer $(VIEWER) --dut $(DUT) --sources-file '$(SV_SOURCES_FILE)'
 
 open-waves:
-	$(FLOW) open-waves --viewer $(VIEWER) --dut $(DUT) --sources-file $(SV_SOURCES_FILE)
+	$(FLOW) open-waves --viewer $(VIEWER) --dut $(DUT) --sources-file '$(SV_SOURCES_FILE)'
 
 format-py-ruff:
 	$(UV) run ruff format .

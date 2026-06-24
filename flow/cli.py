@@ -21,7 +21,7 @@ from flow.runner import (
     default_build_dir,
     default_coverage_dat,
     discover_duts,
-    resolve_project_path,
+    resolve_sources_files,
 )
 from flow.simulators import SIMULATORS, SimulatorProfile
 from flow.viewers import VIEWERS, ViewerProfile
@@ -54,9 +54,9 @@ def _coverage_data(profile: SimulatorProfile, build_dir: Path) -> Path:
     return default_coverage_dat(PROJECT_DIR, build_dir, profile)
 
 
-def _sources_file(args: argparse.Namespace) -> Path:
-    """Resolve the ``--sources-file`` flag against the project root."""
-    return resolve_project_path(args.sources_file, PROJECT_DIR, PROJECT_DIR / DEFAULT_SOURCES_FILE)
+def _sources_files(args: argparse.Namespace) -> list[Path]:
+    """Resolve the ``--sources-file`` flag (whitespace-separated) against the root."""
+    return resolve_sources_files(args.sources_file, PROJECT_DIR)
 
 
 def run_regression(
@@ -117,7 +117,7 @@ def cmd_open_coverage_html(args: argparse.Namespace) -> None:
 def cmd_waves(args: argparse.Namespace) -> None:
     viewer = _viewer(args.viewer)
     build_dir = _build_dir(args.dut, viewer.wave_sim)
-    sources_file = _sources_file(args)
+    sources_files = _sources_files(args)
     if viewer.live_gui:
         # The interactive run *is* the wave view (e.g. Questa's GUI).
         run_regression(
@@ -128,13 +128,13 @@ def cmd_waves(args: argparse.Namespace) -> None:
         )
     else:
         run_regression(viewer.wave_sim, dut=args.dut, sources_file=args.sources_file)
-        viewer.open_waves(PROJECT_DIR, build_dir, args.dut, sources_file)
+        viewer.open_waves(PROJECT_DIR, build_dir, args.dut, sources_files)
 
 
 def cmd_open_waves(args: argparse.Namespace) -> None:
     viewer = _viewer(args.viewer)
     viewer.open_waves(
-        PROJECT_DIR, _build_dir(args.dut, viewer.wave_sim), args.dut, _sources_file(args)
+        PROJECT_DIR, _build_dir(args.dut, viewer.wave_sim), args.dut, _sources_files(args)
     )
 
 

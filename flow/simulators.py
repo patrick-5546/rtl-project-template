@@ -111,13 +111,17 @@ class SimulatorProfile:
     forces_ansi_on_tty: bool = False
 
     def configure(self, cfg: RunConfig) -> SimArgs:
-        """Default build args: hand the source filelist to the tool with ``-f``.
+        """Default build args: hand each source filelist to the tool with ``-f``.
 
-        Every profile inherits this ``-f <sources_file>`` build arg; overrides
+        Every profile inherits one ``-f <filelist>`` build arg per entry in
+        ``cfg.sources_files`` (``SV_SOURCES_FILE`` may list several); overrides
         call ``super().configure(cfg)`` and extend the returned :class:`SimArgs`
         with their simulator-specific build/test args.
         """
-        return SimArgs(build_args=["-f", str(cfg.sources_file)])
+        build_args: list[str] = []
+        for sources_file in cfg.sources_files:
+            build_args.extend(["-f", str(sources_file)])
+        return SimArgs(build_args=build_args)
 
     def coverage_data_path(self, build_dir: Path) -> Path:
         """Canonical coverage artifact for this simulator under *build_dir*."""

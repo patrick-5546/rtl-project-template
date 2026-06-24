@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 # matching Makefile selector (``SIM``/``VIEWER``/``DUT``/``SV_SOURCES_FILE``):
 # these copies are the single source the CLI argparse defaults and the runner
 # share, and the fallback used when the flow runs without the Makefile (e.g. a
-# bare ``uv run pytest``).
+# bare ``uv run pytest``). ``SV_SOURCES_FILE`` may name several filelists
+# separated by whitespace (each handed to the simulator with its own ``-f``);
+# ``DEFAULT_SOURCES_FILE`` is the single fallback when it is unset.
 DEFAULT_SIM = "verilator"
 DEFAULT_VIEWER = "gtkwave"
 DEFAULT_DUT = "top"
@@ -44,7 +46,7 @@ class RunConfig:
     vcs_wave: Path
     build_dir: Path
     hdl_toplevel: str
-    sources_file: Path
+    sources_files: list[Path]
 
 
 @dataclass
@@ -163,6 +165,24 @@ def project_path_from_env(name: str, project_dir: Path, default: Path) -> Path:
     return resolve_project_path(os.environ.get(name), project_dir, default)
 
 
+def resolve_sources_files(value: str | None, project_dir: Path) -> list[Path]:
+    """Resolve a whitespace-separated *value* of filelists against *project_dir*.
+
+    ``SV_SOURCES_FILE`` (and the flow CLI's ``--sources-file``) may name several
+    SystemVerilog filelists separated by whitespace; each entry is resolved like
+    :func:`resolve_project_path` (relative paths against the repo root, absolute
+    paths unchanged), and every list is handed to the simulator with its own
+    ``-f``. An empty/unset *value* falls back to the single
+    :data:`DEFAULT_SOURCES_FILE`. Individual paths therefore cannot contain
+    spaces, matching the absolute-path convention of ``rtl/sources.vf``.
+    """
+    default = project_dir / DEFAULT_SOURCES_FILE
+    tokens = value.split() if value else []
+    if not tokens:
+        return [default]
+    return [resolve_project_path(token, project_dir, default) for token in tokens]
+
+
 def dut_from_test_module(test_module: str) -> str:
     """The DUT module a test file targets, by filename convention.
 
@@ -200,14 +220,16 @@ def default_coverage_dat(
     return project_path_from_env("COVERAGE_DAT", project_dir, base)
 
 
-def default_sources_file(project_dir: Path) -> Path:
-    """``$SV_SOURCES_FILE`` override, or the ``rtl/sources.vf`` filelist.
+def default_sources_files(project_dir: Path) -> list[Path]:
+    """``$SV_SOURCES_FILE`` overrides (whitespace-separated), or ``rtl/sources.vf``.
 
     The flow CLI sets ``SV_SOURCES_FILE`` in the regression subprocess from its
     ``--sources-file`` flag (the channel the Makefile passes ``SV_SOURCES_FILE``
-    through), so this resolves the same list the SV lint/format targets parse.
+    through), so this resolves the same list(s) the SV lint/format targets parse.
+    Several filelists may be given, separated by whitespace; each is handed to
+    the simulator with its own ``-f``.
     """
-    return project_path_from_env("SV_SOURCES_FILE", project_dir, project_dir / DEFAULT_SOURCES_FILE)
+    return resolve_sources_files(os.environ.get("SV_SOURCES_FILE"), project_dir)
 
 
 def default_verilator_wave(project_dir: Path, build_dir: Path) -> Path:
@@ -293,8 +315,9 @@ def build_and_test(test_module: str) -> None:
     questa_gui = env_flag("QUESTA_GUI", default=False)
     waves_enabled = env_flag("WAVES", default=True)
     coverage_dat = default_coverage_dat(project_dir, build_dir, profile)
-    sources_file = default_sources_file(project_dir)
-    require(sources_file, "Set SV_SOURCES_FILE to a valid filelist (see rtl/sources.vf).")
+    sources_files = default_sources_files(project_dir)
+    for sources_file in sources_files:
+        require(sources_file, "Set SV_SOURCES_FILE to a valid filelist (see rtl/sources.vf).")
     if selected_test and test_filter:
         raise ValueError("Set either TEST or TEST_FILTER, not both.")
     if selected_test:
@@ -328,11 +351,11 @@ def build_and_test(test_module: str) -> None:
                 vcs_wave=vcs_wave,
                 build_dir=build_dir,
                 hdl_toplevel=hdl_toplevel,
-                sources_file=sources_file,
+                sources_files=sources_files,
             )
         )
         if profile
-        else SimArgs(build_args=["-f", str(sources_file)])
+        else SimArgs(build_args=[arg for f in sources_files for arg in ("-f", str(f))])
     )
     build_args = sim_args.build_args
     plusargs = sim_args.plusargs
