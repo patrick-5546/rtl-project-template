@@ -24,29 +24,24 @@ ENABLE_SLANG_TIDY ?= 1
 FLOW := $(UV) run python -m flow.cli
 
 # File lists. SV_SOURCES_FILE may name several whitespace-separated filelists;
-# each is handed to the simulators with its own `-f`, and all are parsed together
-# below for the SV lint/format targets.
+# each is handed -- with its own `-f` -- both to the simulators (via the flow
+# package) and to the Verilator/slang lint targets, which read the
+# `+incdir+`/`+define+`/source entries straight from the filelist. SV_VERIBLE_FILE
+# is the standalone Verible input list, parsed below because Verible takes bare
+# file paths rather than a `-f` command file.
 SV_SOURCES_FILE ?= rtl/sources.vf
 SV_VERIBLE_FILE ?= rtl/verible.vf
 
-# Extract compile sources + include dirs from the source filelist(s) and the full
-# Verible input list from verible.vf, then validate (below) that every path
-# exists. The flow package hands each filelist to the simulators with `-f`; these
-# independent parses keep the SV lint/format targets usable without the cocotb
-# environment.
-read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1)))
-
+# Expand the source filelist(s) into the `-f <file>` flags the lint targets pass
+# to Verilator/slang, and validate (here, at parse time) that each filelist
+# exists -- mirroring how the flow package hands them to the simulators.
+SV_SOURCES_ARGS := $(foreach f,$(SV_SOURCES_FILE),-f $(f))
 $(foreach f,$(SV_SOURCES_FILE),$(if $(wildcard $(f)),,$(error SV_SOURCES_FILE: '$(f)' does not resolve to a file)))
 
-SV_ENTRIES := $(call read_sources,$(SV_SOURCES_FILE))
-SV_INCLUDE_DIRS := $(patsubst +incdir+%,%,$(filter +incdir+%,$(SV_ENTRIES)))
-SV_DEFINES := $(filter +define+%,$(SV_ENTRIES))
-SV_SOURCES := $(filter-out +%,$(SV_ENTRIES))
-SV_INCLUDE_FLAGS := $(addprefix -I,$(SV_INCLUDE_DIRS))
+# Verible has no `-f` command-file mode, so read its input list into bare file
+# paths (dropping `#` comments and blank lines) and validate that each exists.
+read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1)))
 SV_VERIBLE_INPUTS := $(call read_sources,$(SV_VERIBLE_FILE))
-
-$(foreach dir,$(SV_INCLUDE_DIRS),$(if $(wildcard $(dir)/.),,$(error SV_SOURCES_FILE: '+incdir+$(dir)' does not resolve to a directory)))
-$(foreach src,$(SV_SOURCES),$(if $(wildcard $(src)),,$(error SV_SOURCES_FILE: '$(src)' does not resolve to a file)))
 $(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: '$(src)' does not resolve to a file)))
 
 # Tool selection. SIM picks a simulator profile (flow/simulators.py) for the
@@ -204,13 +199,13 @@ lint-sv-verible:
 	verible-verilog-lint $(SV_VERIBLE_INPUTS)
 
 lint-sv-verilator:
-	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_DEFINES) $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
+	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_SOURCES_ARGS)
 
 lint-sv-slang:
-	$(SLANG) -Werror +define+ABV $(SV_DEFINES) $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
+	$(SLANG) -Werror +define+ABV $(SV_SOURCES_ARGS)
 
 lint-sv-slang-tidy:
-	$(SLANG_TIDY) +define+ABV $(SV_DEFINES) $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
+	$(SLANG_TIDY) +define+ABV $(SV_SOURCES_ARGS)
 
 # Per-tool ENABLE_<TOOL> flags select which targets the language aggregates run;
 # a disabled tool drops out of `lint`/`format` but its target stays invokable.
