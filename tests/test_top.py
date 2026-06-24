@@ -76,33 +76,23 @@ async def enable_low_holds_count(dut: Any) -> None:
 
 
 @cocotb.test()
-async def enable_toggles_at_all_counts(dut: Any) -> None:
-    """Sample enable low in every count bin range (mid, high, max)."""
+@cocotb.parametrize(target_count=[100, 200, 255])
+async def enable_low_holds_at_count(dut: Any, target_count: int) -> None:
+    """Drop enable after reaching a count bin and verify the value holds.
+
+    The targets land in the mid (100), high (200), and max (255) bins of
+    ``counter_cg`` for the default ``WIDTH=8``; cocotb generates one test per
+    value (``..._100``/``..._200``/``..._255``) within a single build.
+    """
     await start_counter(dut)
 
-    # Count into mid range [64, 191] and hold.
     dut.en_i.value = 1
-    await tick(dut, 100)
-    assert dut.count_o.value.to_unsigned() == 100
-    dut.en_i.value = 0
-    await tick(dut)
-    assert dut.count_o.value.to_unsigned() == 100
+    await tick(dut, target_count)
+    assert dut.count_o.value.to_unsigned() == target_count
 
-    # Continue into high range [192, 254] and hold.
-    dut.en_i.value = 1
-    await tick(dut, 100)
-    assert dut.count_o.value.to_unsigned() == 200
     dut.en_i.value = 0
     await tick(dut)
-    assert dut.count_o.value.to_unsigned() == 200
-
-    # Continue to max (255) and hold.
-    dut.en_i.value = 1
-    await tick(dut, 55)
-    assert dut.count_o.value.to_unsigned() == 255
-    dut.en_i.value = 0
-    await tick(dut)
-    assert dut.count_o.value.to_unsigned() == 255
+    assert dut.count_o.value.to_unsigned() == target_count
 
 
 @cocotb.test()
