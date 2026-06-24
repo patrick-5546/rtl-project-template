@@ -25,11 +25,12 @@ obvious from those sources.
 
 - Use modern cocotb APIs: `unit="ns"`, not the deprecated `units="ns"`.
 - Keep tests deterministic and focused on externally visible RTL behavior.
-- New test files go in `tests/` as `test_<module>.py`. Import `build_and_test`
-  from `flow.runner` and add a one-line pytest entry point:
-  `build_and_test(hdl_toplevel="<module>", test_module=Path(__file__).stem)`.
-  The `DUT` value (forwarded by the flow CLI from `make ... DUT=<module>`)
-  overrides `hdl_toplevel` at run time.
+- New test files go in `tests/` as `test_<module>.py`, where `<module>` is the
+  RTL top module (derived from the filename, so no `hdl_toplevel` argument).
+  Import `build_and_test` from `flow.runner` and add a one-line pytest entry
+  point: `build_and_test(test_module=Path(__file__).stem)`. For several files
+  targeting the *same* module, append a `__<variant>` suffix (e.g.
+  `test_top__smoke.py`).
 
 ### Coverage
 

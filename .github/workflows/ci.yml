@@ -129,7 +129,7 @@ jobs:
       - run: uv sync
 
       - name: Run coverage
-        run: make coverage
+        run: make coverage-all
 
       # - name: Upload coverage report
       #   if: always()
@@ -173,4 +173,4 @@ jobs:
 
       - run: uv sync
 
-      - run: make test
+      - run: make test-all

@@ -13,16 +13,19 @@ import sys
 from pathlib import Path
 
 from flow.runner import (
+    ALL_DUTS,
     DEFAULT_DUT,
     DEFAULT_SIM,
     DEFAULT_VIEWER,
     default_build_dir,
     default_coverage_dat,
+    discover_duts,
 )
 from flow.simulators import SIMULATORS, SimulatorProfile
 from flow.viewers import VIEWERS, ViewerProfile
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
+TESTS_DIR = PROJECT_DIR / "tests"
 
 
 def _sim(name: str) -> SimulatorProfile:
@@ -73,6 +76,10 @@ def run_regression(simulator: str, *, dut: str, extra_env: dict[str, str] | None
 
 
 def cmd_test(args: argparse.Namespace) -> None:
+    duts = discover_duts(TESTS_DIR)
+    if args.dut != ALL_DUTS and args.dut not in duts:
+        available = ", ".join(duts) or "(none)"
+        raise SystemExit(f"Unknown DUT '{args.dut}'. Available: {available}")
     run_regression(args.sim, dut=args.dut)
 
 
@@ -121,6 +128,10 @@ def cmd_list_viewers(args: argparse.Namespace) -> None:
     print("\n".join(sorted(VIEWERS)))
 
 
+def cmd_list_duts(args: argparse.Namespace) -> None:
+    print("\n".join(discover_duts(TESTS_DIR)))
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="flow", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -148,6 +159,7 @@ def main(argv: list[str] | None = None) -> None:
 
     sub.add_parser("list-sims").set_defaults(func=cmd_list_sims)
     sub.add_parser("list-viewers").set_defaults(func=cmd_list_viewers)
+    sub.add_parser("list-duts").set_defaults(func=cmd_list_duts)
 
     args = parser.parse_args(argv)
     args.func(args)

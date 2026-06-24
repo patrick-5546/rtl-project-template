@@ -66,9 +66,9 @@ DUT ?= top
 	format-sv-verible lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy \
 	open-coverage open-coverage-html open-waves \
 	sync update-py-deps \
-	test waves
+	test test-all coverage-all waves
 
-all: lint test
+all: lint test-all
 
 help:
 	@echo "Usage: make <target> [VAR=value ...]"
@@ -78,7 +78,8 @@ help:
 	@echo "  update-py-deps                  Upgrade Python deps (uv lock --upgrade + sync)"
 	@echo ""
 	@echo "Test:"
-	@echo "  test [SIM=questa]               Run the full cocotb regression"
+	@echo "  test [SIM=questa]               Run the cocotb regression for one DUT"
+	@echo "  test-all                        Run the cocotb regression for every DUT"
 	@echo "  test TEST=enable_high_counts    Run one cocotb test by exact name"
 	@echo "  test TEST_FILTER='enable_.*'    Run cocotb tests matching a regex"
 	@echo "  test REBUILD=0                  Reuse the existing simulator build"
@@ -90,7 +91,8 @@ help:
 	@echo "  open-waves [VIEWER=...]         Open the existing waveform in the viewer"
 	@echo ""
 	@echo "Coverage:"
-	@echo "  coverage [SIM=questa]           Run full coverage + report"
+	@echo "  coverage [SIM=questa]           Run coverage + report for one DUT"
+	@echo "  coverage-all                    Run coverage + report for every DUT"
 	@echo "  open-coverage [SIM=questa]      Open coverage in the simulator's GUI viewer"
 	@echo "  open-coverage-html [SIM=...]    Open the coverage HTML report"
 	@echo ""
@@ -117,7 +119,7 @@ help:
 	@echo "  VIEWER=<viewer>                 Waveform viewer; available: $$($(FLOW) list-viewers | tr '\n' ' ')"
 	@echo ""
 	@echo "Common variables (override as VAR=value):"
-	@echo "  DUT=<module>                    Top module to build/test/view"
+	@echo "  DUT=<module>                    Module to build/test/view; available: $$($(FLOW) list-duts | tr '\n' ' ')"
 	@echo "  TEST= / TEST_FILTER=            Select one test by exact name / by regex"
 	@echo "  REBUILD=0                       Reuse the existing build instead of rebuilding"
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
@@ -141,9 +143,20 @@ update-py-deps:
 test:
 	$(FLOW) test --sim $(SIM) --dut $(DUT)
 
+# Run every DUT's tests in one pytest invocation (each test file builds its own
+# module; see flow/runner.build_and_test). DUT=all disables the per-file filter.
+test-all:
+	$(FLOW) test --sim $(SIM) --dut all
+
 coverage:
 	$(MAKE) test SIM=$(SIM) DUT=$(DUT) ABV=1 HDL_COVERAGE=1
 	$(FLOW) report-coverage --sim $(SIM) --dut $(DUT)
+
+# Coverage is per-DUT (one report per build dir), so sweep each discovered DUT.
+coverage-all:
+	@for dut in $$($(FLOW) list-duts); do \
+		$(MAKE) coverage SIM=$(SIM) DUT=$$dut || exit $$?; \
+	done
 
 open-coverage:
 	$(FLOW) open-coverage --sim $(SIM) --dut $(DUT)

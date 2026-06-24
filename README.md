@@ -33,8 +33,11 @@ make lint   # run all lint and type checks
 The simulation flow is cocotb through pytest. The same handful of targets work
 for every tool: pass the simulator as `SIM=<sim>` to `test`, `coverage`,
 `open-coverage`, and `open-coverage-html`, and the waveform viewer as
-`VIEWER=<viewer>` to `waves` and `open-waves`. Point the whole flow at a
-different top module with `DUT=<module>`. Select individual tests by exact
+`VIEWER=<viewer>` to `waves` and `open-waves`. `make test` runs one DUT while
+`make test-all` runs every `tests/test_*.py` across all DUTs; pass `DUT=<module>`
+to pick a specific DUT, which also selects the target for `waves`, `coverage`,
+and the `open-*` commands. Multiple test files can target the same module via
+the `test_<module>__<variant>.py` naming convention. Select individual tests by exact
 name or regex, and reuse an existing simulator build for faster debug loops
 instead of rebuilding. Run `make help` for the full command reference: every
 target and override variable, plus the available simulators and viewers, is

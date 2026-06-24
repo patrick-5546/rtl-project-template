@@ -137,4 +137,4 @@ async def check_coverage(dut: Any) -> None:
 
 
 def test_top() -> None:
-    build_and_test(hdl_toplevel="top", test_module=Path(__file__).stem)
+    build_and_test(test_module=Path(__file__).stem)

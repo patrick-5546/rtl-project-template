@@ -21,6 +21,12 @@ DEFAULT_SIM = "verilator"
 DEFAULT_VIEWER = "gtkwave"
 DEFAULT_DUT = "top"
 
+# Sentinel ``DUT`` value meaning "every DUT": ``make test-all`` passes it so each
+# collected ``tests/test_*.py`` builds and runs its own module instead of being
+# filtered to a single one. ``make test`` and the single-target commands use a
+# concrete module (defaulting to ``DEFAULT_DUT``) instead.
+ALL_DUTS = "all"
+
 
 @dataclass
 class RunConfig:
@@ -144,14 +150,28 @@ def project_path_from_env(name: str, project_dir: Path, default: Path) -> Path:
     return path if path.is_absolute() else project_dir / path
 
 
-def dut_toplevel(default: str = DEFAULT_DUT) -> str:
-    """Top-level module name, overridable via the ``DUT`` environment variable.
+def dut_from_test_module(test_module: str) -> str:
+    """The DUT module a test file targets, by filename convention.
 
-    The flow CLI forwards ``DUT`` (from ``make ... DUT=<module>``) into the
-    pytest subprocess; when it is unset (e.g. a bare ``pytest`` run) the caller's
-    *default* -- a test file's ``hdl_toplevel`` argument -- is used.
+    ``tests/test_<module>__<variant>.py`` (and plain ``test_<module>.py``) target
+    ``<module>``: the stem between the ``test_`` prefix and the first ``__``
+    variant separator (or the end). RTL module names use single underscores, so
+    splitting on ``__`` keeps the module unambiguous even for names like
+    ``ede_lz_data_assembler``.
     """
-    return env_str("DUT", default)
+    return test_module.removeprefix("test_").split("__", 1)[0]
+
+
+def discover_duts(tests_dir: Path) -> list[str]:
+    """Sorted, de-duplicated DUT modules discovered from ``tests/test_*.py``.
+
+    Each ``test_*.py`` maps to its module via :func:`dut_from_test_module`;
+    several files (e.g. ``test_top.py`` and ``test_top__smoke.py``) may share one
+    module. Used for the ``DUT`` validation in the flow CLI, the ``list-duts``
+    command, and the ``coverage-all`` loop.
+    """
+    modules = {dut_from_test_module(path.stem) for path in tests_dir.glob("test_*.py")}
+    return sorted(modules)
 
 
 def default_build_dir(project_dir: Path, dut: str, simulator: str) -> Path:
@@ -252,14 +272,17 @@ def project_paths_from_list_file(
     return sources, includes
 
 
-def build_and_test(hdl_toplevel: str, test_module: str) -> None:
-    """Build RTL and run cocotb tests for *hdl_toplevel*.
+def build_and_test(test_module: str) -> None:
+    """Build RTL and run the cocotb tests in *test_module* for its DUT.
 
-    *hdl_toplevel* is the default top module; the ``DUT`` environment variable
-    (set by the flow CLI from ``make ... DUT=<module>``) overrides it, so
-    ``make test DUT=<module>`` retargets the build/test, the GTKWave stems, and
-    the ``waves/<DUT>.*`` layouts from one place. ``DUT`` applies process-wide,
-    so in a project with several test files it forces a single top module.
+    The DUT is derived from *test_module* by filename convention
+    (:func:`dut_from_test_module`): ``test_<module>__<variant>`` -> ``<module>``.
+    The ``DUT`` environment variable (set by the flow CLI from
+    ``make ... DUT=<module>``) is a *selector*, not an override: when it names a
+    concrete module other than this file's, the test self-skips, so one pytest
+    run can hold test files for several DUTs (``make test-all`` passes
+    ``DUT=all`` to run them all). The derived module drives the build dir, the
+    GTKWave stems, and the ``waves/<DUT>.*`` layouts.
 
     All other configuration (SIM, BUILD_DIR, TEST, ABV, HDL_COVERAGE,
     QUESTA_GUI, etc.) is read from environment variables, matching the
@@ -267,11 +290,17 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     coverage-artifact path, build/test arguments) come from the matching
     profile in :mod:`flow.simulators`.
     """
+    hdl_toplevel = dut_from_test_module(test_module)
+    selector = env_str("DUT", ALL_DUTS)
+    if selector != ALL_DUTS and selector != hdl_toplevel:
+        import pytest
+
+        pytest.skip(f"DUT={selector!r} selected; this file targets {hdl_toplevel!r}")
+
     # Lazy import: ``flow.simulators`` imports this module, so importing it at
     # module scope would be circular.
     from flow.simulators import SIMULATORS
 
-    hdl_toplevel = dut_toplevel(hdl_toplevel)
     project_dir = Path(__file__).resolve().parents[1]
     test_dir = project_dir / "tests"
     simulator = env_str("SIM", DEFAULT_SIM)
