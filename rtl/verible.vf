@@ -2,5 +2,5 @@
 # into a module under an `ifdef (e.g. ABV) rather than compiled standalone. The
 # Makefile's Verible lint/format targets read these in addition to the compile
 # sources in rtl/sources.vf; the simulators and the cocotb flow never see them.
-# Each non-comment, non-blank line is a bare file path, validated to exist.
-rtl/top_abv.sv
+# Each non-comment, non-blank line is a bare, absolute file path.
+/path/to/fpga_proj_tmpl/rtl/top_abv.sv

@@ -34,8 +34,8 @@ SV_VERIBLE_FILE ?= rtl/verible.vf
 
 # Extract compile sources + include dirs from sources.vf and the Verible-only
 # inputs from verible.vf, then validate (below) that every path exists. The flow
-# package parses sources.vf itself; this copy keeps the SV lint/format targets
-# usable without the cocotb environment.
+# package hands sources.vf to the simulators with `-f`; this independent parse
+# keeps the SV lint/format targets usable without the cocotb environment.
 read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1)))
 
 SV_ENTRIES := $(call read_sources,$(SV_SOURCES_FILE))

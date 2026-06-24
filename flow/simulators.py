@@ -64,6 +64,27 @@ def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
     return dump_module
 
 
+def write_questa_anchor(build_dir: Path) -> Path:
+    """Write a no-op Questa source so cocotb emits a ``vlog`` for the ``-f`` list.
+
+    cocotb's Questa runner builds one ``vlog`` invocation per source file and
+    skips compilation entirely when no sources are given. The flow hands the
+    design to ``vlog`` with ``-f <filelist>`` (a build arg), so it needs at
+    least one source for that command to be emitted. This anchor declares no
+    design units; ``vlog`` reads the real sources from the filelist alongside
+    it.
+
+    Only rewritten when its content changes so the file's mtime stays stable and
+    ``REBUILD=0`` (cocotb's ``-incr`` reuse) keeps working.
+    """
+    build_dir.mkdir(parents=True, exist_ok=True)
+    anchor = build_dir / "cocotb_questa_anchor.sv"
+    contents = "// Questa filelist anchor: no design units; see flow/simulators.py\n"
+    if not anchor.is_file() or anchor.read_text() != contents:
+        anchor.write_text(contents)
+    return anchor
+
+
 class SimulatorProfile:
     """Base class for per-simulator build/test/coverage behavior.
 
@@ -90,7 +111,13 @@ class SimulatorProfile:
     forces_ansi_on_tty: bool = False
 
     def configure(self, cfg: RunConfig) -> SimArgs:
-        return SimArgs()
+        """Default build args: hand the source filelist to the tool with ``-f``.
+
+        Every profile inherits this ``-f <sources_file>`` build arg; overrides
+        call ``super().configure(cfg)`` and extend the returned :class:`SimArgs`
+        with their simulator-specific build/test args.
+        """
+        return SimArgs(build_args=["-f", str(cfg.sources_file)])
 
     def coverage_data_path(self, build_dir: Path) -> Path:
         """Canonical coverage artifact for this simulator under *build_dir*."""
@@ -121,7 +148,7 @@ class VerilatorProfile(SimulatorProfile):
     no_covergroups = True
 
     def configure(self, cfg: RunConfig) -> SimArgs:
-        args = SimArgs()
+        args = super().configure(cfg)
         if cfg.hdl_coverage:
             args.build_args.append("--coverage")
             args.plusargs.append(f"+verilator+coverage+file+{cfg.coverage_dat}")
@@ -199,7 +226,12 @@ class QuestaProfile(SimulatorProfile):
     forces_ansi_on_tty = True
 
     def configure(self, cfg: RunConfig) -> SimArgs:
-        args = SimArgs()
+        args = super().configure(cfg)
+        # cocotb's Questa runner emits one ``vlog`` per source (and none when the
+        # source list is empty), so the ``-f`` filelist build arg needs a source
+        # to ride along with. The anchor adds no design units; ``vlog`` reads the
+        # real design from the filelist alongside it.
+        args.sources.append(write_questa_anchor(cfg.build_dir))
         if cfg.hdl_coverage:
             args.build_args.extend(["-cover", "bcesfx"])
         cfg.questa_wave.parent.mkdir(parents=True, exist_ok=True)
@@ -250,7 +282,7 @@ class VcsProfile(SimulatorProfile):
     disable_pytest_timeout = True
 
     def configure(self, cfg: RunConfig) -> SimArgs:
-        args = SimArgs()
+        args = super().configure(cfg)
         # cocotb's VCS runner passes no timescale, so VCS would default to 1 s
         # precision and reject the ns-scale clock; pin it explicitly.
         args.build_args.append("-timescale=1ns/1ps")

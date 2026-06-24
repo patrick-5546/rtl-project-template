@@ -21,7 +21,6 @@ from flow.runner import (
     env_flag,
     env_str,
     project_path_from_env,
-    project_paths_from_list_file,
     require,
     run,
     verdi_command,
@@ -75,15 +74,12 @@ class GtkwaveProfile(ViewerProfile):
         stems = stems_dir / f"{top}.stems"
         tree_json = stems_dir / f"V{top}.tree.json"
         tree_meta = stems_dir / f"V{top}.tree.meta.json"
-        sources, includes, file_defines = project_paths_from_list_file(
+        sources_file = project_path_from_env(
             "SV_SOURCES_FILE", project_dir, project_dir / "rtl" / "sources.vf"
         )
         verilator = env_str("VERILATOR", "verilator")
         json2stems = env_str("JSON2STEMS", "json2stems")
-        define_map: dict[str, object] = {**file_defines}
-        if env_flag("ABV", default=False):
-            define_map["ABV"] = 1
-        defines = [f"+define+{name}={value}" for name, value in define_map.items()]
+        defines = ["+define+ABV=1"] if env_flag("ABV", default=False) else []
         stems_dir.mkdir(parents=True, exist_ok=True)
         run(
             [
@@ -97,9 +93,9 @@ class GtkwaveProfile(ViewerProfile):
                 top,
                 "--Mdir",
                 str(stems_dir),
-                *[f"-I{d}" for d in includes],
                 *defines,
-                *[str(s) for s in sources],
+                "-f",
+                str(sources_file),
             ]
         )
         run([json2stems, str(tree_meta), str(tree_json), str(stems)])

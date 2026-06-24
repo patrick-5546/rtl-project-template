@@ -42,6 +42,7 @@ class RunConfig:
     vcs_wave: Path
     build_dir: Path
     hdl_toplevel: str
+    sources_file: Path
 
 
 @dataclass
@@ -217,76 +218,6 @@ def verdi_command() -> list[str]:
     return [env_str("VERDI", "verdi"), *shlex.split(env_str("VERDI_ARGS", "-nologo"))]
 
 
-def _coerce_define_value(value: str) -> object:
-    """Coerce a ``+define+NAME=VALUE`` value: decimal int, else float, else str.
-
-    int is tried before float so ``16`` stays the integer ``16`` (not ``16.0``).
-    Numeric values keep cocotb's define formatting bare (``-DNAME=16``) to match
-    the literal pass-through the Makefile gives the lint tools; non-numeric
-    values stay strings (which cocotb SV-quotes in the build path).
-    """
-    try:
-        return int(value)
-    except ValueError:
-        pass
-    try:
-        return float(value)
-    except ValueError:
-        return value
-
-
-def project_paths_from_list_file(
-    name: str, project_dir: Path, default: Path
-) -> tuple[list[Path], list[Path], dict[str, object]]:
-    """Parse a Verilator-style ``.vf`` source list into sources, includes, defines.
-
-    ``rtl/sources.vf`` documents the line format: ``+incdir+`` entries become
-    include directories, ``+define+NAME[=VALUE]`` entries become preprocessor
-    macros (a bare flag is stored as ``1``; ``=VALUE`` is coerced to int/float
-    when decimal, else kept as a string), and bare paths become sources -- each
-    path resolved relative to *project_dir* and validated to exist. Any other
-    ``+`` directive raises (Verible-only files belong in ``rtl/verible.vf``).
-    """
-    list_file = project_path_from_env(name, project_dir, default)
-    sources: list[Path] = []
-    includes: list[Path] = []
-    defines: dict[str, object] = {}
-    for line in list_file.read_text().splitlines():
-        entry = line.split("#", maxsplit=1)[0].strip()
-        if not entry:
-            continue
-        if entry.startswith("+incdir+"):
-            raw = entry[len("+incdir+") :]
-            path = Path(raw)
-            if not path.is_absolute():
-                path = project_dir / path
-            if not path.is_dir():
-                raise FileNotFoundError(
-                    f"{list_file}: '+incdir+{raw}' does not resolve to a directory ({path})"
-                )
-            includes.append(path)
-        elif entry.startswith("+define+"):
-            name_part, sep, value = entry[len("+define+") :].partition("=")
-            if not name_part:
-                raise ValueError(f"{list_file}: '{entry}' has an empty macro name")
-            defines[name_part] = _coerce_define_value(value) if sep else 1
-        elif entry.startswith("+"):
-            raise ValueError(
-                f"{list_file}: unrecognized directive {entry!r} (only '+incdir+<dir>', "
-                "'+define+<NAME[=VALUE]>', and bare source paths are supported)"
-            )
-        else:
-            path = Path(entry)
-            if not path.is_absolute():
-                path = project_dir / path
-            if not path.is_file():
-                raise FileNotFoundError(
-                    f"{list_file}: '{entry}' does not resolve to a file ({path})"
-                )
-            sources.append(path)
-    return sources, includes, defines
-
-
 def build_and_test(test_module: str) -> None:
     """Build RTL and run the cocotb tests in *test_module* for its DUT.
 
@@ -340,11 +271,10 @@ def build_and_test(test_module: str) -> None:
     questa_gui = env_flag("QUESTA_GUI", default=False)
     waves_enabled = env_flag("WAVES", default=True)
     coverage_dat = default_coverage_dat(project_dir, build_dir, profile)
-    sv_sources, sv_include_dirs, sv_defines = project_paths_from_list_file(
-        "SV_SOURCES_FILE",
-        project_dir,
-        project_dir / "rtl" / "sources.vf",
+    sources_file = project_path_from_env(
+        "SV_SOURCES_FILE", project_dir, project_dir / "rtl" / "sources.vf"
     )
+    require(sources_file, "Set SV_SOURCES_FILE to a valid filelist (see rtl/sources.vf).")
     if selected_test and test_filter:
         raise ValueError("Set either TEST or TEST_FILTER, not both.")
     if selected_test:
@@ -356,8 +286,8 @@ def build_and_test(test_module: str) -> None:
         supported = ", ".join(sorted(n for n, p in SIMULATORS.items() if p.supports_gui))
         raise ValueError(f"QUESTA_GUI=1 is supported for these simulators: {supported}.")
 
-    sources = [*sv_sources]
-    defines: dict[str, object] = {**sv_defines}
+    sources: list[Path] = []
+    defines: dict[str, object] = {}
     if abv:
         defines["ABV"] = 1
     if no_covergroups:
@@ -378,10 +308,11 @@ def build_and_test(test_module: str) -> None:
                 vcs_wave=vcs_wave,
                 build_dir=build_dir,
                 hdl_toplevel=hdl_toplevel,
+                sources_file=sources_file,
             )
         )
         if profile
-        else SimArgs()
+        else SimArgs(build_args=["-f", str(sources_file)])
     )
     build_args = sim_args.build_args
     plusargs = sim_args.plusargs
@@ -393,7 +324,7 @@ def build_and_test(test_module: str) -> None:
     echo_runner_commands(runner.log)
     runner.build(
         sources=sources,
-        includes=sv_include_dirs,
+        includes=[],
         defines=defines,
         build_args=build_args,
         hdl_toplevel=hdl_toplevel,
@@ -417,6 +348,7 @@ def build_and_test(test_module: str) -> None:
         extra_env["COCOTB_ANSI_OUTPUT"] = "1"
     runner.test(
         hdl_toplevel=hdl_toplevel,
+        hdl_toplevel_lang="verilog",
         test_module=test_module,
         test_filter=test_filter,
         build_dir=build_dir,
