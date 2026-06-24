@@ -75,12 +75,15 @@ class GtkwaveProfile(ViewerProfile):
         stems = stems_dir / f"{top}.stems"
         tree_json = stems_dir / f"V{top}.tree.json"
         tree_meta = stems_dir / f"V{top}.tree.meta.json"
-        sources, includes = project_paths_from_list_file(
+        sources, includes, file_defines = project_paths_from_list_file(
             "SV_SOURCES_FILE", project_dir, project_dir / "rtl" / "sources.vf"
         )
         verilator = env_str("VERILATOR", "verilator")
         json2stems = env_str("JSON2STEMS", "json2stems")
-        defines = ["+define+ABV"] if env_flag("ABV", default=False) else []
+        define_map: dict[str, object] = {**file_defines}
+        if env_flag("ABV", default=False):
+            define_map["ABV"] = 1
+        defines = [f"+define+{name}={value}" for name, value in define_map.items()]
         stems_dir.mkdir(parents=True, exist_ok=True)
         run(
             [

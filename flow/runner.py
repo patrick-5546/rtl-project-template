@@ -217,19 +217,40 @@ def verdi_command() -> list[str]:
     return [env_str("VERDI", "verdi"), *shlex.split(env_str("VERDI_ARGS", "-nologo"))]
 
 
+def _coerce_define_value(value: str) -> object:
+    """Coerce a ``+define+NAME=VALUE`` value: decimal int, else float, else str.
+
+    int is tried before float so ``16`` stays the integer ``16`` (not ``16.0``).
+    Numeric values keep cocotb's define formatting bare (``-DNAME=16``) to match
+    the literal pass-through the Makefile gives the lint tools; non-numeric
+    values stay strings (which cocotb SV-quotes in the build path).
+    """
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        return float(value)
+    except ValueError:
+        return value
+
+
 def project_paths_from_list_file(
     name: str, project_dir: Path, default: Path
-) -> tuple[list[Path], list[Path]]:
-    """Parse a Verilator-style ``.vf`` source list into sources and include dirs.
+) -> tuple[list[Path], list[Path], dict[str, object]]:
+    """Parse a Verilator-style ``.vf`` source list into sources, includes, defines.
 
     ``rtl/sources.vf`` documents the line format: ``+incdir+`` entries become
-    include directories and bare paths become sources, each resolved relative to
-    *project_dir* and validated to exist. Any other ``+`` directive raises
-    (Verible-only files belong in ``rtl/verible.vf``, not here).
+    include directories, ``+define+NAME[=VALUE]`` entries become preprocessor
+    macros (a bare flag is stored as ``1``; ``=VALUE`` is coerced to int/float
+    when decimal, else kept as a string), and bare paths become sources -- each
+    path resolved relative to *project_dir* and validated to exist. Any other
+    ``+`` directive raises (Verible-only files belong in ``rtl/verible.vf``).
     """
     list_file = project_path_from_env(name, project_dir, default)
     sources: list[Path] = []
     includes: list[Path] = []
+    defines: dict[str, object] = {}
     for line in list_file.read_text().splitlines():
         entry = line.split("#", maxsplit=1)[0].strip()
         if not entry:
@@ -244,10 +265,15 @@ def project_paths_from_list_file(
                     f"{list_file}: '+incdir+{raw}' does not resolve to a directory ({path})"
                 )
             includes.append(path)
+        elif entry.startswith("+define+"):
+            name_part, sep, value = entry[len("+define+") :].partition("=")
+            if not name_part:
+                raise ValueError(f"{list_file}: '{entry}' has an empty macro name")
+            defines[name_part] = _coerce_define_value(value) if sep else 1
         elif entry.startswith("+"):
             raise ValueError(
-                f"{list_file}: unrecognized directive {entry!r} "
-                "(only '+incdir+<dir>' and bare source paths are supported)"
+                f"{list_file}: unrecognized directive {entry!r} (only '+incdir+<dir>', "
+                "'+define+<NAME[=VALUE]>', and bare source paths are supported)"
             )
         else:
             path = Path(entry)
@@ -258,7 +284,7 @@ def project_paths_from_list_file(
                     f"{list_file}: '{entry}' does not resolve to a file ({path})"
                 )
             sources.append(path)
-    return sources, includes
+    return sources, includes, defines
 
 
 def build_and_test(test_module: str) -> None:
@@ -314,7 +340,7 @@ def build_and_test(test_module: str) -> None:
     questa_gui = env_flag("QUESTA_GUI", default=False)
     waves_enabled = env_flag("WAVES", default=True)
     coverage_dat = default_coverage_dat(project_dir, build_dir, profile)
-    sv_sources, sv_include_dirs = project_paths_from_list_file(
+    sv_sources, sv_include_dirs, sv_defines = project_paths_from_list_file(
         "SV_SOURCES_FILE",
         project_dir,
         project_dir / "rtl" / "sources.vf",
@@ -331,7 +357,7 @@ def build_and_test(test_module: str) -> None:
         raise ValueError(f"QUESTA_GUI=1 is supported for these simulators: {supported}.")
 
     sources = [*sv_sources]
-    defines: dict[str, object] = {}
+    defines: dict[str, object] = {**sv_defines}
     if abv:
         defines["ABV"] = 1
     if no_covergroups:

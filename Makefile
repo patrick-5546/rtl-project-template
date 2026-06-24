@@ -40,6 +40,7 @@ read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$
 
 SV_ENTRIES := $(call read_sources,$(SV_SOURCES_FILE))
 SV_INCLUDE_DIRS := $(patsubst +incdir+%,%,$(filter +incdir+%,$(SV_ENTRIES)))
+SV_DEFINES := $(filter +define+%,$(SV_ENTRIES))
 SV_SOURCES := $(filter-out +%,$(SV_ENTRIES))
 SV_INCLUDE_FLAGS := $(addprefix -I,$(SV_INCLUDE_DIRS))
 SV_VERIBLE_EXTRAS := $(call read_sources,$(SV_VERIBLE_FILE))
@@ -203,13 +204,13 @@ lint-sv-verible:
 	verible-verilog-lint $(SV_VERIBLE_INPUTS)
 
 lint-sv-verilator:
-	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
+	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_DEFINES) $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
 lint-sv-slang:
-	$(SLANG) -Werror +define+ABV $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
+	$(SLANG) -Werror +define+ABV $(SV_DEFINES) $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
 lint-sv-slang-tidy:
-	$(SLANG_TIDY) +define+ABV $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
+	$(SLANG_TIDY) +define+ABV $(SV_DEFINES) $(SV_INCLUDE_FLAGS) $(SV_SOURCES)
 
 # Per-tool ENABLE_<TOOL> flags select which targets the language aggregates run;
 # a disabled tool drops out of `lint`/`format` but its target stays invokable.
