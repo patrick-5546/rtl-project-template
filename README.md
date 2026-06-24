@@ -4,8 +4,8 @@
 
 - `rtl/top.sv`: a parameterized counter top module.
 - `rtl/top_abv.sv`: assertion-based verification examples for `rtl/top.sv`.
-- `rtl/sources.vf`: compilation source list (paths and `+incdir+` dirs).
-- `rtl/verible.vf`: extra Verible-only inputs (bare-SVA `` `include `` fragments).
+- `rtl/sources.vf`: compilation source list.
+- `rtl/verible.vf`: Verible source list.
 - `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest.
 - `tests/coverage_top.py`: Python functional coverage mirroring the SV
   covergroup in `rtl/top_abv.sv`, using cocotb-coverage.

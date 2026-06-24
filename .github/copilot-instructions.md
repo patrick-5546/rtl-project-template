@@ -13,13 +13,10 @@ obvious from those sources.
 - Prefer explicit port directions and `logic` signals.
 - Prefer parameterized widths when it keeps modules reusable.
 - New RTL goes in `rtl/` and must be listed in `rtl/sources.vf` (that file's
-  header documents the entry syntax).
+  header documents the entry syntax); add it to `rtl/verible.vf` too so Verible
+  lints/formats it, since that list is standalone.
 - ABV files are bare SVA `` `include ``d under `` `ifdef ABV ``; follow the
-  pattern in `rtl/top_abv.sv` and list them in `rtl/verible.vf` (not
-  `rtl/sources.vf`).
-- For each implication-style (`|->` / `|=>`) `assert property`, also add a
-  `cover property` for the bare antecedent (matching any `disable iff` clause)
-  so vacuous passes show up as a coverage hole instead of silently passing.
+  pattern in `rtl/top_abv.sv` and list them in `rtl/verible.vf` only.
 
 ### cocotb and Python
 
