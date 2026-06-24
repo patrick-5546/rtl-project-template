@@ -154,9 +154,9 @@ def dut_toplevel(default: str = DEFAULT_DUT) -> str:
     return env_str("DUT", default)
 
 
-def default_build_dir(project_dir: Path, simulator: str) -> Path:
-    """``$BUILD_DIR`` override, or the per-simulator ``build/<sim>`` default."""
-    return project_path_from_env("BUILD_DIR", project_dir, project_dir / "build" / simulator)
+def default_build_dir(project_dir: Path, dut: str, simulator: str) -> Path:
+    """``$BUILD_DIR`` override, or the per-DUT, per-simulator ``build/<dut>/<sim>`` default."""
+    return project_path_from_env("BUILD_DIR", project_dir, project_dir / "build" / dut / simulator)
 
 
 def default_coverage_dat(
@@ -276,7 +276,7 @@ def build_and_test(hdl_toplevel: str, test_module: str) -> None:
     test_dir = project_dir / "tests"
     simulator = env_str("SIM", DEFAULT_SIM)
     profile = SIMULATORS.get(simulator)
-    build_dir = default_build_dir(project_dir, simulator)
+    build_dir = default_build_dir(project_dir, hdl_toplevel, simulator)
     questa_wave = default_questa_wave(project_dir, build_dir)
     questa_do = default_questa_do(project_dir, hdl_toplevel)
     vcs_wave = default_vcs_wave(project_dir, build_dir)

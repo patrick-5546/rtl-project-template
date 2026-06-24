@@ -143,13 +143,13 @@ test:
 
 coverage:
 	$(MAKE) test SIM=$(SIM) DUT=$(DUT) ABV=1 HDL_COVERAGE=1
-	$(FLOW) report-coverage --sim $(SIM)
+	$(FLOW) report-coverage --sim $(SIM) --dut $(DUT)
 
 open-coverage:
-	$(FLOW) open-coverage --sim $(SIM)
+	$(FLOW) open-coverage --sim $(SIM) --dut $(DUT)
 
 open-coverage-html:
-	$(FLOW) open-coverage-html --sim $(SIM)
+	$(FLOW) open-coverage-html --sim $(SIM) --dut $(DUT)
 
 waves:
 	$(FLOW) waves --viewer $(VIEWER) --dut $(DUT)

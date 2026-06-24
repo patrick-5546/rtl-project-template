@@ -41,8 +41,8 @@ def _viewer(name: str) -> ViewerProfile:
         raise SystemExit(f"Unknown VIEWER '{name}'. Available: {available}") from None
 
 
-def _build_dir(simulator: str) -> Path:
-    return default_build_dir(PROJECT_DIR, simulator)
+def _build_dir(dut: str, simulator: str) -> Path:
+    return default_build_dir(PROJECT_DIR, dut, simulator)
 
 
 def _coverage_data(profile: SimulatorProfile, build_dir: Path) -> Path:
@@ -78,24 +78,24 @@ def cmd_test(args: argparse.Namespace) -> None:
 
 def cmd_report_coverage(args: argparse.Namespace) -> None:
     profile = _sim(args.sim)
-    build_dir = _build_dir(args.sim)
+    build_dir = _build_dir(args.dut, args.sim)
     profile.report_coverage(PROJECT_DIR, build_dir, _coverage_data(profile, build_dir))
 
 
 def cmd_open_coverage(args: argparse.Namespace) -> None:
     profile = _sim(args.sim)
-    build_dir = _build_dir(args.sim)
+    build_dir = _build_dir(args.dut, args.sim)
     profile.open_coverage(PROJECT_DIR, build_dir, _coverage_data(profile, build_dir))
 
 
 def cmd_open_coverage_html(args: argparse.Namespace) -> None:
     profile = _sim(args.sim)
-    profile.open_coverage_html(PROJECT_DIR, _build_dir(args.sim))
+    profile.open_coverage_html(PROJECT_DIR, _build_dir(args.dut, args.sim))
 
 
 def cmd_waves(args: argparse.Namespace) -> None:
     viewer = _viewer(args.viewer)
-    build_dir = _build_dir(viewer.wave_sim)
+    build_dir = _build_dir(args.dut, viewer.wave_sim)
     if viewer.live_gui:
         # The interactive run *is* the wave view (e.g. Questa's GUI).
         run_regression(
@@ -110,7 +110,7 @@ def cmd_waves(args: argparse.Namespace) -> None:
 
 def cmd_open_waves(args: argparse.Namespace) -> None:
     viewer = _viewer(args.viewer)
-    viewer.open_waves(PROJECT_DIR, _build_dir(viewer.wave_sim), args.dut)
+    viewer.open_waves(PROJECT_DIR, _build_dir(args.dut, viewer.wave_sim), args.dut)
 
 
 def cmd_list_sims(args: argparse.Namespace) -> None:
@@ -137,6 +137,7 @@ def main(argv: list[str] | None = None) -> None:
     ):
         p = sub.add_parser(name)
         p.add_argument("--sim", default=DEFAULT_SIM)
+        p.add_argument("--dut", default=DEFAULT_DUT)
         p.set_defaults(func=func)
 
     for name, func in (("waves", cmd_waves), ("open-waves", cmd_open_waves)):
