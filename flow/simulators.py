@@ -51,7 +51,7 @@ def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
         "    string fsdbfile;\n"
         '    if (!$value$plusargs("fsdbfile=%s", fsdbfile)) fsdbfile = "dump.fsdb";\n'
         "    $fsdbDumpfile(fsdbfile);\n"
-        f"    $fsdbDumpvars(0, {hdl_toplevel});\n"
+        f'    $fsdbDumpvars(0, {hdl_toplevel}, "+all");\n'
         f"    $fsdbDumpSVA(0, {hdl_toplevel});\n"
         "  end\n"
         "endmodule\n"
