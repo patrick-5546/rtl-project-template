@@ -258,4 +258,4 @@ lint: lint-py lint-sv lint-md
 format: format-py format-sv format-md
 
 clean:
-	rm -rf build work transcript verdiLog vdCovLog vdCov.conf novas.rc novas.conf
+	rm -rf build transcript verdiLog vdCovLog vdCov.conf novas.rc novas.conf
