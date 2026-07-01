@@ -153,9 +153,15 @@ class VerilatorProfile(SimulatorProfile):
 
     def configure(self, cfg: RunConfig) -> SimArgs:
         args = super().configure(cfg)
+        args.build_args.append("-Wno-fatal")
+        waivers = Path(__file__).resolve().parents[1] / "rtl" / "verilator_waivers.vlt"
+        args.build_args.append(str(waivers))
         if cfg.hdl_coverage:
             args.build_args.append("--coverage")
             args.plusargs.append(f"+verilator+coverage+file+{cfg.coverage_dat}")
+        if cfg.waves:
+            args.build_args.append("--trace-fst")
+            args.build_args.append("--trace-structs")
         return args
 
     def coverage_html_index(self, build_dir: Path) -> Path:

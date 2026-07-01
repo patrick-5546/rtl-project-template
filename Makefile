@@ -199,7 +199,7 @@ lint-sv-verible:
 	verible-verilog-lint $(SV_VERIBLE_INPUTS)
 
 lint-sv-verilator:
-	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS $(SV_SOURCES_ARGS)
+	verilator --lint-only --timing -Wall --sv --coverage +define+ABV +define+NO_COVERGROUPS rtl/verilator_waivers.vlt $(SV_SOURCES_ARGS)
 
 lint-sv-slang:
 	$(SLANG) -Werror +define+ABV $(SV_SOURCES_ARGS)

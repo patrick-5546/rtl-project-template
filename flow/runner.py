@@ -233,8 +233,8 @@ def default_sources_files(project_dir: Path) -> list[Path]:
 
 
 def default_verilator_wave(project_dir: Path, build_dir: Path) -> Path:
-    """``$WAVE`` override, or the Verilator ``dump.vcd`` under *build_dir*."""
-    return project_path_from_env("WAVE", project_dir, build_dir / "dump.vcd")
+    """``$WAVE`` override, or the Verilator ``dump.fst`` under *build_dir*."""
+    return project_path_from_env("WAVE", project_dir, build_dir / "dump.fst")
 
 
 def default_vcs_wave(project_dir: Path, build_dir: Path) -> Path:
