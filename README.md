@@ -37,8 +37,10 @@ for every tool: pass the simulator as `SIM=<sim>` to `test`, `coverage`,
 `VIEWER=<viewer>` to `waves` and `open-waves`. `make test` runs one DUT while
 `make test-all` runs every `tests/test_*.py` across all DUTs; pass `DUT=<module>`
 to pick a specific DUT, which also selects the target for `waves`, `coverage`,
-and the `open-*` commands. Multiple test files can target the same module via
-the `test_<module>__<variant>.py` naming convention. Select individual tests by exact
+and the `open-*` commands. To split a module's tests across files, put the
+tests in `test_<module>__<variant>.py` files and add a `test_<module>.py`
+aggregator that runs them together in a single build and end-of-test summary.
+Select individual tests by exact
 name or regex, and reuse an existing simulator build for faster debug loops
 instead of rebuilding. Point `SV_SOURCES_FILE` at one or more space-separated
 `.vf` filelists to compile additional RTL (e.g.

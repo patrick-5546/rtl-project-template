@@ -25,9 +25,13 @@ obvious from those sources.
 - New test files go in `tests/` as `test_<module>.py`, where `<module>` is the
   RTL top module (derived from the filename, so no `hdl_toplevel` argument).
   Import `build_and_test` from `flow.runner` and add a one-line pytest entry
-  point: `build_and_test(test_module=Path(__file__).stem)`. For several files
-  targeting the *same* module, append a `__<variant>` suffix (e.g.
-  `test_top__smoke.py`).
+  point: `build_and_test(test_module=Path(__file__).stem)`.
+- To split one module's tests across files, name the extra files
+  `test_<module>__<variant>.py` and put only `@cocotb.test()` functions in them
+  (no pytest entry point). Add one aggregator `test_<module>.py` whose entry
+  point globs those files (`glob("test_<module>__*.py")`) and passes the sorted
+  list of stems to `build_and_test`, so they build once and share a single
+  end-of-test summary.
 
 ### Coverage
 

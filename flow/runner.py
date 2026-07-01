@@ -262,11 +262,18 @@ def verdi_command() -> list[str]:
     return [env_str("VERDI", "verdi"), *shlex.split(env_str("VERDI_ARGS", "-nologo"))]
 
 
-def build_and_test(test_module: str) -> None:
+def build_and_test(test_module: str | list[str]) -> None:
     """Build RTL and run the cocotb tests in *test_module* for its DUT.
 
-    The DUT is derived from *test_module* by filename convention
-    (:func:`dut_from_test_module`): ``test_<module>__<variant>`` -> ``<module>``.
+    *test_module* is a single module name or a list of them. A list is built
+    once and run together in one simulator process, so every test shares one
+    build and lands in a single end-of-test summary (and one waveform) -- this
+    is how a ``test_<module>`` aggregator can run its
+    ``test_<module>__<variant>`` modules together.
+
+    The DUT is derived from *test_module* (the first entry, for a list) by
+    filename convention (:func:`dut_from_test_module`):
+    ``test_<module>__<variant>`` -> ``<module>``.
     The ``DUT`` environment variable (set by the flow CLI from
     ``make ... DUT=<module>``) is a *selector*, not an override: when it names a
     concrete module other than this file's, the test self-skips, so one pytest
@@ -280,7 +287,8 @@ def build_and_test(test_module: str) -> None:
     coverage-artifact path, build/test arguments) come from the matching
     profile in :mod:`flow.simulators`.
     """
-    hdl_toplevel = dut_from_test_module(test_module)
+    first_module = test_module if isinstance(test_module, str) else test_module[0]
+    hdl_toplevel = dut_from_test_module(first_module)
     selector = env_str("DUT", ALL_DUTS)
     if selector != ALL_DUTS and selector != hdl_toplevel:
         import pytest
