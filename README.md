@@ -198,7 +198,7 @@ Python package versions are locked by uv in `uv.lock`.
 | markdownlint-cli2 | 0.22.1 |
 | Questa | 2025.1 |
 | slang | 10.0.0 |
-| Surfer | 0.7.0 |
+| Surfer | git: 9828710 (0.7.0 and 0.8.0) |
 | uv | 0.11.8 |
 | VCS | W-2024.09-SP2-7 |
 | Verdi | W-2024.09-SP2-7 |

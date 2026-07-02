@@ -24,8 +24,8 @@
     autoload_sibling_state_files: None,
     autoreload_files: None,
     waves: Some((
-        source: File("build/verilator/dump.vcd"),
-        format: Vcd,
+        source: File("build/top/verilator/dump.fst"),
+        format: Fst,
         active_scope: Some(WaveScope((
             strs: [
                 "top",
@@ -35,13 +35,19 @@
         items_tree: (
             items: [
                 (
-                    item_ref: (7),
+                    item_ref: (1),
                     level: 0,
                     unfolded: true,
                     selected: false,
                 ),
                 (
-                    item_ref: (1),
+                    item_ref: (2),
+                    level: 0,
+                    unfolded: true,
+                    selected: false,
+                ),
+                (
+                    item_ref: (3),
                     level: 0,
                     unfolded: true,
                     selected: false,
@@ -52,22 +58,10 @@
                     unfolded: true,
                     selected: false,
                 ),
-                (
-                    item_ref: (5),
-                    level: 0,
-                    unfolded: true,
-                    selected: false,
-                ),
-                (
-                    item_ref: (6),
-                    level: 0,
-                    unfolded: true,
-                    selected: true,
-                ),
             ],
         ),
         displayed_items: {
-            (6): Variable((
+            (4): Variable((
                 variable_ref: (
                     path: (
                         strs: [
@@ -89,7 +83,29 @@
                 height_scaling_factor: None,
                 analog: None,
             )),
-            (5): Variable((
+            (2): Variable((
+                variable_ref: (
+                    path: (
+                        strs: [
+                            "top",
+                        ],
+                        id: Wellen((3)),
+                    ),
+                    name: "rst_ni",
+                    id: Wellen((7)),
+                    index: None,
+                ),
+                color: None,
+                background_color: None,
+                display_name: "rst_ni",
+                display_name_type: Unique,
+                manual_name: None,
+                format: None,
+                field_formats: [],
+                height_scaling_factor: None,
+                analog: None,
+            )),
+            (3): Variable((
                 variable_ref: (
                     path: (
                         strs: [
@@ -133,56 +149,12 @@
                 height_scaling_factor: None,
                 analog: None,
             )),
-            (7): Variable((
-                variable_ref: (
-                    path: (
-                        strs: [
-                            "top",
-                        ],
-                        id: Wellen((3)),
-                    ),
-                    name: "WIDTH",
-                    id: Wellen((5)),
-                    index: None,
-                ),
-                color: None,
-                background_color: None,
-                display_name: "WIDTH [31:0]",
-                display_name_type: Unique,
-                manual_name: None,
-                format: Some("Unsigned"),
-                field_formats: [],
-                height_scaling_factor: None,
-                analog: None,
-            )),
-            (4): Variable((
-                variable_ref: (
-                    path: (
-                        strs: [
-                            "top",
-                        ],
-                        id: Wellen((3)),
-                    ),
-                    name: "rst_ni",
-                    id: Wellen((7)),
-                    index: None,
-                ),
-                color: None,
-                background_color: None,
-                display_name: "rst_ni",
-                display_name_type: Unique,
-                manual_name: None,
-                format: None,
-                field_formats: [],
-                height_scaling_factor: None,
-                analog: None,
-            )),
         },
-        display_item_ref_counter: 7,
+        display_item_ref_counter: 4,
         viewports: [
             (
-                curr_left: (0.0),
-                curr_right: (1.0),
+                curr_left: (0.002403889714011517),
+                curr_right: (0.018028889714011405),
                 target_left: (0.0),
                 target_right: (1.0),
                 move_start_left: (0.0),
@@ -195,7 +167,13 @@
             80000,
         ])),
         markers: {},
-        focused_item: Some((4)),
+        selected_annotation: None,
+        annotations: [],
+        annotation_groups: [],
+        annotation_list_visible: false,
+        annotation_counter: 0,
+        last_active_viewport_idx: 0,
+        focused_item: None,
         focused_transaction: (None, None),
         default_variable_name_type: Unique,
         scroll_offset: 0.0,
@@ -204,10 +182,7 @@
     )),
     drag_started: false,
     drag_source_idx: None,
-    drag_target_idx: Some((
-        before: (0),
-        level: 0,
-    )),
+    drag_target_idx: None,
     previous_waves: None,
     count: None,
     blacklisted_translators: [],
@@ -248,6 +223,24 @@
     sidepanel_width: Some(300.0),
     ui_zoom_factor: None,
     animation_enabled: None,
-    use_dinotrace_style: None,
-    transition_value: Some(Both),
+    trace_style: None,
+    transition_value: None,
+    toolbar_group_enabled: {},
+    toolbar_group_rows: [
+        [
+            "menu",
+            "files",
+            "copy",
+            "zoom",
+            "navigation",
+            "transitions",
+            "add_items",
+            "viewports",
+            "undo",
+            "cxxrtl",
+            "time",
+            "annotations",
+        ],
+    ],
+    show_annotation_list: false,
 )
