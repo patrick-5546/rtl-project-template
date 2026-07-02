@@ -75,14 +75,14 @@ def run_regression(
     *extra_env* layers on the values this command forces (e.g. ``QUESTA_GUI=1``
     for the live-GUI wave flow).
     """
-    profile = _sim(simulator)
+    _sim(simulator)
     env = os.environ.copy()
     env["SIM"] = simulator
     env["DUT"] = dut
     env["SV_SOURCES_FILE"] = sources_file
     if extra_env:
         env.update(extra_env)
-    cmd = [sys.executable, "-m", "pytest", "-s", *profile.pytest_args()]
+    cmd = [sys.executable, "-m", "pytest", "-s"]
     print("+ " + shlex.join(cmd), flush=True)
     result = subprocess.run(cmd, cwd=PROJECT_DIR, env=env)
     if result.returncode != 0:

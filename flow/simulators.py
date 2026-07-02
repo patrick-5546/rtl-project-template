@@ -5,8 +5,7 @@ Each profile owns:
 
 * the cocotb runner build/test arguments (:meth:`SimulatorProfile.configure`,
   consumed by :func:`flow.runner.build_and_test`),
-* per-simulator defaults (covergroup support, coverage-artifact path, whether
-  the slow/interactive flows need pytest's timeout disabled),
+* per-simulator defaults (covergroup support, coverage-artifact path),
 * the coverage report/open behavior (:meth:`SimulatorProfile.report_coverage`,
   :meth:`SimulatorProfile.open_coverage`, :meth:`SimulatorProfile.open_coverage_html`).
 
@@ -100,9 +99,6 @@ class SimulatorProfile:
     # Verilator parses but ignores SV covergroups, so they are excluded by
     # default there; event-based simulators keep them.
     no_covergroups: bool = False
-    # Questa's GUI flow and VCS's slower build/run should not be killed by
-    # pytest-timeout.
-    disable_pytest_timeout: bool = False
     # Some simulators (e.g. Questa's ``vsim``) run cocotb's Python embedded
     # behind their own transcript, so cocotb's ``sys.stdout.isatty()`` color
     # check fails and it strips ANSI -- unlike Verilator/VCS, which run a native
@@ -126,9 +122,6 @@ class SimulatorProfile:
     def coverage_data_path(self, build_dir: Path) -> Path:
         """Canonical coverage artifact for this simulator under *build_dir*."""
         return build_dir / "coverage.dat"
-
-    def pytest_args(self) -> list[str]:
-        return ["--timeout=0"] if self.disable_pytest_timeout else []
 
     def coverage_html_index(self, build_dir: Path) -> Path:
         raise NotImplementedError
@@ -232,7 +225,6 @@ class QuestaProfile(SimulatorProfile):
     name = "questa"
     supports_coverage = True
     supports_gui = True
-    disable_pytest_timeout = True
     forces_ansi_on_tty = True
 
     def configure(self, cfg: RunConfig) -> SimArgs:
@@ -289,7 +281,6 @@ class QuestaProfile(SimulatorProfile):
 class VcsProfile(SimulatorProfile):
     name = "vcs"
     supports_coverage = True
-    disable_pytest_timeout = True
 
     def configure(self, cfg: RunConfig) -> SimArgs:
         args = super().configure(cfg)
