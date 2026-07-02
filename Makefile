@@ -23,6 +23,11 @@ ENABLE_SLANG_TIDY ?= 1
 # sim/wave targets below are thin wrappers around it.
 FLOW := $(UV) run python -m flow.cli
 
+# Repo root, and the single source of truth for `${PROJECT_ROOT}` -- the anchor
+# the SV filelists use so their entries resolve to absolute paths without
+# committing a checkout path.
+export PROJECT_ROOT := $(CURDIR)
+
 # File lists. SV_SOURCES_FILE may name several whitespace-separated filelists;
 # each is handed -- with its own `-f` -- both to the simulators (via the flow
 # package) and to the Verilator/slang lint targets, which read the
@@ -40,8 +45,10 @@ $(foreach f,$(SV_SOURCES_FILE),$(if $(wildcard $(f)),,$(error SV_SOURCES_FILE: '
 
 # Verible has no `-f` command-file mode, so read its input list into bare file
 # paths (dropping `#` comments and blank lines), expand environment variables,
-# and validate that each exists.
-read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1) | envsubst))
+# and validate that each exists. PROJECT_ROOT is passed explicitly because GNU
+# make's parse-time `$(shell ...)` does not inherit `export`ed variables (recipe
+# shells do), so `${PROJECT_ROOT}` in the list would otherwise expand to empty.
+read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1) | PROJECT_ROOT='$(PROJECT_ROOT)' envsubst))
 SV_VERIBLE_INPUTS := $(call read_sources,$(SV_VERIBLE_FILE))
 $(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: '$(src)' does not resolve to a file)))
 

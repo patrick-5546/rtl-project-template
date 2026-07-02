@@ -1,4 +1,4 @@
 # Verible input list.
 # Each non-comment, non-blank line is a bare, absolute file path.
-/path/to/fpga_proj_tmpl/rtl/top.sv
-/path/to/fpga_proj_tmpl/rtl/top_abv.sv
+${PROJECT_ROOT}/rtl/top.sv
+${PROJECT_ROOT}/rtl/top_abv.sv
