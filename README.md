@@ -6,6 +6,7 @@
 - `rtl/top_abv.sv`: assertion-based verification examples for `rtl/top.sv`.
 - `rtl/sources.vf`: compilation source list (the default `SV_SOURCES_FILE`).
 - `rtl/verible.vf`: Verible source list.
+- `rtl/verilator_waivers.vlt`: Verilator lint/build waiver file
 - `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest.
 - `tests/coverage_top.py`: Python functional coverage mirroring the SV
   covergroup in `rtl/top_abv.sv`, using cocotb-coverage.
@@ -170,13 +171,13 @@ use Verdi, so `vcs` and `verdi` must be on `PATH`. Select it with `SIM=vcs` or
 `VIEWER=verdi` (see `make help` for the `VCS_WAVE`, `VERDI_RC`, and `WAVES=0`
 overrides).
 
-GTKWave reads Verilator's VCD output and can view and annotate source with
+GTKWave reads Verilator's FST output and can view and annotate source with
 values from the waveform through its RTLBrowse window; the wave targets prepare
-that RTL-browser support so signals link back to source, and load a reusable
-layout (`waves/<DUT>.gtkw`) when present. See `make help` for the `WAVE` and
-`GTKWAVE_SAVE` overrides.
+that RTL-browser support so signals link back to source (skip it with
+`NO_RTLBROWSE=1`), and load a reusable layout (`waves/<DUT>.gtkw`) when present.
+See `make help` for the `WAVE`, `GTKWAVE_SAVE`, and `NO_RTLBROWSE` overrides.
 
-Surfer is a fast, modern waveform viewer that reads the same Verilator VCD as
+Surfer is a fast, modern waveform viewer that reads the same Verilator FST as
 GTKWave; it is still early in development and has fewer features.
 `make waves VIEWER=surfer` loads a reusable layout (`waves/<DUT>.surf.ron`) when
 present (see `make help` for the `WAVE` and `STATE` overrides).
@@ -198,7 +199,7 @@ Python package versions are locked by uv in `uv.lock`.
 | markdownlint-cli2 | 0.22.1 |
 | Questa | 2025.1 |
 | slang | 10.0.0 |
-| Surfer | git: 9828710 (0.7.0 and 0.8.0) |
+| Surfer | git: 9828710 (between 0.7.0 and 0.8.0) |
 | uv | 0.11.8 |
 | VCS | W-2024.09-SP2-7 |
 | Verdi | W-2024.09-SP2-7 |
