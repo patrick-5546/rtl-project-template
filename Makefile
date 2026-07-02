@@ -39,8 +39,9 @@ SV_SOURCES_ARGS := $(foreach f,$(SV_SOURCES_FILE),-f $(f))
 $(foreach f,$(SV_SOURCES_FILE),$(if $(wildcard $(f)),,$(error SV_SOURCES_FILE: '$(f)' does not resolve to a file)))
 
 # Verible has no `-f` command-file mode, so read its input list into bare file
-# paths (dropping `#` comments and blank lines) and validate that each exists.
-read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1)))
+# paths (dropping `#` comments and blank lines), expand environment variables,
+# and validate that each exists.
+read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1) | envsubst))
 SV_VERIBLE_INPUTS := $(call read_sources,$(SV_VERIBLE_FILE))
 $(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: '$(src)' does not resolve to a file)))
 
