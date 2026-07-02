@@ -124,10 +124,15 @@ def cmd_waves(args: argparse.Namespace) -> None:
             viewer.wave_sim,
             dut=args.dut,
             sources_file=args.sources_file,
-            extra_env={"QUESTA_GUI": "1", **viewer.waves_run_env(PROJECT_DIR)},
+            extra_env={"QUESTA_GUI": "1", "WAVES": "1", **viewer.waves_run_env(PROJECT_DIR)},
         )
     else:
-        run_regression(viewer.wave_sim, dut=args.dut, sources_file=args.sources_file)
+        run_regression(
+            viewer.wave_sim,
+            dut=args.dut,
+            sources_file=args.sources_file,
+            extra_env={"WAVES": "1"},
+        )
         viewer.open_waves(PROJECT_DIR, build_dir, args.dut, sources_files)
 
 

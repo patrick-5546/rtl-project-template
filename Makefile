@@ -124,9 +124,10 @@ help:
 	@echo "  REBUILD=0                       Reuse the existing build instead of rebuilding"
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"
+	@echo "  WAVES=1 / WAVES=0               Force waveform dump on/off (test: off; waves: on)"
 	@echo "  WAVE= / GTKWAVE_SAVE= / STATE=  Verilator wave file / GTKWave save / Surfer state"
 	@echo "  QUESTA_WAVE= / QUESTA_DO=       Questa WLF / Questa .do layout"
-	@echo "  VCS_WAVE= / VERDI_RC= / WAVES=0 VCS FSDB / Verdi layout / disable FSDB dump"
+	@echo "  VCS_WAVE= / VERDI_RC=           VCS FSDB file / Verdi layout"
 	@echo "  HTML_VIEWER=wslview             HTML opener (e.g. wslview on WSL)"
 
 sync:

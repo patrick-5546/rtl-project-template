@@ -59,7 +59,7 @@ class GtkwaveProfile(ViewerProfile):
         self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
     ) -> None:
         wave = default_verilator_wave(project_dir, build_dir)
-        require(wave, "Run 'make test' first.")
+        require(wave, f"Run 'make waves VIEWER={GtkwaveProfile.name}'.")
         stems = self._generate_stems(project_dir, build_dir, dut, sources_files)
         gtkwave = env_str("GTKWAVE", "gtkwave")
         gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", "-o"))
@@ -114,7 +114,7 @@ class SurferProfile(ViewerProfile):
         self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
     ) -> None:
         wave = default_verilator_wave(project_dir, build_dir)
-        require(wave, "Run 'make test' first.")
+        require(wave, f"Run 'make waves VIEWER={SurferProfile.name}'.")
         surfer = env_str("SURFER", "surfer")
         state = project_path_from_env(
             "STATE", project_dir, project_dir / "waves" / f"{dut}.surf.ron"
@@ -139,7 +139,7 @@ class QuestaViewerProfile(ViewerProfile):
         self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
     ) -> None:
         questa_wave = default_questa_wave(project_dir, build_dir)
-        require(questa_wave, "Run 'make test SIM=questa' first.")
+        require(questa_wave, f"Run 'make waves VIEWER={QuestaViewerProfile.name}'.")
         do = default_questa_do(project_dir, dut)
         cmd = [vsim_exe(), "-view", str(questa_wave)]
         if do.is_file():
@@ -155,7 +155,7 @@ class VerdiProfile(ViewerProfile):
         self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
     ) -> None:
         vcs_wave = default_vcs_wave(project_dir, build_dir)
-        require(vcs_wave, "Run 'make test SIM=vcs' first.")
+        require(vcs_wave, f"Run 'make waves VIEWER={VerdiProfile.name}'.")
         daidir = project_path_from_env("VCS_DAIDIR", project_dir, build_dir / "simv.daidir")
         rc = project_path_from_env("VERDI_RC", project_dir, project_dir / "waves" / f"{dut}.rc")
         cmd = [*verdi_command(), "-dbdir", str(daidir), "-ssf", str(vcs_wave)]

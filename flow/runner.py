@@ -321,7 +321,7 @@ def build_and_test(test_module: str | list[str]) -> None:
     )
     hdl_coverage = env_flag("HDL_COVERAGE", default=False)
     questa_gui = env_flag("QUESTA_GUI", default=False)
-    waves_enabled = env_flag("WAVES", default=True)
+    waves_enabled = env_flag("WAVES", default=False)
     coverage_dat = default_coverage_dat(project_dir, build_dir, profile)
     sources_files = default_sources_files(project_dir)
     for sources_file in sources_files:
@@ -381,7 +381,7 @@ def build_and_test(test_module: str | list[str]) -> None:
         hdl_toplevel=hdl_toplevel,
         build_dir=build_dir,
         always=rebuild,
-        waves=True,
+        waves=waves_enabled,
     )
     extra_env = {"PYTHONPATH": pythonpath}
     # vsim wraps cocotb's stdout (its transcript), so cocotb's TTY check fails
@@ -403,7 +403,7 @@ def build_and_test(test_module: str | list[str]) -> None:
         test_module=test_module,
         test_filter=test_filter,
         build_dir=build_dir,
-        waves=not questa_gui,
+        waves=waves_enabled and not questa_gui,
         gui=questa_gui,
         extra_env=extra_env,
         test_args=test_args,
