@@ -12,7 +12,7 @@ SLANG_TIDY ?= slang-tidy
 # `format-<lang>` groups); the per-tool target itself stays directly invokable.
 ENABLE_RUFF ?= 1
 ENABLE_TY ?= 1
-ENABLE_BASEDPYRIGHT ?= 1
+ENABLE_BASEDPYRIGHT ?= 0
 ENABLE_MARKDOWNLINT ?= 1
 ENABLE_VERIBLE ?= 1
 ENABLE_VERILATOR ?= 1

@@ -12,7 +12,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "basedpyright>=1.39.8",
+    #"basedpyright>=1.39.8",
     "ruff>=0.15.18",
     "ty>=0.0.51",
 ]
