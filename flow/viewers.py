@@ -60,13 +60,16 @@ class GtkwaveProfile(ViewerProfile):
     ) -> None:
         wave = default_verilator_wave(project_dir, build_dir)
         require(wave, f"Run 'make waves VIEWER={GtkwaveProfile.name}'.")
-        stems = self._generate_stems(project_dir, build_dir, dut, sources_files)
         gtkwave = env_str("GTKWAVE", "gtkwave")
         gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", "-o"))
         save = project_path_from_env(
             "GTKWAVE_SAVE", project_dir, project_dir / "waves" / f"{dut}.gtkw"
         )
-        cmd = [gtkwave, *gtkwave_args, "-t", str(stems), str(wave)]
+        cmd = [gtkwave, *gtkwave_args]
+        if not env_flag("NO_RTLBROWSE", default=False):
+            stems = self._generate_stems(project_dir, build_dir, dut, sources_files)
+            cmd += ["-t", str(stems)]
+        cmd.append(str(wave))
         if save.is_file():
             cmd.append(str(save))
         run(cmd)

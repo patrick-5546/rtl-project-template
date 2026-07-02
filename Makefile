@@ -127,6 +127,7 @@ help:
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"
 	@echo "  WAVES=1 / WAVES=0               Force waveform dump on/off (test: off; waves: on)"
 	@echo "  WAVE= / GTKWAVE_SAVE= / STATE=  Verilator wave file / GTKWave save / Surfer state"
+	@echo "  NO_RTLBROWSE=1                  Skip GTKWave RTLBrowse stem generation"
 	@echo "  QUESTA_WAVE= / QUESTA_DO=       Questa WLF / Questa .do layout"
 	@echo "  VCS_WAVE= / VERDI_RC=           VCS FSDB file / Verdi layout"
 	@echo "  HTML_VIEWER=wslview             HTML opener (e.g. wslview on WSL)"
