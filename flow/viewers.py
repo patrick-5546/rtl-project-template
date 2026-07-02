@@ -83,6 +83,12 @@ class GtkwaveProfile(ViewerProfile):
         verilator = env_str("VERILATOR", "verilator")
         json2stems = env_str("JSON2STEMS", "json2stems")
         defines = ["+define+ABV=1"] if env_flag("ABV", default=False) else []
+        waivers = project_path_from_env(
+            "VERILATOR_WAIVERS",
+            project_dir,
+            project_dir / "rtl" / "verilator_waivers.vlt",
+        )
+        waiver_args = [str(waivers)] if waivers.is_file() else []
         filelist_args = [arg for f in sources_files for arg in ("-f", str(f))]
         stems_dir.mkdir(parents=True, exist_ok=True)
         run(
@@ -98,6 +104,7 @@ class GtkwaveProfile(ViewerProfile):
                 "--Mdir",
                 str(stems_dir),
                 *defines,
+                *waiver_args,
                 *filelist_args,
             ]
         )
