@@ -11,7 +11,8 @@ SLANG_TIDY ?= slang-tidy
 # that tool from `lint`/`format` (and the per-language `lint-<lang>` /
 # `format-<lang>` groups); the per-tool target itself stays directly invokable.
 ENABLE_RUFF ?= 1
-ENABLE_TY ?= 1
+ENABLE_TY ?= 0
+ENABLE_PYREFLY ?= 1
 ENABLE_BASEDPYRIGHT ?= 0
 ENABLE_MARKDOWNLINT ?= 1
 ENABLE_VERIBLE ?= 1
@@ -68,7 +69,7 @@ DUT ?= top
 
 .PHONY: all clean coverage format help lint \
 	lint-py lint-sv lint-md format-py format-sv format-md \
-	format-py-ruff lint-py-ruff lint-py-ty lint-py-basedpyright \
+	format-py-ruff lint-py-ruff lint-py-ty lint-py-pyrefly lint-py-basedpyright \
 	format-md-markdownlint lint-md-markdownlint \
 	format-sv-verible lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy \
 	open-coverage open-coverage-html open-waves \
@@ -113,12 +114,12 @@ help:
 	@echo "  help                            Show this message"
 	@echo ""
 	@echo "Per-tool quality targets (<lint|format>-<lang>-<tool>):"
-	@echo "  lint-py-ruff lint-py-ty lint-py-basedpyright  format-py-ruff"
+	@echo "  lint-py-ruff lint-py-ty lint-py-pyrefly lint-py-basedpyright  format-py-ruff"
 	@echo "  lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy  format-sv-verible"
 	@echo "  lint-md-markdownlint  format-md-markdownlint"
 	@echo ""
 	@echo "Tool enable flags (default 1; set 0 to skip a tool in lint/format):"
-	@echo "  ENABLE_RUFF ENABLE_TY ENABLE_BASEDPYRIGHT ENABLE_MARKDOWNLINT"
+	@echo "  ENABLE_RUFF ENABLE_TY ENABLE_PYREFLY ENABLE_BASEDPYRIGHT ENABLE_MARKDOWNLINT"
 	@echo "  ENABLE_VERIBLE ENABLE_VERILATOR ENABLE_SLANG ENABLE_SLANG_TIDY"
 	@echo ""
 	@echo "Tool selection:"
@@ -190,6 +191,9 @@ lint-py-ruff:
 lint-py-ty:
 	$(UV) run ty check
 
+lint-py-pyrefly:
+	$(UV) run pyrefly check
+
 lint-py-basedpyright:
 	$(UV) run basedpyright
 
@@ -227,6 +231,9 @@ FORMAT_PY_TARGETS += format-py-ruff
 endif
 ifeq ($(ENABLE_TY),1)
 LINT_PY_TARGETS += lint-py-ty
+endif
+ifeq ($(ENABLE_PYREFLY),1)
+LINT_PY_TARGETS += lint-py-pyrefly
 endif
 ifeq ($(ENABLE_BASEDPYRIGHT),1)
 LINT_PY_TARGETS += lint-py-basedpyright

@@ -12,8 +12,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     #"basedpyright>=1.39.8",
+    "pyrefly>=1.1.1",
     "ruff>=0.15.18",
-    "ty>=0.0.51",
+    #"ty>=0.0.51",
 ]
 
 [tool.uv]
@@ -24,11 +25,14 @@ addopts = ["-ra"]
 testpaths = ["tests"]
 pythonpath = [".", "tests"]
 
+[tool.basedpyright]
+typeCheckingMode = "standard"
+
 [tool.ruff]
 line-length = 100
 
 [tool.ruff.lint]
 extend-select = ["B", "E501", "I", "SIM", "UP"]
 
-[tool.basedpyright]
-typeCheckingMode = "standard"
+[tool.pyrefly]
+search-path = [".", "tests"]
