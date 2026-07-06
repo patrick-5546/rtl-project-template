@@ -14,7 +14,7 @@ dev = [
     #"basedpyright>=1.39.8",
     "pyrefly>=1.1.1",
     "ruff>=0.15.20",
-    #"ty>=0.0.51",
+    "ty>=0.0.56",
 ]
 
 [tool.uv]

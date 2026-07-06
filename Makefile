@@ -11,7 +11,7 @@ SLANG_TIDY ?= slang-tidy
 # that tool from `lint`/`format` (and the per-language `lint-<lang>` /
 # `format-<lang>` groups); the per-tool target itself stays directly invokable.
 ENABLE_RUFF ?= 1
-ENABLE_TY ?= 0
+ENABLE_TY ?= 1
 ENABLE_PYREFLY ?= 1
 ENABLE_BASEDPYRIGHT ?= 0
 ENABLE_MARKDOWNLINT ?= 1
