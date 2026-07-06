@@ -35,4 +35,5 @@ line-length = 100
 extend-select = ["B", "E501", "I", "SIM", "UP"]
 
 [tool.pyrefly]
+preset = "strict"
 search-path = [".", "tests"]

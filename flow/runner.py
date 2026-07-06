@@ -6,7 +6,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from cocotb_tools.runner import get_runner
 
@@ -101,6 +101,7 @@ class _CommandEchoFormatter(logging.Formatter):
     change still prints the command rather than hiding it.
     """
 
+    @override
     def format(self, record: logging.LogRecord) -> str:
         if (
             record.msg == "Running command %s in directory %s"
@@ -177,7 +178,7 @@ def resolve_sources_files(value: str | None, project_dir: Path) -> list[Path]:
     spaces, matching the absolute-path convention of ``rtl/sources.vf``.
     """
     default = project_dir / DEFAULT_SOURCES_FILE
-    tokens = value.split() if value else []
+    tokens: list[str] = value.split() if value else []
     if not tokens:
         return [default]
     return [resolve_project_path(token, project_dir, default) for token in tokens]

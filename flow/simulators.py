@@ -15,6 +15,7 @@ capabilities it supports, and registering an instance in :data:`SIMULATORS`.
 
 import shutil
 from pathlib import Path
+from typing import override
 
 from flow.runner import (
     RunConfig,
@@ -144,6 +145,7 @@ class VerilatorProfile(SimulatorProfile):
     supports_coverage = True
     no_covergroups = True
 
+    @override
     def configure(self, cfg: RunConfig) -> SimArgs:
         args = super().configure(cfg)
         args.build_args.append("-Wno-fatal")
@@ -157,9 +159,11 @@ class VerilatorProfile(SimulatorProfile):
             args.build_args.append("--trace-structs")
         return args
 
+    @override
     def coverage_html_index(self, build_dir: Path) -> Path:
         return build_dir / "coverage_html" / "index.html"
 
+    @override
     def report_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
         annotated = build_dir / "coverage_annotated"
         info = build_dir / "coverage.info"
@@ -216,6 +220,7 @@ class VerilatorProfile(SimulatorProfile):
         print(f"Annotated report: {annotated}")
         print(f"HTML report: {html_dir / 'index.html'}")
 
+    @override
     def open_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
         print("Verilator has no native GUI coverage viewer.")
         print("Use 'make open-coverage-html' (or 'make open-coverage-html SIM=questa').")
@@ -227,6 +232,7 @@ class QuestaProfile(SimulatorProfile):
     supports_gui = True
     forces_ansi_on_tty = True
 
+    @override
     def configure(self, cfg: RunConfig) -> SimArgs:
         args = super().configure(cfg)
         # cocotb's Questa runner emits one ``vlog`` per source (and none when the
@@ -258,12 +264,15 @@ class QuestaProfile(SimulatorProfile):
             args.pre_cmd = [f"coverage save -onexit {cfg.coverage_dat}"]
         return args
 
+    @override
     def coverage_data_path(self, build_dir: Path) -> Path:
         return build_dir / "coverage.ucdb"
 
+    @override
     def coverage_html_index(self, build_dir: Path) -> Path:
         return build_dir / "coverage_html" / "index.html"
 
+    @override
     def report_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
         vcover = env_str("VCOVER", "vcover")
         html_dir = build_dir / "coverage_html"
@@ -273,6 +282,7 @@ class QuestaProfile(SimulatorProfile):
         print(f"Coverage UCDB: {coverage_data}")
         print(f"HTML report: {html_dir / 'index.html'}")
 
+    @override
     def open_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
         require(coverage_data, "Run 'make coverage SIM=questa' first.")
         run([vsim_exe(), "-viewcov", str(coverage_data)])
@@ -282,6 +292,7 @@ class VcsProfile(SimulatorProfile):
     name = "vcs"
     supports_coverage = True
 
+    @override
     def configure(self, cfg: RunConfig) -> SimArgs:
         args = super().configure(cfg)
         # cocotb's VCS runner passes no timescale, so VCS would default to 1 s
@@ -300,12 +311,15 @@ class VcsProfile(SimulatorProfile):
             args.test_args.extend(cm_args)
         return args
 
+    @override
     def coverage_data_path(self, build_dir: Path) -> Path:
         return build_dir / "coverage.vdb"
 
+    @override
     def coverage_html_index(self, build_dir: Path) -> Path:
         return build_dir / "urgReport" / "dashboard.html"
 
+    @override
     def report_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
         urg = env_str("URG", "urg")
         html_dir = build_dir / "urgReport"
@@ -316,6 +330,7 @@ class VcsProfile(SimulatorProfile):
         print(f"HTML report: {html_dir / 'dashboard.html'}")
         print(f"Text report: {html_dir / 'dashboard.txt'}")
 
+    @override
     def open_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
         require(coverage_data, "Run 'make coverage SIM=vcs' first.", kind="dir")
         run([*verdi_command(), "-cov", "-covdir", str(coverage_data)])

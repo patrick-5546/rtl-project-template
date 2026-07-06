@@ -12,6 +12,7 @@ registering an instance in :data:`VIEWERS`.
 
 import shlex
 from pathlib import Path
+from typing import override
 
 from flow.runner import (
     default_questa_do,
@@ -55,6 +56,7 @@ class GtkwaveProfile(ViewerProfile):
     name = "gtkwave"
     wave_sim = "verilator"
 
+    @override
     def open_waves(
         self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
     ) -> None:
@@ -120,6 +122,7 @@ class SurferProfile(ViewerProfile):
     name = "surfer"
     wave_sim = "verilator"
 
+    @override
     def open_waves(
         self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
     ) -> None:
@@ -141,10 +144,12 @@ class QuestaViewerProfile(ViewerProfile):
     wave_sim = "questa"
     live_gui = True
 
+    @override
     def waves_run_env(self, project_dir: Path) -> dict[str, str]:
         # The live GUI needs full visibility (+acc) and the debug database.
         return {"QUESTA_ARGS": "-voptargs=+acc -debugdb"}
 
+    @override
     def open_waves(
         self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
     ) -> None:
@@ -161,6 +166,7 @@ class VerdiProfile(ViewerProfile):
     name = "verdi"
     wave_sim = "vcs"
 
+    @override
     def open_waves(
         self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
     ) -> None:
