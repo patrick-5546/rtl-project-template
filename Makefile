@@ -144,8 +144,7 @@ sync:
 	$(UV) sync
 
 update-py-deps:
-	$(UV) lock --upgrade
-	$(UV) sync
+	$(UV) sync --upgrade
 
 # Build the RTL and run the cocotb tests. flow/cli.py sets up the per-simulator
 # pytest invocation (the supported cocotb runner path); command-line VAR=value
