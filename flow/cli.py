@@ -84,7 +84,7 @@ def run_regression(
         env.update(extra_env)
     cmd = [sys.executable, "-m", "pytest", "-s"]
     print("+ " + shlex.join(cmd), flush=True)
-    result = subprocess.run(cmd, cwd=PROJECT_DIR, env=env)
+    result = subprocess.run(cmd, cwd=PROJECT_DIR, env=env, check=False)
     if result.returncode != 0:
         raise SystemExit(result.returncode)
 

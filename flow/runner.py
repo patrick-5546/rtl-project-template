@@ -85,7 +85,7 @@ def run(cmd: list[str]) -> None:
     (coverage reporters, waveform viewers) the way the old Makefile recipes did.
     """
     print("+ " + shlex.join(cmd), flush=True)
-    result = subprocess.run(cmd)
+    result = subprocess.run(cmd, check=False)
     if result.returncode != 0:
         raise SystemExit(result.returncode)
 

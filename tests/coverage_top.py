@@ -19,7 +19,7 @@ counter_cg = coverage_section(
         "top.counter_cg.cp_count",
         xf=lambda count_o, en_i, rst_ni: count_o,
         bins=["low", "mid", "high", "max"],
-        rel=lambda val, b: (  # noqa: PLR0911
+        rel=lambda val, b: (
             (b == "low" and 0 <= val <= _MAX_COUNT // 4)
             or (b == "mid" and _MAX_COUNT // 4 < val <= _MAX_COUNT * 3 // 4)
             or (b == "high" and _MAX_COUNT * 3 // 4 < val <= _MAX_COUNT - 1)

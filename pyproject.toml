@@ -32,8 +32,18 @@ typeCheckingMode = "standard"
 line-length = 100
 
 [tool.ruff.lint]
-extend-select = ["B", "E501", "I", "SIM", "UP"]
+extend-select = ["B", "E501", "I", "SIM", "UP", "ANN", "PYI"]
+preview = true
+
+[tool.ruff.lint.per-file-ignores]
+# cocotb's `dut` handle is dynamically typed; `Any` is the pragmatic annotation
+# (concrete handle types lack the runtime signal attributes), so allow it here.
+"tests/**" = ["ANN401"]
 
 [tool.pyrefly]
 preset = "strict"
 search-path = [".", "tests"]
+
+[tool.ty.rules]
+missing-type-argument = "error"
+possibly-unresolved-reference = "warn"
