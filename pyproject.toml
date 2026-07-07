@@ -28,6 +28,10 @@ pythonpath = [".", "tests"]
 [tool.basedpyright]
 typeCheckingMode = "standard"
 
+[tool.pyrefly]
+preset = "strict"
+search-path = [".", "tests"]
+
 [tool.ruff]
 line-length = 100
 
@@ -39,10 +43,6 @@ preview = true
 # cocotb's `dut` handle is dynamically typed; `Any` is the pragmatic annotation
 # (concrete handle types lack the runtime signal attributes), so allow it here.
 "tests/**" = ["ANN401"]
-
-[tool.pyrefly]
-preset = "strict"
-search-path = [".", "tests"]
 
 [tool.ty.rules]
 missing-type-argument = "error"
