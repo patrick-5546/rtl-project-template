@@ -30,7 +30,7 @@ async def tick(dut: Any, cycles: int = 1) -> None:
         await RisingEdge(dut.clk_i)
         await Timer(1, unit="ns")
         if _ABV:
-            sample_from_dut(dut)  # pyright: ignore[reportPossiblyUnboundVariable] - guarded by _ABV
+            sample_from_dut(dut)
 
 
 @cocotb.test()
@@ -111,12 +111,12 @@ async def counter_wraps(dut: Any) -> None:
 @cocotb.test(skip=not _ABV)
 async def check_coverage(dut: Any) -> None:
     """Assert that all coverage bins were hit by preceding tests."""
-    coverage_db.report_coverage(cocotb.log.info, bins=True)  # pyright: ignore[reportPossiblyUnboundVariable] - guarded by _ABV
-    coverage_db.export_to_xml(filename="cocotb_coverage.xml")  # pyright: ignore[reportPossiblyUnboundVariable] - guarded by _ABV
+    coverage_db.report_coverage(cocotb.log.info, bins=True)
+    coverage_db.export_to_xml(filename="cocotb_coverage.xml")
 
     missed: list[str] = []
-    for path in coverage_db:  # pyright: ignore[reportPossiblyUnboundVariable] - guarded by _ABV
-        node = coverage_db[path]  # pyright: ignore[reportPossiblyUnboundVariable] - guarded by _ABV
+    for path in coverage_db:
+        node = coverage_db[path]
         if not hasattr(node, "detailed_coverage"):
             continue
         for bin_name, hits in node.detailed_coverage.items():

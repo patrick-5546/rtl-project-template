@@ -11,7 +11,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    #"basedpyright>=1.39.8",
     "pyrefly>=1.1.1",
     "ruff>=0.15.20",
     "ty>=0.0.56",
@@ -24,9 +23,6 @@ package = false
 addopts = ["-ra"]
 testpaths = ["tests"]
 pythonpath = [".", "tests"]
-
-[tool.basedpyright]
-typeCheckingMode = "standard"
 
 [tool.pyrefly]
 preset = "strict"
