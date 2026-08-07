@@ -167,7 +167,12 @@ def test_wave_metadata_is_prepared_before_a_failing_test(
     profile.prepare_waves.side_effect = prepare
     simulator = MagicMock()
     simulator.log = logging.getLogger("flow-test-wave-order")
-    simulator.build.side_effect = lambda **kwargs: events.append("build")
+
+    def record_build(**kwargs: object) -> None:
+        del kwargs
+        events.append("build")
+
+    simulator.build.side_effect = record_build
 
     def fail_test(**kwargs: object) -> None:
         del kwargs

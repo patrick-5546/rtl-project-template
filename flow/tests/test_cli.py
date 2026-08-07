@@ -131,13 +131,12 @@ def test_regression_rejects_incomplete_all_dut_matrix(tmp_path: Path) -> None:
 
 
 def test_expected_cases_includes_unconfigured_dut() -> None:
+    def configs(dut: str) -> dict[str, dict[str, object]]:
+        return {"small": {}, "large": {}} if dut == "configured" else {}
+
     with (
         patch.object(cli, "discover_duts", return_value=["configured", "plain"]),
-        patch.object(
-            cli,
-            "_configs",
-            side_effect=lambda dut: {"small": {}, "large": {}} if dut == "configured" else {},
-        ),
+        patch.object(cli, "_configs", side_effect=configs),
     ):
         assert cli._expected_cases("all") == {
             ("configured", "small"),
@@ -147,10 +146,13 @@ def test_expected_cases_includes_unconfigured_dut() -> None:
 
 
 def test_report_coverage_all_attempts_every_case(tmp_path: Path) -> None:
+    def coverage_data_path(build_dir: Path) -> Path:
+        return build_dir / "coverage.dat"
+
     profile = MagicMock(spec=SimulatorProfile)
     profile.name = "verilator"
     profile.supports_coverage = True
-    profile.coverage_data_path.side_effect = lambda build_dir: build_dir / "coverage.dat"
+    profile.coverage_data_path.side_effect = coverage_data_path
     profile.report_coverage.side_effect = [SystemExit(3), None]
     args = argparse.Namespace(sim="verilator")
     with (
