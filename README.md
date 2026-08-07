@@ -8,6 +8,7 @@
 - `rtl/verible.vf`: Verible source list.
 - `rtl/verilator_waivers.vlt`: Verilator lint/build waiver file
 - `tests/test_top.py`: cocotb tests for `rtl/top.sv`, launched by pytest.
+- `tests/cocotb_configs.py`: named HDL parameter configurations for `top`.
 - `tests/coverage_top.py`: Python functional coverage mirroring the SV
   covergroup in `rtl/top_abv.sv`, using cocotb-coverage.
 - `flow/`: the build/run/view flow that the Makefile dispatches to:
@@ -15,6 +16,7 @@
   (per-tool profiles), and `cli.py` (the
   command-line entry point the Makefile calls). See
   [Adding a simulator or viewer](#adding-a-simulator-or-viewer).
+  Its isolated unit tests live in `flow/tests/`.
 - `pyproject.toml`: uv-managed Python dependencies and tool configuration.
 - `.markdownlint-cli2.yaml`: Markdown linting and autofix configuration.
 - `.surfer/config.toml`: Surfer configuration.
@@ -32,19 +34,23 @@ make test   # run the full cocotb regression
 make lint   # run all lint and type checks
 ```
 
-The simulation flow is cocotb through pytest. The same handful of targets work
-for every tool: pass the simulator as `SIM=<sim>` to `test`, `coverage`,
-`open-coverage`, and `open-coverage-html`, and the waveform viewer as
-`VIEWER=<viewer>` to `waves` and `open-waves`. `make test` runs one DUT while
-`make test-all` runs every `tests/test_*.py` across all DUTs; pass `DUT=<module>`
-to pick a specific DUT, which also selects the target for `waves`, `coverage`,
-and the `open-*` commands. To split a module's tests across files, put the
-tests in `test_<module>__<variant>.py` files and add a `test_<module>.py`
-aggregator that runs them together in a single build and end-of-test summary.
-Select individual tests by exact
-name or regex, and reuse an existing simulator build for faster debug loops
-instead of rebuilding. Point `SV_SOURCES_FILE` at one or more space-separated
-`.vf` filelists to compile additional RTL (e.g.
+The simulation flow is cocotb through pytest. Pass the simulator as `SIM=<sim>`
+to test, coverage, and waveform targets. Each simulator has a default viewer;
+`VIEWER=<viewer>` may select another viewer compatible with `SIM`.
+
+`make test` runs every named configuration for one DUT.
+List them with `make configs` and select one with `make test CONFIG=<config>`.
+`make test-all` runs every `tests/test_*.py` across all DUTs;
+pass `DUT=<module>` to select a DUT for test, wave, and coverage commands.
+
+To split a module's tests across files, put the tests in
+`test_<module>__<variant>.py` files and add a `test_<module>.py` aggregator that
+runs them together in a single build and end-of-test summary. Filename variants
+group cocotb modules; named configurations select HDL parameter values and are
+independent of that naming convention. Select individual tests by exact name or
+regex, and reuse an existing simulator build for faster debug loops instead of
+rebuilding. Point `SV_SOURCES_FILE` at one or more space-separated `.vf`
+filelists to compile additional RTL (e.g.
 `make test SV_SOURCES_FILE='rtl/sources.vf rtl/extra.vf'`); each filelist is
 handed to the simulator with its own `-f`. Run `make help` for the full command
 reference: every target and override variable, plus the available simulators and
@@ -52,7 +58,44 @@ viewers, is documented there.
 
 Linters and formatters run per tool as `<lint|format>-<py|sv|md>-<tool>`
 targets; skip any tool with its `ENABLE_<TOOL>=0` flag (e.g.
-`make lint ENABLE_SLANG=0`).
+`make lint ENABLE_SLANG=0`). Normal pytest discovery remains confined to the
+RTL tests under `tests/`; `make test-flow-py` explicitly runs the separate flow
+unit tests under `flow/tests/`.
+
+## Named HDL configurations
+
+An import-safe `tests/cocotb_configs.py` manifest maps each DUT and
+configuration name to its top-level parameter values:
+
+```python
+HDL_CONFIGS = {
+    "top": {
+        "width4": {"WIDTH": 4},
+        "width8": {"WIDTH": 8},
+    },
+}
+```
+
+The pytest harness parameterizes the same mapping and passes each pair to
+`build_and_test(..., variant=variant, parameters=parameters)`. Cocotb test
+constants can read the active elaboration with `active_parameter("WIDTH", 8)`.
+The runner exports the configuration as `COCOTB_VARIANT` and each parameter as
+`COCOTB_PARAM_<name>`.
+
+Configuration and instrumentation modes use separate build directories:
+
+```text
+build/<dut>/<sim>/<config>/normal/
+build/<dut>/<sim>/<config>/waves/
+build/<dut>/<sim>/<config>/coverage/
+build/<dut>/<sim>/<config>/waves-coverage/
+```
+
+This prevents `REBUILD=0` from reusing an executable built with incompatible
+parameters, waveform tracing, or coverage instrumentation. The combined
+`WAVES=1 HDL_COVERAGE=1` mode uses `waves-coverage`; pass the other mode flag
+when reopening it (`open-waves HDL_COVERAGE=1` or
+`open-coverage-html WAVES=1`).
 
 ## Tool installation and Python notes
 
@@ -83,9 +126,11 @@ cannot collect SV covergroups. Enable assertions with `ABV=1` (see `make help`).
 
 ## Coverage
 
-`make coverage` runs Verilator with line, toggle, FSM, and `cover property`
-coverage, enables `ABV` automatically, and writes an LCOV HTML report; the same
-`coverage SIM=<sim>` pattern works for Questa and VCS. See `make help` for the
+`make coverage CONFIG=<name>` runs Verilator with line, toggle, FSM, and
+`cover property` coverage, enables `ABV` automatically, and writes LCOV data;
+`make open-coverage-html CONFIG=<name>` generates and opens the HTML report.
+The same `coverage SIM=<sim>` pattern works for Questa and VCS. Verilator
+coverage requires version 5.048 or newer. See `make help` for the
 `coverage`, `open-coverage`, and `open-coverage-html` targets and the
 `HTML_VIEWER` override (e.g. `wslview` on WSL, which needs wslu). `open-coverage`
 opens a simulator's native GUI coverage viewer where one exists (Questa, and
@@ -103,11 +148,10 @@ Tool-specific behavior lives in the Python `flow/` package, so the generic
 targets (`test`, `waves`, `coverage`, ...) stay the same as the tool set grows:
 
 - `flow/simulators.py` defines a `SimulatorProfile` per simulator: its
-  coverage-artifact default, the cocotb runner build/test arguments, and the
-  `coverage`, `open-coverage`, and `open-coverage-html` behavior.
+  wave/coverage artifact defaults, cocotb runner build/test arguments,
+  post-run wave preparation, and coverage behavior.
 - `flow/viewers.py` defines a `ViewerProfile` per viewer: the `wave_sim` whose
-  format it reads, whether it is a live-GUI flow, and the `waves` and
-  `open-waves` behavior.
+  format it reads and the `open-waves` behavior.
 - `flow/cli.py` is the dispatcher the Makefile calls; it runs the cocotb
   regression through pytest and then drives the selected profile.
 
@@ -159,8 +203,8 @@ coverage on cover groups (aka directives). Waveforms use the native WLF format
 with source-linked debug (double-click a signal to find its RTL driver) and load
 a reusable `.do` layout (`waves/<DUT>.do`) when present; local install docs are
 under `$HOME/altera_lite/25.1std/questa_fse/docs`. Select it with `SIM=questa`
-or `VIEWER=questa` (see `make help` for the `QUESTA_WAVE` and `QUESTA_DO`
-overrides).
+(which selects the Questa viewer by default; see `make help` for the
+`QUESTA_WAVE` and `QUESTA_DO` overrides).
 
 VCS is a commercial, event-based simulator with full SystemVerilog support.
 Unlike the Questa Starter Edition it collects SV covergroups,
@@ -168,8 +212,8 @@ reports coverage through `urg`, and supports source-linked debug in Verdi. It
 records waveforms in Verdi's native FSDB format and loads a reusable restore
 file (`waves/<DUT>.rc`) when present; waveform viewing and the coverage GUI both
 use Verdi, so `vcs` and `verdi` must be on `PATH`. Select it with `SIM=vcs` or
-`VIEWER=verdi` (see `make help` for the `VCS_WAVE`, `VERDI_RC`, and `WAVES=0`
-overrides).
+the compatible `VIEWER=verdi` override (see `make help` for the `VCS_WAVE`,
+`VERDI_RC`, and `WAVES=0` overrides).
 
 GTKWave reads Verilator's FST output and can view and annotate source with
 values from the waveform through its RTLBrowse window; the wave targets prepare
@@ -180,7 +224,7 @@ See `make help` for the `WAVE`, `GTKWAVE_SAVE`, and `NO_RTLBROWSE` overrides.
 Surfer is a fast, modern waveform viewer that reads the same Verilator FST as
 GTKWave; it is still early in development and has fewer features.
 `make waves VIEWER=surfer` loads a reusable layout (`waves/<DUT>.surf.ron`) when
-present (see `make help` for the `WAVE` and `STATE` overrides).
+present (see `make help` for the `WAVE` and `SURFER_STATE` overrides).
 
 Verdi is the waveform viewer and coverage browser for the VCS flow. It reads
 the FSDB dumped during simulation and the `simv.daidir` knowledge database for
