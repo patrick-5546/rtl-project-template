@@ -69,6 +69,7 @@ CONFIG ?=
 CONFIG_ARG = $(if $(strip $(CONFIG)),--config '$(CONFIG)')
 WAVE_VIEWER_ARG = $(if $(strip $(VIEWER)),--viewer $(VIEWER))
 TEST_COMMAND = $(FLOW) test --sim $(SIM) --dut $(DUT) $(CONFIG_ARG) --sources-file '$(SV_SOURCES_FILE)'
+TEST_ALL_COMMAND = $(FLOW) test --sim $(SIM) --dut all --sources-file '$(SV_SOURCES_FILE)'
 
 # Artifact workflows still post-process simulator output after a failed test.
 # Preserve the test status so reporting or viewer errors cannot mask a regression.
@@ -116,7 +117,7 @@ help:
 	@echo ""
 	@echo "Coverage:"
 	@echo "  coverage [SIM=...] [CONFIG=...] Run coverage + report for one configuration"
-	@echo "  coverage-all                    Run coverage for every DUT/configuration"
+	@echo "  coverage-all                    Run one all-case regression, then all reports"
 	@echo "  open-coverage [SIM=...] [CONFIG=...] Open coverage in the native GUI viewer"
 	@echo "  open-coverage-html [SIM=...] [CONFIG=...] Open the coverage HTML report"
 	@echo ""
@@ -178,7 +179,7 @@ test:
 # Run every DUT's tests in one pytest invocation (each test file builds its own
 # module; see flow/runner.build_and_test). DUT=all disables the per-file filter.
 test-all:
-	$(FLOW) test --sim $(SIM) --dut all --sources-file '$(SV_SOURCES_FILE)'
+	$(TEST_ALL_COMMAND)
 
 test-flow-py:
 	$(UV) run pytest flow/tests
@@ -192,18 +193,14 @@ coverage:
 	$(FLOW) validate-config --dut $(DUT) $(CONFIG_ARG) --artifact
 	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) report-coverage --sim $(SIM) --dut $(DUT) $(CONFIG_ARG))
 
-# Coverage is per-DUT/configuration, so sweep every named config when present.
+coverage-all: override export ABV := 1
+coverage-all: override export HDL_COVERAGE := 1
 coverage-all:
-	@for dut in $$($(FLOW) list-duts); do \
-		configs="$$($(FLOW) list-configs --dut $$dut)"; \
-		if [ -n "$$configs" ]; then \
-			for config in $$configs; do \
-				$(MAKE) coverage SIM=$(SIM) DUT=$$dut CONFIG=$$config || exit $$?; \
-			done; \
-		else \
-			$(MAKE) coverage SIM=$(SIM) DUT=$$dut || exit $$?; \
-		fi; \
-	done
+	@test_status=0; report_status=0; \
+	$(TEST_ALL_COMMAND) || test_status=$$?; \
+	$(FLOW) report-coverage-all --sim $(SIM) || report_status=$$?; \
+	if [ "$$test_status" -ne 0 ]; then exit "$$test_status"; fi; \
+	exit "$$report_status"
 
 open-coverage:
 	$(FLOW) open-coverage --sim $(SIM) --dut $(DUT) $(CONFIG_ARG)

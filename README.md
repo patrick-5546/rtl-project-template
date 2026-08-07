@@ -128,7 +128,9 @@ cannot collect SV covergroups. Enable assertions with `ABV=1` (see `make help`).
 ## Coverage
 
 `make coverage CONFIG=<name>` runs Verilator with line, toggle, FSM, and
-`cover property` coverage, enables `ABV` automatically, and writes LCOV data;
+`cover property` coverage, enables `ABV` automatically, and writes LCOV data.
+`make coverage-all` runs the same unified DUT/configuration regression as
+`test-all`, then generates a report for every isolated coverage database;
 `make open-coverage-html CONFIG=<name>` generates and opens the HTML report.
 The same `coverage SIM=<sim>` pattern works for Questa and VCS. Verilator
 coverage requires version 5.048 or newer. See `make help` for the
@@ -136,6 +138,8 @@ coverage requires version 5.048 or newer. See `make help` for the
 `HTML_VIEWER` override (e.g. `wslview` on WSL, which needs wslu). `open-coverage`
 opens a simulator's native GUI coverage viewer where one exists (Questa, and
 VCS via Verdi); Verilator has none, so use `open-coverage-html` for it.
+Coverage report commands fail on missing artifacts or tool errors, but do not
+enforce percentage thresholds.
 
 Verilator and Questa do not collect SystemVerilog covergroup data — Verilator
 parses but ignores the syntax, and the Questa Starter Edition requires a paid

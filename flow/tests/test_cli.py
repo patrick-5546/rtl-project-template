@@ -1,11 +1,12 @@
 import argparse
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from flow import cli
+from flow.simulators import SimulatorProfile
 
 
 @pytest.mark.parametrize(
@@ -143,3 +144,21 @@ def test_expected_cases_includes_unconfigured_dut() -> None:
             ("configured", "large"),
             ("plain", None),
         }
+
+
+def test_report_coverage_all_attempts_every_case(tmp_path: Path) -> None:
+    profile = MagicMock(spec=SimulatorProfile)
+    profile.name = "verilator"
+    profile.supports_coverage = True
+    profile.coverage_data_path.side_effect = lambda build_dir: build_dir / "coverage.dat"
+    profile.report_coverage.side_effect = [SystemExit(3), None]
+    args = argparse.Namespace(sim="verilator")
+    with (
+        patch.object(cli, "PROJECT_DIR", tmp_path),
+        patch.object(cli, "_sim", return_value=profile),
+        patch.object(cli, "_expected_cases", return_value={("top", "width4"), ("top", "width8")}),
+        pytest.raises(SystemExit) as error,
+    ):
+        cli.cmd_report_coverage_all(args)
+    assert error.value.code == 3
+    assert profile.report_coverage.call_count == 2

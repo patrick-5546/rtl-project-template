@@ -74,3 +74,22 @@ def test_profile_wave_paths_are_canonical(
     assert VerilatorProfile().wave_path(build_dir) == build_dir / "dump.fst"
     assert QuestaProfile().wave_path(build_dir) == build_dir / "vsim.wlf"
     assert VcsProfile().wave_path(build_dir) == build_dir / "dump.fsdb"
+
+
+def test_verilator_html_report_has_no_percentage_gate(tmp_path: Path) -> None:
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    (build_dir / "coverage.info").touch()
+    with (
+        patch("flow.simulators.run") as run,
+        patch("flow.simulators.open_html"),
+    ):
+        VerilatorProfile().open_coverage_html(
+            tmp_path,
+            build_dir,
+            dut="top",
+            config="width4",
+        )
+    command = run.call_args.args[0]
+    assert "--fail-under-lines" not in command
+    assert "--fail-under-branches" not in command

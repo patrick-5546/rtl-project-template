@@ -104,6 +104,11 @@ def _format_case(case: tuple[str, str | None]) -> str:
     return f"{dut}.{config}" if config else dut
 
 
+def _system_exit_status(error: SystemExit) -> int:
+    """Return a shell status for a caught ``SystemExit``."""
+    return error.code if isinstance(error.code, int) else 1
+
+
 def _require_dut(dut: str, *, allow_all: bool = False) -> None:
     duts = discover_duts(TESTS_DIR)
     if (allow_all and dut == ALL_DUTS) or dut in duts:
@@ -252,6 +257,37 @@ def cmd_report_coverage(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_report_coverage_all(args: argparse.Namespace) -> None:
+    """Generate reports for every expected DUT/configuration coverage artifact."""
+    profile = _sim(args.sim)
+    cases = _expected_cases(ALL_DUTS)
+    if not cases:
+        raise SystemExit("No DUTs were discovered for coverage reporting.")
+    first_dut, first_config = min(cases, key=_format_case)
+    waves = env_flag("WAVES", default=False)
+    _require_coverage(profile, first_dut, first_config, waves=waves)
+    artifact = artifact_build_mode(waves=waves, hdl_coverage=True)
+    report_status = 0
+    for dut, config in sorted(cases, key=_format_case):
+        build_dir = _build_dir(dut, args.sim, config, artifact)
+        try:
+            profile.report_coverage(
+                PROJECT_DIR,
+                build_dir,
+                _coverage_data(profile, build_dir),
+                dut=dut,
+                config=config,
+            )
+        except SystemExit as error:
+            print(
+                f"Coverage report failed for {_format_case((dut, config))}: {error}",
+                file=sys.stderr,
+            )
+            report_status = report_status or _system_exit_status(error)
+    if report_status:
+        raise SystemExit(report_status)
+
+
 def cmd_open_coverage(args: argparse.Namespace) -> None:
     _require_dut(args.dut)
     profile = _sim(args.sim)
@@ -349,6 +385,10 @@ def main(argv: list[str] | None = None) -> None:
         p.add_argument("--dut", default=DEFAULT_DUT)
         p.add_argument("--config")
         p.set_defaults(func=func)
+
+    report_coverage_all_parser = sub.add_parser("report-coverage-all")
+    report_coverage_all_parser.add_argument("--sim", default=DEFAULT_SIM)
+    report_coverage_all_parser.set_defaults(func=cmd_report_coverage_all)
 
     open_waves_parser = sub.add_parser("open-waves")
     open_waves_parser.add_argument("--sim", default=DEFAULT_SIM)
