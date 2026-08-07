@@ -20,9 +20,14 @@ from typing import override
 from flow.runner import (
     RunConfig,
     SimArgs,
+    env_flag,
     env_str,
+    make_target_command,
     open_html,
+    optional_path_from_env,
+    project_path_from_env,
     require,
+    require_tool_version,
     run,
     verdi_command,
     vsim_exe,
@@ -95,6 +100,8 @@ class SimulatorProfile:
     """
 
     name: str = ""
+    wave_filename: str = ""
+    wave_env: str = ""
     supports_coverage: bool = False
     supports_gui: bool = False
     # Verilator parses but ignores SV covergroups, so they are excluded by
@@ -124,34 +131,97 @@ class SimulatorProfile:
         """Canonical coverage artifact for this simulator under *build_dir*."""
         return build_dir / "coverage.dat"
 
+    def wave_path(self, project_dir: Path, build_dir: Path) -> Path:
+        """Canonical waveform artifact for this simulator under *build_dir*."""
+        if not self.wave_filename:
+            raise NotImplementedError(f"{type(self).__name__} does not define wave_filename")
+        default = build_dir / self.wave_filename
+        return (
+            project_path_from_env(self.wave_env, project_dir, default) if self.wave_env else default
+        )
+
+    def prepare_waves(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        hdl_toplevel: str,
+        sources_files: list[Path],
+    ) -> None:
+        """Generate simulator-specific auxiliary artifacts after a wave run."""
+
     def coverage_html_index(self, build_dir: Path) -> Path:
         raise NotImplementedError
 
-    def report_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
+    def coverage_hint(self, dut: str, config: str | None) -> str:
+        command = make_target_command(
+            "coverage",
+            simulator=self.name,
+            dut=dut,
+            config=config,
+            waves=env_flag("WAVES", default=False),
+        )
+        return f"Run '{command}' first."
+
+    def report_coverage(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        coverage_data: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
         raise NotImplementedError
 
-    def open_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
+    def open_coverage(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        coverage_data: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
         raise NotImplementedError
 
-    def open_coverage_html(self, project_dir: Path, build_dir: Path) -> None:
+    def open_coverage_html(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
         open_html(
             self.coverage_html_index(build_dir),
-            hint=f"Run 'make coverage SIM={self.name}' first.",
+            hint=self.coverage_hint(dut, config),
         )
 
 
 class VerilatorProfile(SimulatorProfile):
     name = "verilator"
+    wave_filename = "dump.fst"
+    wave_env = "WAVE"
     supports_coverage = True
     no_covergroups = True
+    minimum_coverage_version = "5.048"
+
+    def require_coverage_version(self, executable: str) -> None:
+        require_tool_version(
+            executable,
+            self.minimum_coverage_version,
+            tool_name="Verilator coverage",
+        )
 
     @override
     def configure(self, cfg: RunConfig) -> SimArgs:
         args = super().configure(cfg)
+        args.build_args.append("--timing")
         args.build_args.append("-Wno-fatal")
         waivers = Path(__file__).resolve().parents[1] / "rtl" / "verilator_waivers.vlt"
         args.build_args.append(str(waivers))
         if cfg.hdl_coverage:
+            self.require_coverage_version(env_str("VERILATOR", "verilator"))
             args.build_args.append("--coverage")
             args.plusargs.append(f"+verilator+coverage+file+{cfg.coverage_dat}")
         if cfg.waves:
@@ -164,14 +234,20 @@ class VerilatorProfile(SimulatorProfile):
         return build_dir / "coverage_html" / "index.html"
 
     @override
-    def report_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
+    def report_coverage(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        coverage_data: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
+        require(coverage_data, self.coverage_hint(dut, config))
         annotated = build_dir / "coverage_annotated"
         info = build_dir / "coverage.info"
-        html_dir = build_dir / "coverage_html"
         verilator_coverage = env_str("VERILATOR_COVERAGE", "verilator_coverage")
-        genhtml = env_str("GENHTML", "genhtml")
-        min_lines = env_str("COVERAGE_MIN_LINES", "90")
-        min_branches = env_str("COVERAGE_MIN_BRANCHES", "90")
+        self.require_coverage_version(verilator_coverage)
         shutil.rmtree(annotated, ignore_errors=True)
         run(
             [
@@ -184,7 +260,8 @@ class VerilatorProfile(SimulatorProfile):
                 "1",
                 "--include-reset-arcs",
                 str(coverage_data),
-            ]
+            ],
+            cwd=project_dir,
         )
         run(
             [
@@ -193,12 +270,48 @@ class VerilatorProfile(SimulatorProfile):
                 str(info),
                 "--include-reset-arcs",
                 str(coverage_data),
-            ]
+            ],
+            cwd=project_dir,
         )
+        print(f"Coverage data: {coverage_data}")
+        print(f"Annotated report: {annotated}")
+        print(f"LCOV data: {info}")
+
+    @override
+    def open_coverage(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        coverage_data: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
+        command = make_target_command(
+            "open-coverage-html",
+            simulator=self.name,
+            dut=dut,
+            config=config,
+            waves=env_flag("WAVES", default=False),
+        )
+        raise SystemExit(f"Verilator has no native GUI coverage viewer. Use '{command}'.")
+
+    @override
+    def open_coverage_html(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
+        info = build_dir / "coverage.info"
+        require(info, self.coverage_hint(dut, config))
+        html_dir = build_dir / "coverage_html"
         shutil.rmtree(html_dir, ignore_errors=True)
         run(
             [
-                genhtml,
+                env_str("GENHTML", "genhtml"),
                 "--branch-coverage",
                 "--no-function-coverage",
                 "--show-details",
@@ -208,26 +321,64 @@ class VerilatorProfile(SimulatorProfile):
                 "--prefix",
                 str(project_dir),
                 "--fail-under-lines",
-                min_lines,
+                env_str("COVERAGE_MIN_LINES", "90"),
                 "--fail-under-branches",
-                min_branches,
+                env_str("COVERAGE_MIN_BRANCHES", "90"),
                 "--output-directory",
                 str(html_dir),
                 str(info),
-            ]
+            ],
+            cwd=project_dir,
         )
-        print(f"Coverage data: {coverage_data}")
-        print(f"Annotated report: {annotated}")
-        print(f"HTML report: {html_dir / 'index.html'}")
+        open_html(html_dir / "index.html", hint="Check the genhtml output above.")
 
     @override
-    def open_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
-        print("Verilator has no native GUI coverage viewer.")
-        print("Use 'make open-coverage-html' (or 'make open-coverage-html SIM=questa').")
+    def prepare_waves(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        hdl_toplevel: str,
+        sources_files: list[Path],
+    ) -> None:
+        if env_flag("NO_RTLBROWSE", default=False):
+            return
+        top = env_str("GTKWAVE_STEMS_TOP", hdl_toplevel)
+        json_dir = build_dir / "rtlbrowse"
+        verilator = env_str("VERILATOR", "verilator")
+        defines = ["+define+ABV=1"] if env_flag("ABV", default=False) else []
+        waivers = project_path_from_env(
+            "VERILATOR_WAIVERS",
+            project_dir,
+            project_dir / "rtl" / "verilator_waivers.vlt",
+        )
+        waiver_args = [str(waivers)] if waivers.is_file() else []
+        filelist_args = [arg for sources in sources_files for arg in ("-f", str(sources))]
+        json_dir.mkdir(parents=True, exist_ok=True)
+        run(
+            [
+                verilator,
+                "-Wno-fatal",
+                "--json-only",
+                "--bbox-sys",
+                "--timing",
+                "--sv",
+                "--top-module",
+                top,
+                "--Mdir",
+                str(json_dir),
+                *defines,
+                *waiver_args,
+                *filelist_args,
+            ],
+            cwd=project_dir,
+        )
+        print(f"Verilator hierarchy JSON: {json_dir / f'V{top}.tree.json'}")
 
 
 class QuestaProfile(SimulatorProfile):
     name = "questa"
+    wave_filename = "vsim.wlf"
+    wave_env = "QUESTA_WAVE"
     supports_coverage = True
     supports_gui = True
     forces_ansi_on_tty = True
@@ -235,6 +386,7 @@ class QuestaProfile(SimulatorProfile):
     @override
     def configure(self, cfg: RunConfig) -> SimArgs:
         args = super().configure(cfg)
+        args.build_args.extend(["-mfcu", "-timescale", "1ns/1ps"])
         # cocotb's Questa runner emits one ``vlog`` per source (and none when the
         # source list is empty), so the ``-f`` filelist build arg needs a source
         # to ride along with. The anchor adds no design units; ``vlog`` reads the
@@ -242,13 +394,15 @@ class QuestaProfile(SimulatorProfile):
         args.sources.append(write_questa_anchor(cfg.build_dir))
         if cfg.hdl_coverage:
             args.build_args.extend(["-cover", "bcesfx"])
-        cfg.questa_wave.parent.mkdir(parents=True, exist_ok=True)
+        cfg.wave_path.parent.mkdir(parents=True, exist_ok=True)
         args.test_args = [
             *cfg.questa_args,
             "-wlf",
-            str(cfg.questa_wave),
+            str(cfg.wave_path),
             "-nowlfdeleteonquit",
         ]
+        if cfg.waves:
+            args.test_args[:0] = ["-voptargs=+acc", "-debugdb"]
         if cfg.hdl_coverage:
             # -extendedtogglemode 1 widens toggle coverage (e.g. enum/FSM state
             # bits) so the report lines up with the other simulators.
@@ -273,23 +427,45 @@ class QuestaProfile(SimulatorProfile):
         return build_dir / "coverage_html" / "index.html"
 
     @override
-    def report_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
+    def report_coverage(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        coverage_data: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
         vcover = env_str("VCOVER", "vcover")
         html_dir = build_dir / "coverage_html"
-        run([vcover, "report", "-summary", str(coverage_data)])
+        require(coverage_data, self.coverage_hint(dut, config))
+        run([vcover, "report", "-summary", str(coverage_data)], cwd=build_dir)
         shutil.rmtree(html_dir, ignore_errors=True)
-        run([vcover, "report", "-html", "-details", "-output", str(html_dir), str(coverage_data)])
+        run(
+            [vcover, "report", "-html", "-details", "-output", str(html_dir), str(coverage_data)],
+            cwd=build_dir,
+        )
         print(f"Coverage UCDB: {coverage_data}")
         print(f"HTML report: {html_dir / 'index.html'}")
 
     @override
-    def open_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
-        require(coverage_data, "Run 'make coverage SIM=questa' first.")
-        run([vsim_exe(), "-viewcov", str(coverage_data)])
+    def open_coverage(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        coverage_data: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
+        require(coverage_data, self.coverage_hint(dut, config))
+        run([vsim_exe(), "-gui", "-viewcov", str(coverage_data)], cwd=build_dir)
 
 
 class VcsProfile(SimulatorProfile):
     name = "vcs"
+    wave_filename = "dump.fsdb"
+    wave_env = "VCS_WAVE"
     supports_coverage = True
 
     @override
@@ -299,16 +475,25 @@ class VcsProfile(SimulatorProfile):
         # precision and reject the ns-scale clock; pin it explicitly.
         args.build_args.append("-timescale=1ns/1ps")
         if cfg.waves:
-            cfg.vcs_wave.parent.mkdir(parents=True, exist_ok=True)
+            cfg.wave_path.parent.mkdir(parents=True, exist_ok=True)
             # -kdb gives both the native $fsdb* tasks and the Verdi source DB;
             # the generated dump module is an extra top alongside the DUT.
             args.sources.append(write_fsdb_dump_module(cfg.build_dir, cfg.hdl_toplevel))
             args.build_args.extend(["-kdb", "-top", "cocotb_fsdb_dump"])
-            args.plusargs.append(f"+fsdbfile={cfg.vcs_wave}")
+            args.plusargs.append(f"+fsdbfile={cfg.wave_path}")
         if cfg.hdl_coverage:
-            cm_args = ["-cm", "line+cond+fsm+tgl+branch+assert", "-cm_dir", str(cfg.coverage_dat)]
+            cm_args = [
+                "-cm",
+                "line+cond+fsm+tgl+branch+assert",
+                "-cm_dir",
+                str(cfg.coverage_dat),
+                "-cm_noconst",
+                "-cm_seqnoconst",
+            ]
             args.build_args.extend(cm_args)
             args.test_args.extend(cm_args)
+            if cfg.cm_hier is not None and cfg.cm_hier.is_file():
+                args.build_args.extend(["-cm_hier", str(cfg.cm_hier)])
         return args
 
     @override
@@ -320,20 +505,45 @@ class VcsProfile(SimulatorProfile):
         return build_dir / "urgReport" / "dashboard.html"
 
     @override
-    def report_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
+    def report_coverage(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        coverage_data: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
+        require(coverage_data, self.coverage_hint(dut, config), kind="dir")
         urg = env_str("URG", "urg")
         html_dir = build_dir / "urgReport"
         shutil.rmtree(html_dir, ignore_errors=True)
-        run([urg, "-dir", str(coverage_data), "-report", str(html_dir), "-format", "both"])
+        cmd = [urg, "-dir", str(coverage_data), "-report", str(html_dir), "-format", "both"]
+        ellist = optional_path_from_env("ELLIST", project_dir)
+        if ellist is not None and ellist.is_file():
+            cmd.extend(["-elfilelist", str(ellist)])
+        run(cmd, cwd=build_dir)
         _print_total_coverage_summary(html_dir / "dashboard.txt")
         print(f"Coverage VDB: {coverage_data}")
         print(f"HTML report: {html_dir / 'dashboard.html'}")
         print(f"Text report: {html_dir / 'dashboard.txt'}")
 
     @override
-    def open_coverage(self, project_dir: Path, build_dir: Path, coverage_data: Path) -> None:
-        require(coverage_data, "Run 'make coverage SIM=vcs' first.", kind="dir")
-        run([*verdi_command(), "-cov", "-covdir", str(coverage_data)])
+    def open_coverage(
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        coverage_data: Path,
+        *,
+        dut: str,
+        config: str | None,
+    ) -> None:
+        require(coverage_data, self.coverage_hint(dut, config), kind="dir")
+        cmd = [*verdi_command(), "-cov", "-covdir", str(coverage_data)]
+        ellist = optional_path_from_env("ELLIST", project_dir)
+        if ellist is not None and ellist.is_file():
+            cmd.extend(["-elfilelist", str(ellist)])
+        run(cmd, cwd=build_dir)
 
 
 def _print_total_coverage_summary(dashboard_txt: Path) -> None:

@@ -1,10 +1,7 @@
 """Per-viewer profiles describing how each waveform viewer is launched.
 
-Each profile declares the simulator whose wave format it reads (``wave_sim``),
-whether it is a live-GUI flow (Questa) or a file-based one
-(GTKWave/Surfer/Verdi), and how to open an existing waveform
-(:meth:`ViewerProfile.open_waves`). The CLI (:mod:`flow.cli`) runs the
-regression and then drives the viewer.
+Each profile declares the simulator whose wave format it reads (``wave_sim``)
+and how to open an existing waveform (:meth:`ViewerProfile.open_waves`).
 
 Add a viewer by subclassing :class:`ViewerProfile`, setting ``wave_sim``, and
 registering an instance in :data:`VIEWERS`.
@@ -16,38 +13,46 @@ from typing import override
 
 from flow.runner import (
     default_questa_do,
-    default_questa_wave,
-    default_vcs_wave,
-    default_verilator_wave,
     env_flag,
     env_str,
+    make_target_command,
     project_path_from_env,
     require,
     run,
     verdi_command,
     vsim_exe,
 )
+from flow.simulators import SIMULATORS
 
 
 class ViewerProfile:
-    """Base class for per-viewer waveform behavior.
-
-    ``wave_sim`` pins the simulator that produces the format this viewer reads,
-    so wave targets run under the right simulator. ``live_gui`` viewers show
-    waves in an interactive run (no separate file to reopen); file-based viewers
-    dump a waveform that :meth:`open_waves` later opens.
-    """
+    """Base class for per-viewer waveform behavior."""
 
     name: str = ""
     wave_sim: str = ""
-    live_gui: bool = False
 
-    def waves_run_env(self, project_dir: Path) -> dict[str, str]:
-        """Extra environment for the ``waves`` regression (live-GUI viewers)."""
-        return {}
+    def wave_path(self, project_dir: Path, build_dir: Path) -> Path:
+        """Canonical waveform path produced by this viewer's simulator."""
+        return SIMULATORS[self.wave_sim].wave_path(project_dir, build_dir)
+
+    def waves_hint(self, dut: str, config: str | None) -> str:
+        """Return the command that generates this viewer's waveform artifacts."""
+        command = make_target_command(
+            "waves",
+            simulator=self.wave_sim,
+            viewer=self.name,
+            dut=dut,
+            config=config,
+            hdl_coverage=env_flag("HDL_COVERAGE", default=False),
+        )
+        return f"Run '{command}'."
 
     def open_waves(
-        self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        dut: str,
+        config: str | None,
     ) -> None:
         raise NotImplementedError
 
@@ -58,64 +63,40 @@ class GtkwaveProfile(ViewerProfile):
 
     @override
     def open_waves(
-        self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        dut: str,
+        config: str | None,
     ) -> None:
-        wave = default_verilator_wave(project_dir, build_dir)
-        require(wave, f"Run 'make waves VIEWER={GtkwaveProfile.name}'.")
+        wave = self.wave_path(project_dir, build_dir)
+        require(wave, self.waves_hint(dut, config))
         gtkwave = env_str("GTKWAVE", "gtkwave")
         gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", "-o"))
         save = project_path_from_env(
-            "GTKWAVE_SAVE", project_dir, project_dir / "waves" / f"{dut}.gtkw"
+            "GTKWAVE_SAVE",
+            project_dir,
+            project_dir / "waves" / f"{dut}.gtkw",
         )
         cmd = [gtkwave, *gtkwave_args]
         if not env_flag("NO_RTLBROWSE", default=False):
-            stems = self._generate_stems(project_dir, build_dir, dut, sources_files)
+            top = env_str("GTKWAVE_STEMS_TOP", dut)
+            json_dir = build_dir / "rtlbrowse"
+            tree_json = json_dir / f"V{top}.tree.json"
+            tree_meta = json_dir / f"V{top}.tree.meta.json"
+            stems = json_dir / f"{top}.stems"
+            require(tree_json, self.waves_hint(dut, config))
+            require(tree_meta, self.waves_hint(dut, config))
+            run(
+                [env_str("JSON2STEMS", "json2stems"), str(tree_meta), str(tree_json), str(stems)],
+                cwd=build_dir,
+            )
+            print(f"GTKWave stems: {stems}")
             cmd += ["-t", str(stems)]
         cmd.append(str(wave))
         if save.is_file():
             cmd.append(str(save))
-        run(cmd)
-
-    def _generate_stems(
-        self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
-    ) -> Path:
-        """Generate GTKWave RTL-browser "stems" so signals link back to source."""
-        top = env_str("GTKWAVE_STEMS_TOP", dut)
-        stems_dir = build_dir / "rtlbrowse"
-        stems = stems_dir / f"{top}.stems"
-        tree_json = stems_dir / f"V{top}.tree.json"
-        tree_meta = stems_dir / f"V{top}.tree.meta.json"
-        verilator = env_str("VERILATOR", "verilator")
-        json2stems = env_str("JSON2STEMS", "json2stems")
-        defines = ["+define+ABV=1"] if env_flag("ABV", default=False) else []
-        waivers = project_path_from_env(
-            "VERILATOR_WAIVERS",
-            project_dir,
-            project_dir / "rtl" / "verilator_waivers.vlt",
-        )
-        waiver_args = [str(waivers)] if waivers.is_file() else []
-        filelist_args = [arg for f in sources_files for arg in ("-f", str(f))]
-        stems_dir.mkdir(parents=True, exist_ok=True)
-        run(
-            [
-                verilator,
-                "-Wno-fatal",
-                "--json-only",
-                "--bbox-sys",
-                "--timing",
-                "--sv",
-                "--top-module",
-                top,
-                "--Mdir",
-                str(stems_dir),
-                *defines,
-                *waiver_args,
-                *filelist_args,
-            ]
-        )
-        run([json2stems, str(tree_meta), str(tree_json), str(stems)])
-        print(f"GTKWave stems: {stems}")
-        return stems
+        run(cmd, cwd=build_dir)
 
 
 class SurferProfile(ViewerProfile):
@@ -124,42 +105,45 @@ class SurferProfile(ViewerProfile):
 
     @override
     def open_waves(
-        self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        dut: str,
+        config: str | None,
     ) -> None:
-        wave = default_verilator_wave(project_dir, build_dir)
-        require(wave, f"Run 'make waves VIEWER={SurferProfile.name}'.")
-        surfer = env_str("SURFER", "surfer")
+        wave = self.wave_path(project_dir, build_dir)
+        require(wave, self.waves_hint(dut, config))
         state = project_path_from_env(
-            "STATE", project_dir, project_dir / "waves" / f"{dut}.surf.ron"
+            "SURFER_STATE",
+            project_dir,
+            project_dir / "waves" / f"{dut}.surf.ron",
         )
-        cmd = [surfer]
+        cmd = [env_str("SURFER", "surfer")]
         if state.is_file():
             cmd.extend(["--state-file", str(state)])
         cmd.append(str(wave))
-        run(cmd)
+        run(cmd, cwd=build_dir)
 
 
 class QuestaViewerProfile(ViewerProfile):
     name = "questa"
     wave_sim = "questa"
-    live_gui = True
-
-    @override
-    def waves_run_env(self, project_dir: Path) -> dict[str, str]:
-        # The live GUI needs full visibility (+acc) and the debug database.
-        return {"QUESTA_ARGS": "-voptargs=+acc -debugdb"}
 
     @override
     def open_waves(
-        self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        dut: str,
+        config: str | None,
     ) -> None:
-        questa_wave = default_questa_wave(project_dir, build_dir)
-        require(questa_wave, f"Run 'make waves VIEWER={QuestaViewerProfile.name}'.")
+        wave = self.wave_path(project_dir, build_dir)
+        require(wave, self.waves_hint(dut, config))
         do = default_questa_do(project_dir, dut)
-        cmd = [vsim_exe(), "-view", str(questa_wave)]
+        cmd = [vsim_exe(), "-gui", "-view", str(wave)]
         if do.is_file():
             cmd.extend(["-do", str(do)])
-        run(cmd)
+        run(cmd, cwd=build_dir)
 
 
 class VerdiProfile(ViewerProfile):
@@ -168,19 +152,29 @@ class VerdiProfile(ViewerProfile):
 
     @override
     def open_waves(
-        self, project_dir: Path, build_dir: Path, dut: str, sources_files: list[Path]
+        self,
+        project_dir: Path,
+        build_dir: Path,
+        dut: str,
+        config: str | None,
     ) -> None:
-        vcs_wave = default_vcs_wave(project_dir, build_dir)
-        require(vcs_wave, f"Run 'make waves VIEWER={VerdiProfile.name}'.")
+        wave = self.wave_path(project_dir, build_dir)
+        require(wave, self.waves_hint(dut, config))
         daidir = project_path_from_env("VCS_DAIDIR", project_dir, build_dir / "simv.daidir")
         rc = project_path_from_env("VERDI_RC", project_dir, project_dir / "waves" / f"{dut}.rc")
-        cmd = [*verdi_command(), "-dbdir", str(daidir), "-ssf", str(vcs_wave)]
+        cmd = [*verdi_command(), "-dbdir", str(daidir), "-ssf", str(wave)]
         if rc.is_file():
             cmd.extend(["-sswr", str(rc)])
-        run(cmd)
+        run(cmd, cwd=build_dir)
 
 
 VIEWERS: dict[str, ViewerProfile] = {
     profile.name: profile
     for profile in (GtkwaveProfile(), SurferProfile(), QuestaViewerProfile(), VerdiProfile())
+}
+
+DEFAULT_VIEWERS: dict[str, str] = {
+    "verilator": GtkwaveProfile.name,
+    "questa": QuestaViewerProfile.name,
+    "vcs": VerdiProfile.name,
 }

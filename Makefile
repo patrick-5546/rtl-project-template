@@ -58,22 +58,36 @@ $(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: 
 # available tools. Add a simulator or viewer by registering a profile in those
 # modules -- no edits to this Makefile required.
 SIM ?= verilator
-VIEWER ?= gtkwave
+VIEWER ?=
 
 # Top-level module under test. Passed to the flow CLI (which forwards it to the
 # cocotb runner and the waveform viewers: GTKWave stems and the waves/<DUT>.*
 # layouts) so every command targets the same module; override as
 # `make test DUT=<module>`.
 DUT ?= top
+CONFIG ?=
+CONFIG_ARG = $(if $(strip $(CONFIG)),--config '$(CONFIG)')
+WAVE_VIEWER_ARG = $(if $(strip $(VIEWER)),--viewer $(VIEWER))
+TEST_COMMAND = $(FLOW) test --sim $(SIM) --dut $(DUT) $(CONFIG_ARG) --sources-file '$(SV_SOURCES_FILE)'
 
-.PHONY: all clean coverage format help lint \
+# Artifact workflows still post-process simulator output after a failed test.
+# Preserve the test status so reporting or viewer errors cannot mask a regression.
+define RUN_TEST_AND_POSTPROCESS
+	@test_status=0; post_status=0; \
+	$(TEST_COMMAND) || test_status=$$?; \
+	$(1) || post_status=$$?; \
+	if [ "$$test_status" -ne 0 ]; then exit "$$test_status"; fi; \
+	exit "$$post_status"
+endef
+
+.PHONY: all clean configs coverage format help lint \
 	lint-py lint-sv lint-md format-py format-sv format-md \
 	format-py-ruff lint-py-ruff lint-py-ty lint-py-pyrefly \
 	format-md-markdownlint lint-md-markdownlint \
 	format-sv-verible lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy \
 	open-coverage open-coverage-html open-waves \
 	sync update-py-deps \
-	test test-all coverage-all waves
+	test test-all test-flow-py coverage-all waves
 
 all: lint test-all
 
@@ -86,7 +100,10 @@ help:
 	@echo ""
 	@echo "Test:"
 	@echo "  test [SIM=questa]               Run the cocotb regression for one DUT"
+	@echo "  test CONFIG=<name>              Run one named HDL parameter configuration"
 	@echo "  test-all                        Run the cocotb regression for every DUT"
+	@echo "  configs                         List named HDL configurations for DUT"
+	@echo "  test-flow-py                    Run flow unit tests (not RTL/cocotb tests)"
 	@echo "  test TEST=enable_high_counts    Run one cocotb test by exact name"
 	@echo "  test TEST_FILTER='enable_.*'    Run cocotb tests matching a regex"
 	@echo "  test REBUILD=0                  Reuse the existing simulator build"
@@ -94,14 +111,14 @@ help:
 	@echo "  test ABV=1 HDL_COVERAGE=1       Instrument coverage without a report"
 	@echo ""
 	@echo "Waveforms:"
-	@echo "  waves [VIEWER=questa]           Run tests, then open the waveform viewer"
-	@echo "  open-waves [VIEWER=...]         Open the existing waveform in the viewer"
+	@echo "  waves [VIEWER=...] [CONFIG=...] Run tests, then open the waveform viewer"
+	@echo "  open-waves [VIEWER=...] [CONFIG=...] Open the existing waveform in the viewer"
 	@echo ""
 	@echo "Coverage:"
-	@echo "  coverage [SIM=questa]           Run coverage + report for one DUT"
-	@echo "  coverage-all                    Run coverage + report for every DUT"
-	@echo "  open-coverage [SIM=questa]      Open coverage in the simulator's GUI viewer"
-	@echo "  open-coverage-html [SIM=...]    Open the coverage HTML report"
+	@echo "  coverage [SIM=...] [CONFIG=...] Run coverage + report for one configuration"
+	@echo "  coverage-all                    Run coverage for every DUT/configuration"
+	@echo "  open-coverage [SIM=...] [CONFIG=...] Open coverage in the native GUI viewer"
+	@echo "  open-coverage-html [SIM=...] [CONFIG=...] Open the coverage HTML report"
 	@echo ""
 	@echo "Quality:"
 	@echo "  lint                            Run all lint/type checks (py, sv, md)"
@@ -123,20 +140,25 @@ help:
 	@echo ""
 	@echo "Tool selection:"
 	@echo "  SIM=<sim>                       Simulator; available: $$($(FLOW) list-sims | tr '\n' ' ')"
-	@echo "  VIEWER=<viewer>                 Waveform viewer; available: $$($(FLOW) list-viewers | tr '\n' ' ')"
+	@echo "  VIEWER=<viewer>                 Viewer override; default is selected from SIM"
+	@echo "                                  Available: $$($(FLOW) list-viewers | tr '\n' ' ')"
 	@echo ""
 	@echo "Common variables (override as VAR=value):"
 	@echo "  DUT=<module>                    Module to build/test/view; available: $$($(FLOW) list-duts | tr '\n' ' ')"
+	@echo "  CONFIG=<name>                   Named HDL configuration; run 'make configs'"
 	@echo "  SV_SOURCES_FILE='a.vf b.vf'     SystemVerilog filelist(s); space-separated for several"
 	@echo "  TEST= / TEST_FILTER=            Select one test by exact name / by regex"
 	@echo "  REBUILD=0                       Reuse the existing build instead of rebuilding"
+	@echo "  BUILD_JOBS=<n>                  Parallel build jobs (capped to available CPUs)"
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"
 	@echo "  WAVES=1 / WAVES=0               Force waveform dump on/off (test: off; waves: on)"
-	@echo "  WAVE= / GTKWAVE_SAVE= / STATE=  Verilator wave file / GTKWave save / Surfer state"
+	@echo "  WAVE= / GTKWAVE_SAVE=           Verilator wave file / GTKWave save layout"
+	@echo "  SURFER_STATE=                   Surfer state (layout) file"
 	@echo "  NO_RTLBROWSE=1                  Skip GTKWave RTLBrowse stem generation"
 	@echo "  QUESTA_WAVE= / QUESTA_DO=       Questa WLF / Questa .do layout"
 	@echo "  VCS_WAVE= / VERDI_RC=           VCS FSDB file / Verdi layout"
+	@echo "  CM_HIER= / ELLIST=              Optional VCS coverage hierarchy / exclusions"
 	@echo "  HTML_VIEWER=wslview             HTML opener (e.g. wslview on WSL)"
 
 sync:
@@ -150,34 +172,51 @@ update-py-deps:
 # overrides (ABV, TEST, TEST_FILTER, REBUILD, ...) reach it through the
 # environment, which GNU Make exports automatically.
 test:
-	$(FLOW) test --sim $(SIM) --dut $(DUT) --sources-file '$(SV_SOURCES_FILE)'
+	$(TEST_COMMAND)
 
 # Run every DUT's tests in one pytest invocation (each test file builds its own
 # module; see flow/runner.build_and_test). DUT=all disables the per-file filter.
 test-all:
 	$(FLOW) test --sim $(SIM) --dut all --sources-file '$(SV_SOURCES_FILE)'
 
-coverage:
-	$(MAKE) test SIM=$(SIM) DUT=$(DUT) SV_SOURCES_FILE='$(SV_SOURCES_FILE)' ABV=1 HDL_COVERAGE=1
-	$(FLOW) report-coverage --sim $(SIM) --dut $(DUT)
+test-flow-py:
+	$(UV) run pytest flow/tests
 
-# Coverage is per-DUT (one report per build dir), so sweep each discovered DUT.
+configs:
+	$(FLOW) list-configs --dut $(DUT)
+
+coverage: override export ABV := 1
+coverage: override export HDL_COVERAGE := 1
+coverage:
+	$(FLOW) validate-config --dut $(DUT) $(CONFIG_ARG) --artifact
+	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) report-coverage --sim $(SIM) --dut $(DUT) $(CONFIG_ARG))
+
+# Coverage is per-DUT/configuration, so sweep every named config when present.
 coverage-all:
 	@for dut in $$($(FLOW) list-duts); do \
-		$(MAKE) coverage SIM=$(SIM) DUT=$$dut || exit $$?; \
+		configs="$$($(FLOW) list-configs --dut $$dut)"; \
+		if [ -n "$$configs" ]; then \
+			for config in $$configs; do \
+				$(MAKE) coverage SIM=$(SIM) DUT=$$dut CONFIG=$$config || exit $$?; \
+			done; \
+		else \
+			$(MAKE) coverage SIM=$(SIM) DUT=$$dut || exit $$?; \
+		fi; \
 	done
 
 open-coverage:
-	$(FLOW) open-coverage --sim $(SIM) --dut $(DUT)
+	$(FLOW) open-coverage --sim $(SIM) --dut $(DUT) $(CONFIG_ARG)
 
 open-coverage-html:
-	$(FLOW) open-coverage-html --sim $(SIM) --dut $(DUT)
+	$(FLOW) open-coverage-html --sim $(SIM) --dut $(DUT) $(CONFIG_ARG)
 
+waves: override export WAVES := 1
 waves:
-	$(FLOW) waves --viewer $(VIEWER) --dut $(DUT) --sources-file '$(SV_SOURCES_FILE)'
+	$(FLOW) validate-config --dut $(DUT) $(CONFIG_ARG) --artifact
+	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) open-waves --sim $(SIM) $(WAVE_VIEWER_ARG) --dut $(DUT) $(CONFIG_ARG))
 
 open-waves:
-	$(FLOW) open-waves --viewer $(VIEWER) --dut $(DUT) --sources-file '$(SV_SOURCES_FILE)'
+	$(FLOW) open-waves --sim $(SIM) $(WAVE_VIEWER_ARG) --dut $(DUT) $(CONFIG_ARG)
 
 format-py-ruff:
 	$(UV) run ruff format .

@@ -4,10 +4,13 @@ import re
 import shlex
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
+import cocotb_tools.runner as cocotb_runner
 from cocotb_tools.runner import get_runner
 
 if TYPE_CHECKING:
@@ -30,6 +33,13 @@ DEFAULT_SOURCES_FILE = "rtl/sources.vf"
 # filtered to a single one. ``make test`` and the single-target commands use a
 # concrete module (defaulting to ``DEFAULT_DUT``) instead.
 ALL_DUTS = "all"
+CONFIG_MANIFEST = Path("tests") / "cocotb_configs.py"
+CONFIG_MATCH_FILE_ENV = "COCOTB_CONFIG_MATCH_FILE"
+
+
+def active_parameter(name: str, default: int) -> int:
+    """Return an integer HDL parameter exported to the cocotb subprocess."""
+    return int(os.environ.get(f"COCOTB_PARAM_{name}", default))
 
 
 @dataclass
@@ -40,10 +50,10 @@ class RunConfig:
     gui: bool
     waves: bool
     coverage_dat: Path
-    questa_wave: Path
+    wave_path: Path
     questa_do: Path
     questa_args: list[str]
-    vcs_wave: Path
+    cm_hier: Path | None
     build_dir: Path
     hdl_toplevel: str
     sources_files: list[Path]
@@ -67,6 +77,14 @@ def env_flag(name: str, *, default: bool) -> bool:
     return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
+def build_jobs() -> int | None:
+    """Return an explicit parallel build count, capped to available CPUs."""
+    value = os.environ.get("BUILD_JOBS")
+    if not value or not value.strip():
+        return None
+    return max(1, min(int(value), os.cpu_count() or 1))
+
+
 def env_str(name: str, default: str) -> str:
     """Return environment variable *name*, or *default* when unset/empty.
 
@@ -78,16 +96,101 @@ def env_str(name: str, default: str) -> str:
     return value if value else default
 
 
-def run(cmd: list[str]) -> None:
+def expose_tool_on_path(name: str) -> None:
+    """Prepend the directory of an overridden simulator executable to ``PATH``."""
+    value = os.environ.get(name)
+    if not value:
+        return
+    executable = Path(value).expanduser()
+    if executable.parent == Path("."):
+        return
+    path_entries = os.environ.get("PATH", "").split(os.pathsep)
+    directory = str(executable.parent.resolve())
+    os.environ["PATH"] = os.pathsep.join(
+        [directory, *(entry for entry in path_entries if entry != directory)]
+    )
+
+
+def make_target_command(
+    action: str,
+    *,
+    simulator: str,
+    dut: str | None = None,
+    config: str | None = None,
+    viewer: str | None = None,
+    waves: bool = False,
+    hdl_coverage: bool = False,
+) -> str:
+    """Return an executable template Make command for an artifact workflow."""
+    cmd = ["make", action, f"SIM={simulator}"]
+    selected_dut = dut or os.environ.get("DUT")
+    if selected_dut and selected_dut != ALL_DUTS:
+        cmd.append(f"DUT={selected_dut}")
+    if viewer:
+        cmd.append(f"VIEWER={viewer}")
+    selected_config = config or os.environ.get("CONFIG")
+    if selected_config:
+        cmd.append(f"CONFIG={selected_config}")
+    if waves:
+        cmd.append("WAVES=1")
+    if hdl_coverage:
+        cmd.append("HDL_COVERAGE=1")
+    return shlex.join(cmd)
+
+
+def artifact_build_mode(*, waves: bool, hdl_coverage: bool) -> str:
+    """Return the build-path component for the enabled instrumentation."""
+    if waves and hdl_coverage:
+        return "waves-coverage"
+    if waves:
+        return "waves"
+    if hdl_coverage:
+        return "coverage"
+    return "normal"
+
+
+def run(cmd: list[str], *, cwd: Path | None = None) -> None:
     """Echo and run *cmd*, raising :class:`SystemExit` on a non-zero exit.
 
     Shared by the simulator/viewer profiles and the CLI to drive external tools
     (coverage reporters, waveform viewers) the way the old Makefile recipes did.
     """
     print("+ " + shlex.join(cmd), flush=True)
-    result = subprocess.run(cmd, check=False)
+    try:
+        result = subprocess.run(cmd, cwd=cwd, check=False)
+    except FileNotFoundError:
+        raise SystemExit(f"{cmd[0]}: command not found") from None
     if result.returncode != 0:
         raise SystemExit(result.returncode)
+
+
+def require_tool_version(executable: str, minimum: str, *, tool_name: str) -> None:
+    """Require *executable* to report at least *minimum* from ``--version``."""
+    try:
+        result = subprocess.run(
+            [executable, "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        raise SystemExit(f"{executable}: command not found") from None
+    output = "\n".join(filter(None, (result.stdout.strip(), result.stderr.strip())))
+    if result.returncode != 0:
+        detail = f": {output}" if output else ""
+        raise SystemExit(f"Could not query {tool_name} version from {executable}{detail}")
+    match = re.search(r"\b(\d+)\.(\d+)(?:\.(\d+))?\b", output)
+    if match is None:
+        raise SystemExit(f"Could not parse {tool_name} version from {executable}: {output!r}")
+    actual_parts = tuple(int(part or 0) for part in match.groups())
+    minimum_match = re.fullmatch(r"(\d+)\.(\d+)(?:\.(\d+))?", minimum)
+    if minimum_match is None:
+        raise ValueError(f"Invalid minimum version: {minimum!r}")
+    minimum_parts = tuple(int(part or 0) for part in minimum_match.groups())
+    if actual_parts < minimum_parts:
+        raise SystemExit(
+            f"{tool_name} {minimum}+ is required; {executable} reports {match.group(0)}."
+        )
 
 
 class _CommandEchoFormatter(logging.Formatter):
@@ -166,6 +269,14 @@ def project_path_from_env(name: str, project_dir: Path, default: Path) -> Path:
     return resolve_project_path(os.environ.get(name), project_dir, default)
 
 
+def optional_path_from_env(name: str, project_dir: Path) -> Path | None:
+    """Resolve an optional project-relative environment path."""
+    value = os.environ.get(name)
+    if not value:
+        return None
+    return resolve_project_path(value, project_dir, project_dir)
+
+
 def resolve_sources_files(value: str | None, project_dir: Path) -> list[Path]:
     """Resolve a whitespace-separated *value* of filelists against *project_dir*.
 
@@ -208,9 +319,60 @@ def discover_duts(tests_dir: Path) -> list[str]:
     return sorted(modules)
 
 
-def default_build_dir(project_dir: Path, dut: str, simulator: str) -> Path:
-    """``$BUILD_DIR`` override, or the per-DUT, per-simulator ``build/<dut>/<sim>`` default."""
-    return project_path_from_env("BUILD_DIR", project_dir, project_dir / "build" / dut / simulator)
+def validate_config_name(config: str) -> str:
+    """Validate and return a configuration name safe for use in paths."""
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", config):
+        raise ValueError(
+            "config must start with an alphanumeric character and contain only "
+            "alphanumerics, '.', '_', or '-'"
+        )
+    return config
+
+
+def discover_configs(project_dir: Path, dut: str) -> dict[str, dict[str, object]]:
+    """Return named HDL parameter configurations from ``tests/cocotb_configs.py``."""
+    manifest = project_dir / CONFIG_MANIFEST
+    if not manifest.is_file():
+        return {}
+    spec = spec_from_file_location("_flow_cocotb_configs", manifest)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"Unable to load configuration manifest {manifest}")
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    all_configs = getattr(module, "HDL_CONFIGS", None)
+    if not isinstance(all_configs, Mapping):
+        raise TypeError(f"{manifest}: HDL_CONFIGS must be a mapping")
+    dut_configs = all_configs.get(dut, {})
+    if not isinstance(dut_configs, Mapping):
+        raise TypeError(f"{manifest}: HDL_CONFIGS[{dut!r}] must be a mapping")
+
+    result: dict[str, dict[str, object]] = {}
+    for config, parameters in dut_configs.items():
+        if not isinstance(config, str):
+            raise TypeError(f"{manifest}: configuration names must be strings")
+        validate_config_name(config)
+        if not isinstance(parameters, Mapping):
+            raise TypeError(f"{manifest}: parameters for {dut}/{config} must be a mapping")
+        result[config] = dict(parameters)
+    return result
+
+
+def default_build_dir(
+    project_dir: Path,
+    dut: str,
+    simulator: str,
+    config: str | None = None,
+    artifact: str = "normal",
+) -> Path:
+    """Return a config- and instrumentation-isolated simulator build path."""
+    base = project_path_from_env(
+        "BUILD_DIR",
+        project_dir,
+        project_dir / "build" / dut / simulator,
+    )
+    if config:
+        base /= validate_config_name(config)
+    return base / validate_config_name(artifact)
 
 
 def default_coverage_dat(
@@ -233,21 +395,6 @@ def default_sources_files(project_dir: Path) -> list[Path]:
     return resolve_sources_files(os.environ.get("SV_SOURCES_FILE"), project_dir)
 
 
-def default_verilator_wave(project_dir: Path, build_dir: Path) -> Path:
-    """``$WAVE`` override, or the Verilator ``dump.fst`` under *build_dir*."""
-    return project_path_from_env("WAVE", project_dir, build_dir / "dump.fst")
-
-
-def default_vcs_wave(project_dir: Path, build_dir: Path) -> Path:
-    """``$VCS_WAVE`` override, or the VCS ``dump.fsdb`` under *build_dir*."""
-    return project_path_from_env("VCS_WAVE", project_dir, build_dir / "dump.fsdb")
-
-
-def default_questa_wave(project_dir: Path, build_dir: Path) -> Path:
-    """``$QUESTA_WAVE`` override, or the Questa ``vsim.wlf`` under *build_dir*."""
-    return project_path_from_env("QUESTA_WAVE", project_dir, build_dir / "vsim.wlf")
-
-
 def default_questa_do(project_dir: Path, dut: str) -> Path:
     """``$QUESTA_DO`` override, or the ``waves/<dut>.do`` layout for *dut*."""
     return project_path_from_env("QUESTA_DO", project_dir, project_dir / "waves" / f"{dut}.do")
@@ -263,7 +410,12 @@ def verdi_command() -> list[str]:
     return [env_str("VERDI", "verdi"), *shlex.split(env_str("VERDI_ARGS", "-nologo"))]
 
 
-def build_and_test(test_module: str | list[str]) -> None:
+def build_and_test(
+    test_module: str | list[str],
+    *,
+    parameters: Mapping[str, object] | None = None,
+    variant: str | None = None,
+) -> None:
     """Build RTL and run the cocotb tests in *test_module* for its DUT.
 
     *test_module* is a single module name or a list of them. A list is built
@@ -290,11 +442,41 @@ def build_and_test(test_module: str | list[str]) -> None:
     """
     first_module = test_module if isinstance(test_module, str) else test_module[0]
     hdl_toplevel = dut_from_test_module(first_module)
+    parameters_provided = parameters is not None
+    parameters = dict(parameters or {})
+    if parameters_provided != bool(variant):
+        raise ValueError("parameters and variant must be supplied together")
+    if variant:
+        validate_config_name(variant)
+    invalid_parameters = [
+        name for name in parameters if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", name)
+    ]
+    if invalid_parameters:
+        raise ValueError(f"invalid HDL parameter names: {invalid_parameters}")
+
     selector = env_str("DUT", ALL_DUTS)
     if selector != ALL_DUTS and selector != hdl_toplevel:
         import pytest
 
-        pytest.skip(f"DUT={selector!r} selected; this file targets {hdl_toplevel!r}")
+        raise pytest.skip.Exception(
+            f"DUT={selector!r} selected; this file targets {hdl_toplevel!r}"
+        )
+    match_file: str | None = None
+    selected_config = os.environ.get("CONFIG") or None
+    if selected_config:
+        validate_config_name(selected_config)
+        if variant is None:
+            raise ValueError(
+                f"CONFIG={selected_config!r} selected, but {first_module!r} "
+                "did not supply variant and parameters"
+            )
+        if variant != selected_config:
+            import pytest
+
+            raise pytest.skip.Exception(
+                f"CONFIG={selected_config!r} selected; this case targets {variant!r}"
+            )
+        match_file = os.environ.get(CONFIG_MATCH_FILE_ENV) or None
 
     # Lazy import: ``flow.simulators`` imports this module, so importing it at
     # module scope would be circular.
@@ -304,10 +486,13 @@ def build_and_test(test_module: str | list[str]) -> None:
     test_dir = project_dir / "tests"
     simulator = env_str("SIM", DEFAULT_SIM)
     profile = SIMULATORS.get(simulator)
-    build_dir = default_build_dir(project_dir, hdl_toplevel, simulator)
-    questa_wave = default_questa_wave(project_dir, build_dir)
+    hdl_coverage = env_flag("HDL_COVERAGE", default=False)
+    waves_enabled = env_flag("WAVES", default=False)
+    artifact = artifact_build_mode(waves=waves_enabled, hdl_coverage=hdl_coverage)
+    build_dir = default_build_dir(project_dir, hdl_toplevel, simulator, variant, artifact)
     questa_do = default_questa_do(project_dir, hdl_toplevel)
-    vcs_wave = default_vcs_wave(project_dir, build_dir)
+    wave_path = profile.wave_path(project_dir, build_dir) if profile else build_dir / "dump.vcd"
+    cm_hier = optional_path_from_env("CM_HIER", project_dir)
     # The cocotb sim subprocess loads the test module from ``test_dir`` and must
     # also import the ``flow`` package (via ``project_dir``); expose both.
     pythonpath = os.pathsep.join(
@@ -320,9 +505,7 @@ def build_and_test(test_module: str | list[str]) -> None:
     no_covergroups = env_flag(
         "NO_COVERGROUPS", default=profile.no_covergroups if profile else False
     )
-    hdl_coverage = env_flag("HDL_COVERAGE", default=False)
     questa_gui = env_flag("QUESTA_GUI", default=False)
-    waves_enabled = env_flag("WAVES", default=False)
     coverage_dat = default_coverage_dat(project_dir, build_dir, profile)
     sources_files = default_sources_files(project_dir)
     for sources_file in sources_files:
@@ -354,10 +537,10 @@ def build_and_test(test_module: str | list[str]) -> None:
                 gui=questa_gui,
                 waves=waves_enabled,
                 coverage_dat=coverage_dat,
-                questa_wave=questa_wave,
+                wave_path=wave_path,
                 questa_do=questa_do,
                 questa_args=shlex.split(os.environ.get("QUESTA_ARGS", "")),
-                vcs_wave=vcs_wave,
+                cm_hier=cm_hier,
                 build_dir=build_dir,
                 hdl_toplevel=hdl_toplevel,
                 sources_files=sources_files,
@@ -372,8 +555,18 @@ def build_and_test(test_module: str | list[str]) -> None:
     pre_cmd = sim_args.pre_cmd
     sources.extend(sim_args.sources)
 
+    executable_override = {
+        "verilator": "VERILATOR",
+        "questa": "VSIM",
+        "vcs": "VCS",
+    }.get(simulator)
+    if executable_override:
+        expose_tool_on_path(executable_override)
     runner = get_runner(simulator)
     echo_runner_commands(runner.log)
+    jobs = build_jobs()
+    if jobs is not None:
+        cocotb_runner.MAX_PARALLEL_BUILD_JOBS = jobs
     runner.build(
         sources=sources,
         includes=[],
@@ -383,8 +576,14 @@ def build_and_test(test_module: str | list[str]) -> None:
         build_dir=build_dir,
         always=rebuild,
         waves=waves_enabled,
+        parameters=parameters,
     )
-    extra_env = {"PYTHONPATH": pythonpath}
+    extra_env = {
+        "PYTHONPATH": pythonpath,
+        **{f"COCOTB_PARAM_{name}": str(value) for name, value in parameters.items()},
+    }
+    if variant:
+        extra_env["COCOTB_VARIANT"] = variant
     # vsim wraps cocotb's stdout (its transcript), so cocotb's TTY check fails
     # and it strips ANSI color that Verilator/VCS keep. On a real terminal (not
     # GUI, and only if the user hasn't pinned color via COCOTB_ANSI_OUTPUT or
@@ -398,6 +597,8 @@ def build_and_test(test_module: str | list[str]) -> None:
         and not os.environ.get("NO_COLOR")
     ):
         extra_env["COCOTB_ANSI_OUTPUT"] = "1"
+    if waves_enabled and profile:
+        profile.prepare_waves(project_dir, build_dir, hdl_toplevel, sources_files)
     runner.test(
         hdl_toplevel=hdl_toplevel,
         hdl_toplevel_lang="verilog",
@@ -411,3 +612,5 @@ def build_and_test(test_module: str | list[str]) -> None:
         plusargs=plusargs,
         pre_cmd=pre_cmd,
     )
+    if match_file:
+        Path(match_file).touch()
