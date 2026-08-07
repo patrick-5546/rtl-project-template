@@ -40,8 +40,9 @@ to test, coverage, and waveform targets. Each simulator has a default viewer;
 
 `make test` runs every named configuration for one DUT.
 List them with `make configs` and select one with `make test CONFIG=<config>`.
-`make test-all` runs every `tests/test_*.py` across all DUTs;
-pass `DUT=<module>` to select a DUT for test, wave, and coverage commands.
+`make test-all` runs every `tests/test_*.py` across all DUTs and verifies that
+each configured or unconfigured DUT case executed; pass `DUT=<module>` to
+select a DUT for test, wave, and coverage commands.
 
 To split a module's tests across files, put the tests in
 `test_<module>__<variant>.py` files and add a `test_<module>.py` aggregator that

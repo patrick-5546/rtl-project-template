@@ -15,10 +15,10 @@ from pathlib import Path
 
 from flow.runner import (
     ALL_DUTS,
-    CONFIG_MATCH_FILE_ENV,
     DEFAULT_DUT,
     DEFAULT_SIM,
     DEFAULT_SOURCES_FILE,
+    EXECUTED_CASES_FILE_ENV,
     artifact_build_mode,
     default_build_dir,
     default_coverage_dat,
@@ -71,6 +71,37 @@ def _resolve_wave_selection(simulator: str, viewer_name: str | None) -> tuple[st
 
 def _configs(dut: str) -> dict[str, dict[str, object]]:
     return discover_configs(PROJECT_DIR, dut)
+
+
+def _expected_cases(dut: str) -> set[tuple[str, str | None]]:
+    """Return the configured or single unconfigured cases expected for *dut*."""
+    duts = discover_duts(TESTS_DIR) if dut == ALL_DUTS else [dut]
+    cases: set[tuple[str, str | None]] = set()
+    for case_dut in duts:
+        configs = _configs(case_dut)
+        if configs:
+            cases.update((case_dut, config) for config in configs)
+        else:
+            cases.add((case_dut, None))
+    return cases
+
+
+def _read_executed_cases(path: Path) -> set[tuple[str, str | None]]:
+    """Read DUT/configuration pairs recorded by successful ``build_and_test`` calls."""
+    if not path.is_file():
+        return set()
+    cases: set[tuple[str, str | None]] = set()
+    for line in path.read_text().splitlines():
+        case_dut, separator, config = line.partition("\t")
+        if not separator or not case_dut:
+            raise SystemExit(f"Invalid cocotb execution record: {line!r}")
+        cases.add((case_dut, config or None))
+    return cases
+
+
+def _format_case(case: tuple[str, str | None]) -> str:
+    dut, config = case
+    return f"{dut}.{config}" if config else dut
 
 
 def _require_dut(dut: str, *, allow_all: bool = False) -> None:
@@ -161,24 +192,26 @@ def run_regression(
         env["CONFIG"] = config
     else:
         env.pop("CONFIG", None)
-    env.pop(CONFIG_MATCH_FILE_ENV, None)
+    env.pop(EXECUTED_CASES_FILE_ENV, None)
     if not env.get("NO_COLOR"):
         env.setdefault("PY_COLORS", "1")
         env.setdefault("COCOTB_ANSI_OUTPUT", "1")
     cmd = [sys.executable, "-m", "pytest", "-s"]
     print("+ " + shlex.join(cmd), flush=True)
-    with tempfile.TemporaryDirectory(prefix="cocotb_config_") as temp_dir:
-        match_file = Path(temp_dir) / "matched"
-        if config:
-            env[CONFIG_MATCH_FILE_ENV] = str(match_file)
+    with tempfile.TemporaryDirectory(prefix="cocotb_cases_") as temp_dir:
+        executed_cases_file = Path(temp_dir) / "executed"
+        env[EXECUTED_CASES_FILE_ENV] = str(executed_cases_file)
         result = subprocess.run(cmd, cwd=PROJECT_DIR, env=env, check=False)
         if result.returncode != 0:
             raise SystemExit(result.returncode)
-        if config and not match_file.is_file():
+        expected = {(dut, config)} if config else _expected_cases(dut)
+        missing = expected - _read_executed_cases(executed_cases_file)
+        if missing:
+            missing_names = ", ".join(_format_case(case) for case in sorted(missing))
             raise SystemExit(
-                f"CONFIG={config!r} was selected for DUT '{dut}', but no matching "
-                "build_and_test variant was executed. Ensure the pytest harness "
-                "parametrizes every configuration in HDL_CONFIGS."
+                "No matching build_and_test variant was executed for: "
+                f"{missing_names}. Ensure each pytest harness parameterizes every "
+                "configuration in HDL_CONFIGS."
             )
 
 

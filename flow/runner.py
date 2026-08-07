@@ -34,7 +34,7 @@ DEFAULT_SOURCES_FILE = "rtl/sources.vf"
 # concrete module (defaulting to ``DEFAULT_DUT``) instead.
 ALL_DUTS = "all"
 CONFIG_MANIFEST = Path("tests") / "cocotb_configs.py"
-CONFIG_MATCH_FILE_ENV = "COCOTB_CONFIG_MATCH_FILE"
+EXECUTED_CASES_FILE_ENV = "COCOTB_EXECUTED_CASES_FILE"
 
 
 def active_parameter(name: str, default: int) -> int:
@@ -458,7 +458,6 @@ def build_and_test(
         raise pytest.skip.Exception(
             f"DUT={selector!r} selected; this file targets {hdl_toplevel!r}"
         )
-    match_file: str | None = None
     selected_config = os.environ.get("CONFIG") or None
     if selected_config:
         validate_config_name(selected_config)
@@ -473,7 +472,7 @@ def build_and_test(
             raise pytest.skip.Exception(
                 f"CONFIG={selected_config!r} selected; this case targets {variant!r}"
             )
-        match_file = os.environ.get(CONFIG_MATCH_FILE_ENV) or None
+    executed_cases_file = os.environ.get(EXECUTED_CASES_FILE_ENV) or None
 
     # Lazy import: ``flow.simulators`` imports this module, so importing it at
     # module scope would be circular.
@@ -609,5 +608,6 @@ def build_and_test(
         plusargs=plusargs,
         pre_cmd=pre_cmd,
     )
-    if match_file:
-        Path(match_file).touch()
+    if executed_cases_file:
+        with Path(executed_cases_file).open("a") as stream:
+            stream.write(f"{hdl_toplevel}\t{variant or ''}\n")

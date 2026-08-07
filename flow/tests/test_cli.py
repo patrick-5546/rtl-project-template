@@ -65,7 +65,7 @@ def test_selected_config_requires_matching_variant(tmp_path: Path) -> None:
         patch.object(cli, "PROJECT_DIR", tmp_path),
         patch.object(cli, "_sim"),
         patch.object(cli.subprocess, "run", return_value=completed),
-        pytest.raises(SystemExit, match="no matching build_and_test variant"),
+        pytest.raises(SystemExit, match="No matching build_and_test variant"),
     ):
         cli.run_regression(
             "verilator",
@@ -75,8 +75,8 @@ def test_selected_config_requires_matching_variant(tmp_path: Path) -> None:
         )
 
 
-def test_selected_config_accepts_matching_variant(tmp_path: Path) -> None:
-    def run_and_match(
+def test_regression_accepts_complete_config_matrix(tmp_path: Path) -> None:
+    def run_and_record(
         command: list[str],
         *,
         cwd: Path,
@@ -84,17 +84,62 @@ def test_selected_config_accepts_matching_variant(tmp_path: Path) -> None:
         check: bool,
     ) -> subprocess.CompletedProcess[list[str]]:
         del command, cwd, check
-        Path(env["COCOTB_CONFIG_MATCH_FILE"]).touch()
+        Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text("top\twidth4\ntop\twidth8\n")
         return subprocess.CompletedProcess(args=[], returncode=0)
 
     with (
         patch.object(cli, "PROJECT_DIR", tmp_path),
         patch.object(cli, "_sim"),
-        patch.object(cli.subprocess, "run", side_effect=run_and_match),
+        patch.object(cli, "_expected_cases", return_value={("top", "width4"), ("top", "width8")}),
+        patch.object(cli.subprocess, "run", side_effect=run_and_record),
     ):
         cli.run_regression(
             "verilator",
             dut="top",
             sources_file="rtl/sources.vf",
-            config="width4",
+            config=None,
         )
+
+
+def test_regression_rejects_incomplete_all_dut_matrix(tmp_path: Path) -> None:
+    def run_and_record(
+        command: list[str],
+        *,
+        cwd: Path,
+        env: dict[str, str],
+        check: bool,
+    ) -> subprocess.CompletedProcess[list[str]]:
+        del command, cwd, check
+        Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text("top\twidth4\nother\t\n")
+        return subprocess.CompletedProcess(args=[], returncode=0)
+
+    expected = {("top", "width4"), ("top", "width8"), ("other", None)}
+    with (
+        patch.object(cli, "PROJECT_DIR", tmp_path),
+        patch.object(cli, "_sim"),
+        patch.object(cli, "_expected_cases", return_value=expected),
+        patch.object(cli.subprocess, "run", side_effect=run_and_record),
+        pytest.raises(SystemExit, match=r"top\.width8"),
+    ):
+        cli.run_regression(
+            "verilator",
+            dut="all",
+            sources_file="rtl/sources.vf",
+            config=None,
+        )
+
+
+def test_expected_cases_includes_unconfigured_dut() -> None:
+    with (
+        patch.object(cli, "discover_duts", return_value=["configured", "plain"]),
+        patch.object(
+            cli,
+            "_configs",
+            side_effect=lambda dut: {"small": {}, "large": {}} if dut == "configured" else {},
+        ),
+    ):
+        assert cli._expected_cases("all") == {
+            ("configured", "small"),
+            ("configured", "large"),
+            ("plain", None),
+        }

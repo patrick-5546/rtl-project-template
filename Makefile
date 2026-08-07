@@ -101,7 +101,7 @@ help:
 	@echo "Test:"
 	@echo "  test [SIM=questa]               Run the cocotb regression for one DUT"
 	@echo "  test CONFIG=<name>              Run one named HDL parameter configuration"
-	@echo "  test-all                        Run the cocotb regression for every DUT"
+	@echo "  test-all                        Run and validate every DUT/configuration"
 	@echo "  configs                         List named HDL configurations for DUT"
 	@echo "  test-flow-py                    Run flow unit tests (not RTL/cocotb tests)"
 	@echo "  test TEST=enable_high_counts    Run one cocotb test by exact name"
