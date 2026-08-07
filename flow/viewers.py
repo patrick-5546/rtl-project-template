@@ -31,9 +31,9 @@ class ViewerProfile:
     name: str = ""
     wave_sim: str = ""
 
-    def wave_path(self, project_dir: Path, build_dir: Path) -> Path:
+    def wave_path(self, build_dir: Path) -> Path:
         """Canonical waveform path produced by this viewer's simulator."""
-        return SIMULATORS[self.wave_sim].wave_path(project_dir, build_dir)
+        return SIMULATORS[self.wave_sim].wave_path(build_dir)
 
     def waves_hint(self, dut: str, config: str | None) -> str:
         """Return the command that generates this viewer's waveform artifacts."""
@@ -69,7 +69,7 @@ class GtkwaveProfile(ViewerProfile):
         dut: str,
         config: str | None,
     ) -> None:
-        wave = self.wave_path(project_dir, build_dir)
+        wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
         gtkwave = env_str("GTKWAVE", "gtkwave")
         gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", "-o"))
@@ -80,7 +80,7 @@ class GtkwaveProfile(ViewerProfile):
         )
         cmd = [gtkwave, *gtkwave_args]
         if not env_flag("NO_RTLBROWSE", default=False):
-            top = env_str("GTKWAVE_STEMS_TOP", dut)
+            top = dut
             json_dir = build_dir / "rtlbrowse"
             tree_json = json_dir / f"V{top}.tree.json"
             tree_meta = json_dir / f"V{top}.tree.meta.json"
@@ -111,7 +111,7 @@ class SurferProfile(ViewerProfile):
         dut: str,
         config: str | None,
     ) -> None:
-        wave = self.wave_path(project_dir, build_dir)
+        wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
         state = project_path_from_env(
             "SURFER_STATE",
@@ -137,7 +137,7 @@ class QuestaViewerProfile(ViewerProfile):
         dut: str,
         config: str | None,
     ) -> None:
-        wave = self.wave_path(project_dir, build_dir)
+        wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
         do = default_questa_do(project_dir, dut)
         cmd = [vsim_exe(), "-gui", "-view", str(wave)]
@@ -158,9 +158,9 @@ class VerdiProfile(ViewerProfile):
         dut: str,
         config: str | None,
     ) -> None:
-        wave = self.wave_path(project_dir, build_dir)
+        wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
-        daidir = project_path_from_env("VCS_DAIDIR", project_dir, build_dir / "simv.daidir")
+        daidir = build_dir / "simv.daidir"
         rc = project_path_from_env("VERDI_RC", project_dir, project_dir / "waves" / f"{dut}.rc")
         cmd = [*verdi_command(), "-dbdir", str(daidir), "-ssf", str(wave)]
         if rc.is_file():

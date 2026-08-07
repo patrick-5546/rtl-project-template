@@ -375,12 +375,9 @@ def default_build_dir(
     return base / validate_config_name(artifact)
 
 
-def default_coverage_dat(
-    project_dir: Path, build_dir: Path, profile: "SimulatorProfile | None"
-) -> Path:
-    """``$COVERAGE_DAT`` override, or the profile's coverage artifact under *build_dir*."""
-    base = profile.coverage_data_path(build_dir) if profile else build_dir / "coverage.dat"
-    return project_path_from_env("COVERAGE_DAT", project_dir, base)
+def default_coverage_dat(build_dir: Path, profile: "SimulatorProfile | None") -> Path:
+    """Return the profile's canonical coverage artifact under *build_dir*."""
+    return profile.coverage_data_path(build_dir) if profile else build_dir / "coverage.dat"
 
 
 def default_sources_files(project_dir: Path) -> list[Path]:
@@ -491,7 +488,7 @@ def build_and_test(
     artifact = artifact_build_mode(waves=waves_enabled, hdl_coverage=hdl_coverage)
     build_dir = default_build_dir(project_dir, hdl_toplevel, simulator, variant, artifact)
     questa_do = default_questa_do(project_dir, hdl_toplevel)
-    wave_path = profile.wave_path(project_dir, build_dir) if profile else build_dir / "dump.vcd"
+    wave_path = profile.wave_path(build_dir) if profile else build_dir / "dump.vcd"
     cm_hier = optional_path_from_env("CM_HIER", project_dir)
     # The cocotb sim subprocess loads the test module from ``test_dir`` and must
     # also import the ``flow`` package (via ``project_dir``); expose both.
@@ -506,7 +503,7 @@ def build_and_test(
         "NO_COVERGROUPS", default=profile.no_covergroups if profile else False
     )
     questa_gui = env_flag("QUESTA_GUI", default=False)
-    coverage_dat = default_coverage_dat(project_dir, build_dir, profile)
+    coverage_dat = default_coverage_dat(build_dir, profile)
     sources_files = default_sources_files(project_dir)
     for sources_file in sources_files:
         require(sources_file, "Set SV_SOURCES_FILE to a valid filelist (see rtl/sources.vf).")

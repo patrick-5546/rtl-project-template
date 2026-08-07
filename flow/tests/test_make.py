@@ -8,6 +8,25 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def test_project_root_cannot_be_overridden() -> None:
+    result = subprocess.run(
+        [
+            "make",
+            "--no-print-directory",
+            "--silent",
+            "PROJECT_ROOT=/wrong",
+            "--eval",
+            'print-project-root:;@printf "%s" "$$PROJECT_ROOT"',
+            "print-project-root",
+        ],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout == str(REPO_ROOT)
+
+
 @pytest.mark.parametrize(
     ("target", "postprocess"),
     [("coverage", "report-coverage"), ("waves", "open-waves")],

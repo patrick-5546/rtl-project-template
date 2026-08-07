@@ -110,7 +110,7 @@ def _build_dir(
 
 
 def _coverage_data(profile: SimulatorProfile, build_dir: Path) -> Path:
-    return default_coverage_dat(PROJECT_DIR, build_dir, profile)
+    return default_coverage_dat(build_dir, profile)
 
 
 def _require_coverage(

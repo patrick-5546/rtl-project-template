@@ -63,11 +63,14 @@ def test_vcs_coverage_filters_constants_and_honors_cm_hier(tmp_path: Path) -> No
     assert args.build_args[-2:] == ["-cm_hier", str(cm_hier)]
 
 
-def test_profile_wave_paths_honor_template_overrides(
+def test_profile_wave_paths_are_canonical(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("WAVE", "custom/dump.fst")
-    assert VerilatorProfile().wave_path(tmp_path, tmp_path / "build") == (
-        tmp_path / "custom" / "dump.fst"
-    )
+    monkeypatch.setenv("WAVE", "wrong.fst")
+    monkeypatch.setenv("QUESTA_WAVE", "wrong.wlf")
+    monkeypatch.setenv("VCS_WAVE", "wrong.fsdb")
+    build_dir = tmp_path / "build"
+    assert VerilatorProfile().wave_path(build_dir) == build_dir / "dump.fst"
+    assert QuestaProfile().wave_path(build_dir) == build_dir / "vsim.wlf"
+    assert VcsProfile().wave_path(build_dir) == build_dir / "dump.fsdb"

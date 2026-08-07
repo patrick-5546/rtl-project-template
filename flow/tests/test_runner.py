@@ -12,6 +12,7 @@ from flow.runner import (
     build_and_test,
     build_jobs,
     default_build_dir,
+    default_coverage_dat,
     discover_configs,
     discover_duts,
     expose_tool_on_path,
@@ -48,6 +49,15 @@ def test_default_build_dir_appends_to_override(
     assert default_build_dir(tmp_path, "top", "verilator", "width8", "coverage") == (
         tmp_path / "custom" / "width8" / "coverage"
     )
+
+
+def test_coverage_path_is_canonical(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("COVERAGE_DAT", "wrong.dat")
+    build_dir = tmp_path / "build"
+    assert default_coverage_dat(build_dir, SIMULATORS["questa"]) == (build_dir / "coverage.ucdb")
 
 
 @pytest.mark.parametrize("name", ["width4", "default", "fast.debug-1"])

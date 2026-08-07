@@ -204,7 +204,7 @@ with source-linked debug (double-click a signal to find its RTL driver) and load
 a reusable `.do` layout (`waves/<DUT>.do`) when present; local install docs are
 under `$HOME/altera_lite/25.1std/questa_fse/docs`. Select it with `SIM=questa`
 (which selects the Questa viewer by default; see `make help` for the
-`QUESTA_WAVE` and `QUESTA_DO` overrides).
+`QUESTA_DO` layout override).
 
 VCS is a commercial, event-based simulator with full SystemVerilog support.
 Unlike the Questa Starter Edition it collects SV covergroups,
@@ -212,19 +212,19 @@ reports coverage through `urg`, and supports source-linked debug in Verdi. It
 records waveforms in Verdi's native FSDB format and loads a reusable restore
 file (`waves/<DUT>.rc`) when present; waveform viewing and the coverage GUI both
 use Verdi, so `vcs` and `verdi` must be on `PATH`. Select it with `SIM=vcs` or
-the compatible `VIEWER=verdi` override (see `make help` for the `VCS_WAVE`,
-`VERDI_RC`, and `WAVES=0` overrides).
+the compatible `VIEWER=verdi` override (see `make help` for the `VERDI_RC` and
+`WAVES=0` overrides).
 
 GTKWave reads Verilator's FST output and can view and annotate source with
 values from the waveform through its RTLBrowse window; the wave targets prepare
 that RTL-browser support so signals link back to source (skip it with
 `NO_RTLBROWSE=1`), and load a reusable layout (`waves/<DUT>.gtkw`) when present.
-See `make help` for the `WAVE`, `GTKWAVE_SAVE`, and `NO_RTLBROWSE` overrides.
+See `make help` for the `GTKWAVE_SAVE` and `NO_RTLBROWSE` overrides.
 
 Surfer is a fast, modern waveform viewer that reads the same Verilator FST as
 GTKWave; it is still early in development and has fewer features.
 `make waves VIEWER=surfer` loads a reusable layout (`waves/<DUT>.surf.ron`) when
-present (see `make help` for the `WAVE` and `SURFER_STATE` overrides).
+present (see `make help` for the `SURFER_STATE` override).
 
 Verdi is the waveform viewer and coverage browser for the VCS flow. It reads
 the FSDB dumped during simulation and the `simv.daidir` knowledge database for

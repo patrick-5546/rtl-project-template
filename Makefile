@@ -26,7 +26,7 @@ FLOW := $(UV) run python -m flow.cli
 # Repo root, and the single source of truth for `${PROJECT_ROOT}` -- the anchor
 # the SV filelists use so their entries resolve to absolute paths without
 # committing a checkout path.
-export PROJECT_ROOT := $(CURDIR)
+override export PROJECT_ROOT := $(CURDIR)
 
 # File lists. SV_SOURCES_FILE may name several whitespace-separated filelists;
 # each is handed -- with its own `-f` -- both to the simulators (via the flow
@@ -153,11 +153,12 @@ help:
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"
 	@echo "  WAVES=1 / WAVES=0               Force waveform dump on/off (test: off; waves: on)"
-	@echo "  WAVE= / GTKWAVE_SAVE=           Verilator wave file / GTKWave save layout"
+	@echo "  BUILD_DIR=<path>                Relocate the config/mode-isolated artifact tree"
+	@echo "  GTKWAVE_SAVE=                   GTKWave save layout"
 	@echo "  SURFER_STATE=                   Surfer state (layout) file"
 	@echo "  NO_RTLBROWSE=1                  Skip GTKWave RTLBrowse stem generation"
-	@echo "  QUESTA_WAVE= / QUESTA_DO=       Questa WLF / Questa .do layout"
-	@echo "  VCS_WAVE= / VERDI_RC=           VCS FSDB file / Verdi layout"
+	@echo "  QUESTA_DO=                      Questa .do layout"
+	@echo "  VERDI_RC=                       Verdi layout"
 	@echo "  CM_HIER= / ELLIST=              Optional VCS coverage hierarchy / exclusions"
 	@echo "  HTML_VIEWER=wslview             HTML opener (e.g. wslview on WSL)"
 

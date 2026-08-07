@@ -101,7 +101,6 @@ class SimulatorProfile:
 
     name: str = ""
     wave_filename: str = ""
-    wave_env: str = ""
     supports_coverage: bool = False
     supports_gui: bool = False
     # Verilator parses but ignores SV covergroups, so they are excluded by
@@ -131,14 +130,11 @@ class SimulatorProfile:
         """Canonical coverage artifact for this simulator under *build_dir*."""
         return build_dir / "coverage.dat"
 
-    def wave_path(self, project_dir: Path, build_dir: Path) -> Path:
+    def wave_path(self, build_dir: Path) -> Path:
         """Canonical waveform artifact for this simulator under *build_dir*."""
         if not self.wave_filename:
             raise NotImplementedError(f"{type(self).__name__} does not define wave_filename")
-        default = build_dir / self.wave_filename
-        return (
-            project_path_from_env(self.wave_env, project_dir, default) if self.wave_env else default
-        )
+        return build_dir / self.wave_filename
 
     def prepare_waves(
         self,
@@ -201,7 +197,6 @@ class SimulatorProfile:
 class VerilatorProfile(SimulatorProfile):
     name = "verilator"
     wave_filename = "dump.fst"
-    wave_env = "WAVE"
     supports_coverage = True
     no_covergroups = True
     minimum_coverage_version = "5.048"
@@ -342,7 +337,7 @@ class VerilatorProfile(SimulatorProfile):
     ) -> None:
         if env_flag("NO_RTLBROWSE", default=False):
             return
-        top = env_str("GTKWAVE_STEMS_TOP", hdl_toplevel)
+        top = hdl_toplevel
         json_dir = build_dir / "rtlbrowse"
         verilator = env_str("VERILATOR", "verilator")
         defines = ["+define+ABV=1"] if env_flag("ABV", default=False) else []
@@ -378,7 +373,6 @@ class VerilatorProfile(SimulatorProfile):
 class QuestaProfile(SimulatorProfile):
     name = "questa"
     wave_filename = "vsim.wlf"
-    wave_env = "QUESTA_WAVE"
     supports_coverage = True
     supports_gui = True
     forces_ansi_on_tty = True
@@ -465,7 +459,6 @@ class QuestaProfile(SimulatorProfile):
 class VcsProfile(SimulatorProfile):
     name = "vcs"
     wave_filename = "dump.fsdb"
-    wave_env = "VCS_WAVE"
     supports_coverage = True
 
     @override
