@@ -138,7 +138,7 @@ jobs:
       #     name: hdl-coverage-report
       #     path: build/verilator/coverage_html
 
-  test:
+  flow-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -147,30 +147,6 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Cache Verilator
-        id: cache-verilator
-        uses: actions/cache@v5
-        with:
-          path: /opt/verilator
-          key: verilator-${{ env.VERILATOR_VERSION }}
-
-      - name: Build Verilator
-        if: steps.cache-verilator.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update && sudo apt-get install -y ccache help2man libfl-dev
-          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1 /tmp/verilator
-          cd /tmp/verilator
-          autoconf
-          ./configure --prefix=/opt/verilator
-          make -j"$(nproc)"
-          make install
-
-      - name: Install ccache
-        run: sudo apt-get update && sudo apt-get install -y ccache
-
-      - name: Add Verilator to PATH
-        run: echo "/opt/verilator/bin" >> "$GITHUB_PATH"
-
       - run: uv sync
 
-      - run: make test-all
+      - run: make test-flow-py
