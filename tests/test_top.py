@@ -2,12 +2,18 @@ from pathlib import Path
 from typing import Any
 
 import cocotb
+import pytest
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotb_configs import HDL_CONFIGS
 
-from flow.runner import build_and_test, env_flag
+from flow.runner import active_parameter, build_and_test, env_flag
 
 _ABV = env_flag("ABV", default=False)
+_WIDTH = active_parameter("WIDTH", 8)
+_MAX_COUNT = (1 << _WIDTH) - 1
+_MID_COUNT = _MAX_COUNT // 2
+_HIGH_COUNT = _MAX_COUNT - 1
 
 if _ABV:
     from cocotb_coverage.coverage import coverage_db
@@ -76,13 +82,12 @@ async def enable_low_holds_count(dut: Any) -> None:
 
 
 @cocotb.test()
-@cocotb.parametrize(target_count=[100, 200, 255])
+@cocotb.parametrize(target_count=[_MID_COUNT, _HIGH_COUNT, _MAX_COUNT])
 async def enable_low_holds_at_count(dut: Any, target_count: int) -> None:
     """Drop enable after reaching a count bin and verify the value holds.
 
-    The targets land in the mid (100), high (200), and max (255) bins of
-    ``counter_cg`` for the default ``WIDTH=8``; cocotb generates one test per
-    value (``..._100``/``..._200``/``..._255``) within a single build.
+    The targets land in the mid, high, and max bins of ``counter_cg`` for the
+    active WIDTH configuration; cocotb generates one test per value.
     """
     await start_counter(dut)
 
@@ -101,8 +106,8 @@ async def counter_wraps(dut: Any) -> None:
     await start_counter(dut)
 
     dut.en_i.value = 1
-    await tick(dut, 255)
-    assert dut.count_o.value.to_unsigned() == 255
+    await tick(dut, _MAX_COUNT)
+    assert dut.count_o.value.to_unsigned() == _MAX_COUNT
 
     await tick(dut)
     assert dut.count_o.value.to_unsigned() == 0
@@ -126,5 +131,12 @@ async def check_coverage(dut: Any) -> None:
         raise AssertionError("Coverage holes — bins never hit:\n  " + "\n  ".join(missed))
 
 
-def test_top() -> None:
-    build_and_test(test_module=Path(__file__).stem)
+@pytest.mark.parametrize(
+    ("variant", "parameters"),
+    [
+        pytest.param(variant, parameters, id=variant)
+        for variant, parameters in HDL_CONFIGS["top"].items()
+    ],
+)
+def test_top(variant: str, parameters: dict[str, int]) -> None:
+    build_and_test(test_module=Path(__file__).stem, variant=variant, parameters=parameters)

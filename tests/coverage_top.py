@@ -11,8 +11,10 @@ from typing import Any
 
 from cocotb_coverage.coverage import CoverCross, CoverPoint, coverage_section
 
-# WIDTH = 8 constants matching top_abv.sv MaxCount = {WIDTH{1'b1}} = 255
-_MAX_COUNT = 255
+from flow.runner import active_parameter
+
+_WIDTH = active_parameter("WIDTH", 8)
+_MAX_COUNT = (1 << _WIDTH) - 1
 
 counter_cg = coverage_section(
     CoverPoint(
