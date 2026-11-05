@@ -78,7 +78,13 @@ both simulators; VCS collects SV covergroups natively.
 | Verdi | VCS | FSDB | Yes | Yes |
 
 GTKWave reads Verilator's FST output and can view and annotate source with
-values from the waveform through its RTLBrowse window.
+values from the waveform through its RTLBrowse window. GTKWave 4, still
+pre-alpha and built from source, works too: point `GTKWAVE` at it (e.g.
+`make waves GTKWAVE=/opt/gtkwave4/bin/gtkwave`), and the flow puts its
+directory first on `PATH` so that it starts its own RTLBrowse. GTKWave 4 has no
+`json2stems`, so the RTLBrowse stems still come from GTKWave 3's (on `PATH`, or
+set `JSON2STEMS`); skip them with `NO_RTLBROWSE=1`. Both versions read the same
+`.gtkw` layouts.
 
 Verdi is the waveform viewer and coverage browser for the VCS flow.
 

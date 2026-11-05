@@ -169,6 +169,7 @@ help:
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"
 	@echo "  WAVES=1 / WAVES=0               Force waveform dump on/off (test: off; waves: on)"
 	@echo "  BUILD_DIR=<path>                Relocate the config/mode-isolated artifact tree"
+	@echo "  GTKWAVE=<path>                  GTKWave executable (e.g. a GTKWave 4 build)"
 	@echo "  GTKWAVE_SAVE=                   GTKWave save layout"
 	@echo "  NO_RTLBROWSE=1                  Skip GTKWave RTLBrowse stem generation"
 	@echo "  QUESTA_DO=                      Questa .do layout"
