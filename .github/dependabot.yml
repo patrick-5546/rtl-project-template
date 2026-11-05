@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # The actions that the workflow and the local setup-eda-tools action use.
+  - package-ecosystem: github-actions
+    directories: ["/", "/.github/actions/*"]
+    schedule:
+      interval: weekly
+    # Wait a week before adopting a release, as uv.lock's exclude-newer does: most
+    # compromised releases are found and pulled within days.
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    # Minor and patch updates come together; each major update comes on its own.
+    groups:
+      python:
+        update-types: [minor, patch]
