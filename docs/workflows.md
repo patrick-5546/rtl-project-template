@@ -64,9 +64,9 @@ HDL_CONFIGS = {
 ```
 
 The pytest harness parameterizes the same mapping and passes each pair to
-`build_and_test(..., variant=variant, parameters=parameters)`. Cocotb test
+`build_and_test(..., config=config, parameters=parameters)`. Cocotb test
 constants can read the active elaboration with `active_parameter("WIDTH", 8)`.
-The runner exports the configuration as `COCOTB_VARIANT` and each parameter as
+The runner exports the configuration as `COCOTB_CONFIG` and each parameter as
 `COCOTB_PARAM_<name>`.
 
 ## Build directories

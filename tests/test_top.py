@@ -132,11 +132,11 @@ async def check_coverage(dut: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    ("variant", "parameters"),
+    ("config", "parameters"),
     [
-        pytest.param(variant, parameters, id=variant)
-        for variant, parameters in HDL_CONFIGS["top"].items()
+        pytest.param(config, parameters, id=config)
+        for config, parameters in HDL_CONFIGS["top"].items()
     ],
 )
-def test_top(variant: str, parameters: dict[str, int]) -> None:
-    build_and_test(test_module=Path(__file__).stem, variant=variant, parameters=parameters)
+def test_top(config: str, parameters: dict[str, int]) -> None:
+    build_and_test(test_module=Path(__file__).stem, config=config, parameters=parameters)

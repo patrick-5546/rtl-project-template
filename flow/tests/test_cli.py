@@ -57,13 +57,13 @@ def test_test_all_rejects_config() -> None:
         cli.cmd_test(args)
 
 
-def test_selected_config_requires_matching_variant(tmp_path: Path) -> None:
+def test_selected_config_must_run(tmp_path: Path) -> None:
     completed = subprocess.CompletedProcess(args=[], returncode=0)
     with (
         patch.object(cli, "PROJECT_DIR", tmp_path),
         patch.object(cli, "_sim"),
         patch.object(cli.subprocess, "run", return_value=completed),
-        pytest.raises(SystemExit, match="No matching build_and_test variant"),
+        pytest.raises(SystemExit, match=r"No build_and_test call ran: top\.width4"),
     ):
         cli.run_regression(
             "verilator",
