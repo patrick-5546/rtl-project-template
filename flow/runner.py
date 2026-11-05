@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from collections.abc import Mapping
@@ -583,6 +584,11 @@ def build_and_test(
         rebuild = True
     if rebuild:
         build_record.unlink(missing_ok=True)
+    for output in profile.run_outputs(build_dir, rebuild=rebuild) if profile else []:
+        if output.is_dir():
+            shutil.rmtree(output)
+        else:
+            output.unlink(missing_ok=True)
     runner = get_runner(simulator)
     echo_runner_commands(runner.log)
     jobs = build_jobs()

@@ -102,7 +102,8 @@ build/<dut>/<sim>/<config>/waves-coverage/
 
 Each configuration and instrumentation thus keeps its own build, so switching
 between them does not rebuild the others. Each directory also
-holds its runs' waveform, coverage data and reports. The combined
+holds its run's waveform, coverage data and reports; a run deletes those first,
+so one whose build fails leaves no older ones to open or report. The combined
 `WAVES=1 HDL_COVERAGE=1` mode uses `waves-coverage`, so a waveform or coverage
 database exists in two modes: `open-waves`, `open-coverage` and
 `open-coverage-html` use the newer one and say which, unless `HDL_COVERAGE`

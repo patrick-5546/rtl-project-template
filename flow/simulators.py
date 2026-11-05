@@ -164,6 +164,19 @@ class SimulatorProfile:
             raise NotImplementedError(f"{type(self).__name__} does not define wave_filename")
         return build_dir / self.wave_filename
 
+    def run_outputs(self, build_dir: Path, *, rebuild: bool) -> list[Path]:
+        """The waveform, coverage data and reports that a run writes in *build_dir*.
+
+        :func:`flow.runner.build_and_test` deletes them before building, so a
+        run that fails to build leaves no previous run's outputs for ``make
+        waves`` or ``make coverage`` to open or report. Outputs that span the
+        build and the run are listed only when *rebuild* is set.
+        """
+        outputs = [self.coverage_data_path(build_dir)]
+        if self.wave_filename:
+            outputs.append(self.wave_path(build_dir))
+        return outputs
+
     def prepare_waves(
         self,
         project_dir: Path,
@@ -255,6 +268,14 @@ class VerilatorProfile(SimulatorProfile):
     @override
     def coverage_html_index(self, build_dir: Path) -> Path:
         return build_dir / "coverage_html" / "index.html"
+
+    @override
+    def run_outputs(self, build_dir: Path, *, rebuild: bool) -> list[Path]:
+        reports = ["coverage.info", "coverage_annotated", "coverage_html", "rtlbrowse"]
+        return [
+            *super().run_outputs(build_dir, rebuild=rebuild),
+            *(build_dir / report for report in reports),
+        ]
 
     @override
     def report_coverage(
@@ -446,6 +467,10 @@ class QuestaProfile(SimulatorProfile):
         return build_dir / "coverage_html" / "index.html"
 
     @override
+    def run_outputs(self, build_dir: Path, *, rebuild: bool) -> list[Path]:
+        return [*super().run_outputs(build_dir, rebuild=rebuild), build_dir / "coverage_html"]
+
+    @override
     def report_coverage(
         self,
         project_dir: Path,
@@ -521,6 +546,15 @@ class VcsProfile(SimulatorProfile):
     @override
     def coverage_html_index(self, build_dir: Path) -> Path:
         return build_dir / "urgReport" / "dashboard.html"
+
+    @override
+    def run_outputs(self, build_dir: Path, *, rebuild: bool) -> list[Path]:
+        # The compile writes the coverage database's model and each run adds to
+        # it, so it goes only with the build it belongs to.
+        outputs = [self.wave_path(build_dir), build_dir / "urgReport"]
+        if rebuild:
+            outputs.append(self.coverage_data_path(build_dir))
+        return outputs
 
     @override
     def report_coverage(

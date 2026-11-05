@@ -239,3 +239,30 @@ def test_rebuild_0_rebuilds_only_when_the_build_inputs_change(
     assert rebuilds(monkeypatch, tmp_path, ABV="1") is True
     assert "because its defines changed" in capsys.readouterr().out
     assert rebuilds(monkeypatch, tmp_path, ABV="1") is False
+
+
+def test_previous_run_outputs_are_deleted_before_the_build(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    build_dir = tmp_path / "build" / "top" / "verilator" / "width4" / "normal"
+    stale = [build_dir / "coverage.dat", build_dir / "coverage_html" / "index.html"]
+    for output in stale:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.touch()
+    seen_at_build: list[bool] = []
+    simulator = MagicMock()
+    simulator.log = logging.getLogger("flow-test-stale-outputs")
+
+    def record_outputs(**kwargs: object) -> None:
+        del kwargs
+        seen_at_build.extend(output.exists() for output in stale)
+
+    simulator.build.side_effect = record_outputs
+    for name in ("ABV", "WAVES", "HDL_COVERAGE", "REBUILD", "COCOTB_EXECUTED_CASES_FILE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("SIM", "verilator")
+    monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
+    with patch("flow.runner.get_runner", return_value=simulator):
+        build_and_test("test_top", config="width4", parameters={"WIDTH": 4})
+    assert seen_at_build == [False, False]
