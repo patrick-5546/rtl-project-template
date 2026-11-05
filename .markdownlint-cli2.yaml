@@ -1,6 +1,0 @@
-globs:
-  - "**/*.md"
-gitignore: true
-config:
-  MD013:
-    line_length: 100

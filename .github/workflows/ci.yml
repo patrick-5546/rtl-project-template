@@ -84,8 +84,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install markdownlint-cli2
-        run: sudo npm install -g markdownlint-cli2
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+
+      - run: uv sync
 
       - run: make lint-md
 

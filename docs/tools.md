@@ -6,11 +6,11 @@ and the versions this template was verified with.
 ## Installation
 
 Install the external command-line tools for the simulators and viewers you plan
-to use. Python packages are managed by uv, but Verilator, GTKWave, Surfer,
-Verible, slang, LCOV, and markdownlint-cli2 need to be available on `PATH`. The
-local Python version is pinned to `3.14` in `.python-version`, the newest that
-the locked cocotb release supports; move to Python 3.15 once a cocotb release
-ships wheels for it.
+to use. uv installs Python and the locked Python packages, including the Python
+and Markdown linters, but Verilator, GTKWave, Surfer, Verible, slang, and LCOV
+need to be available on `PATH`. The local Python version is pinned to `3.14` in
+`.python-version`, the newest that the locked cocotb release supports; move to
+Python 3.15 once a cocotb release ships wheels for it.
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
@@ -18,7 +18,6 @@ ships wheels for it.
 | slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | [Releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
-| markdownlint-cli2 | Markdown linting/autofix | [Install](https://github.com/DavidAnson/markdownlint-cli2#install) | [Documentation](https://github.com/DavidAnson/markdownlint-cli2) |
 | GTKWave | Waveform viewer | [Build from source](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
 | Surfer | Waveform viewer | [Install guide](https://docs.surfer-project.org/book/#installing-a-specific-version) | [User guide](https://docs.surfer-project.org/book/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
@@ -99,7 +98,6 @@ Python package versions are locked by uv in `uv.lock`.
 | --- | --- |
 | GTKWave | 3.3.127 |
 | LCOV | 2.4 |
-| markdownlint-cli2 | 0.22.1 |
 | Questa | 2025.1 |
 | slang | 10.0.0 |
 | Surfer | git: 9828710 (between 0.7.0 and 0.8.0) |
