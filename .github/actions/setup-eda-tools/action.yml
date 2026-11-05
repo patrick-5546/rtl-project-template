@@ -1,0 +1,121 @@
+name: Set up EDA tools
+description: >-
+  Build or download the pinned EDA tools that a job needs and put them on PATH. Builds are
+  cached by version and runner image, and downloads are checked against pinned SHA-256s. An
+  empty version skips a tool.
+
+inputs:
+  verilator-version:
+    description: Verilator Git tag to build, such as v5.054.
+    default: ""
+  slang-version:
+    description: slang Git tag to build, such as v12.1.
+    default: ""
+  verible-version:
+    description: Verible release tag to download.
+    default: ""
+  verible-sha256:
+    description: SHA-256 of that release's linux-static-x86_64 archive.
+    default: ""
+  lcov-version:
+    description: LCOV release tag to download, such as v2.6.
+    default: ""
+  lcov-sha256:
+    description: SHA-256 of that release's lcov-<version>.tar.gz archive.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    # A build links against the image's libraries, so the caches are per OS image.
+    - name: Identify the runner image
+      id: image
+      shell: bash
+      run: echo "os=${ImageOS:-$RUNNER_OS}" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Verilator
+      if: inputs.verilator-version != ''
+      id: cache-verilator
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: /opt/verilator
+        key: verilator-${{ inputs.verilator-version }}-${{ steps.image.outputs.os }}
+
+    - name: Build Verilator
+      if: inputs.verilator-version != '' && steps.cache-verilator.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        VERILATOR_VERSION: ${{ inputs.verilator-version }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ccache help2man libfl-dev
+        git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1 "$RUNNER_TEMP/verilator"
+        cd "$RUNNER_TEMP/verilator"
+        autoconf
+        ./configure --prefix=/opt/verilator
+        make -j"$(nproc)"
+        make install
+
+    - name: Add Verilator to PATH
+      if: inputs.verilator-version != ''
+      shell: bash
+      run: echo "/opt/verilator/bin" >> "$GITHUB_PATH"
+
+    - name: Cache slang
+      if: inputs.slang-version != ''
+      id: cache-slang
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: /opt/slang
+        key: slang-${{ inputs.slang-version }}-${{ steps.image.outputs.os }}
+
+    - name: Build slang
+      if: inputs.slang-version != '' && steps.cache-slang.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        SLANG_VERSION: ${{ inputs.slang-version }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake python3
+        git clone https://github.com/MikePopoloski/slang --branch "$SLANG_VERSION" --depth 1 "$RUNNER_TEMP/slang"
+        cd "$RUNNER_TEMP/slang"
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/slang -DSLANG_INCLUDE_TESTS=OFF
+        cmake --build build -j 2
+        cmake --install build
+
+    - name: Add slang to PATH
+      if: inputs.slang-version != ''
+      shell: bash
+      run: echo "/opt/slang/bin" >> "$GITHUB_PATH"
+
+    - name: Install Verible
+      if: inputs.verible-version != ''
+      shell: bash
+      env:
+        VERIBLE_VERSION: ${{ inputs.verible-version }}
+        VERIBLE_SHA256: ${{ inputs.verible-sha256 }}
+      run: |
+        archive="$RUNNER_TEMP/verible.tar.gz"
+        curl -fsSL -o "$archive" \
+          "https://github.com/chipsalliance/verible/releases/download/${VERIBLE_VERSION}/verible-${VERIBLE_VERSION}-linux-static-x86_64.tar.gz"
+        echo "${VERIBLE_SHA256:?verible-sha256 is required}  $archive" | sha256sum --check --strict
+        mkdir -p /opt/verible
+        tar -xzf "$archive" -C /opt/verible --strip-components=1
+        echo "/opt/verible/bin" >> "$GITHUB_PATH"
+
+    - name: Install LCOV
+      if: inputs.lcov-version != ''
+      shell: bash
+      env:
+        LCOV_VERSION: ${{ inputs.lcov-version }}
+        LCOV_SHA256: ${{ inputs.lcov-sha256 }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcapture-tiny-perl libdatetime-perl
+        archive="$RUNNER_TEMP/lcov.tar.gz"
+        curl -fsSL -o "$archive" \
+          "https://github.com/linux-test-project/lcov/releases/download/${LCOV_VERSION}/lcov-${LCOV_VERSION#v}.tar.gz"
+        echo "${LCOV_SHA256:?lcov-sha256 is required}  $archive" | sha256sum --check --strict
+        mkdir -p /opt/lcov
+        tar -xzf "$archive" -C /opt/lcov --strip-components=1
+        echo "/opt/lcov/bin" >> "$GITHUB_PATH"
