@@ -302,7 +302,7 @@ def dut_from_test_module(test_module: str) -> str:
     ``<module>``: the stem between the ``test_`` prefix and the first ``__``
     variant separator (or the end). RTL module names use single underscores, so
     splitting on ``__`` keeps the module unambiguous even for names like
-    ``ede_lz_data_assembler``.
+    ``uart_rx_fifo``.
     """
     return test_module.removeprefix("test_").split("__", 1)[0]
 
