@@ -54,16 +54,19 @@ available simulators.
 
 ## Linting and formatting
 
-`make lint` runs every linter and type checker, and the typos spell checker, and
-`make format` every formatter. Each tool also runs alone as a
-`<lint|format>-<lang>-<tool>` target, grouped as `lint-<lang>` and
-`format-<lang>`, where `<lang>` is `py`, `sv`, `md`, or `spell` for spelling. Skip
+`make lint` runs every linter and type checker, the typos spell checker, and
+the workflow checks, and `make format` every formatter. Each tool also runs alone
+as a `<lint|format>-<lang>-<tool>` target, grouped as `lint-<lang>` and
+`format-<lang>`, where `<lang>` is `py`, `sv`, `md`, `spell` for spelling, or
+`gha` for the GitHub workflow and local action. Skip
 any tool in the aggregates with its `ENABLE_<TOOL>=0` flag (e.g.
 `make lint ENABLE_SLANG=0`); its own target stays invocable. Point a target at
 another build of a tool with its executable variable (e.g.
 `make lint-sv VERILATOR=/opt/verilator/bin/verilator`); `make help` lists them.
 typos skips the viewer layouts and `uv.lock`; allow a project's own words in
-`[tool.typos]` in `pyproject.toml`.
+`[tool.typos]` in `pyproject.toml`. actionlint also runs shellcheck on the
+workflow's scripts, and zizmor audits their security, online too when `GH_TOKEN`
+is set; `.github/zizmor.yml` says which audit is off and why.
 
 Verilator, slang and slang-tidy lint the RTL once with its default parameters,
 then once more for each named HDL configuration that overrides parameters, with
@@ -84,7 +87,8 @@ push to a pull request cancels its run in progress. Its jobs can only read the
 repository, keep no credentials in their checkouts, pin each action by commit
 SHA, have time limits, and fail if `uv.lock` is out of date (`UV_LOCKED`):
 
-- `lint`: the Python and Markdown checks and the spell check;
+- `lint`: the Python, Markdown, spelling and workflow checks, with zizmor's
+  online audits;
 - `lint-sv`: Verible, Verilator and slang;
 - `flow-tests`: `make test-flow-py`;
 - `rtl`: `make test DUT=all`, again with `WAVES=1`, and `make coverage DUT=all`,

@@ -1,0 +1,6 @@
+rules:
+  # GitHub's `uses: $/...` self-repository syntax would replace `./...` for the local
+  # action, but actionlint 1.7.12, its newest release, rejects it
+  # (https://github.com/rhysd/actionlint/issues/711). Enable this once a release accepts it.
+  self-repository:
+    disable: true
