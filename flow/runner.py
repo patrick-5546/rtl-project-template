@@ -17,14 +17,13 @@ if TYPE_CHECKING:
     from flow.simulators import SimulatorProfile
 
 # Default tool/DUT selections and SV filelist. Each is duplicated only by the
-# matching Makefile selector (``SIM``/``VIEWER``/``DUT``/``SV_SOURCES_FILE``):
+# matching Makefile selector (``SIM``/``DUT``/``SV_SOURCES_FILE``):
 # these copies are the single source the CLI argparse defaults and the runner
 # share, and the fallback used when the flow runs without the Makefile (e.g. a
 # bare ``uv run pytest``). ``SV_SOURCES_FILE`` may name several filelists
 # separated by whitespace (each handed to the simulator with its own ``-f``);
 # ``DEFAULT_SOURCES_FILE`` is the single fallback when it is unset.
 DEFAULT_SIM = "verilator"
-DEFAULT_VIEWER = "gtkwave"
 DEFAULT_DUT = "top"
 DEFAULT_SOURCES_FILE = "rtl/sources.vf"
 
@@ -117,7 +116,6 @@ def make_target_command(
     simulator: str,
     dut: str | None = None,
     config: str | None = None,
-    viewer: str | None = None,
     waves: bool = False,
     hdl_coverage: bool = False,
 ) -> str:
@@ -126,8 +124,6 @@ def make_target_command(
     selected_dut = dut or os.environ.get("DUT")
     if selected_dut and selected_dut != ALL_DUTS:
         cmd.append(f"DUT={selected_dut}")
-    if viewer:
-        cmd.append(f"VIEWER={viewer}")
     selected_config = config or os.environ.get("CONFIG")
     if selected_config:
         cmd.append(f"CONFIG={selected_config}")

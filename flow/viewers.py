@@ -1,10 +1,12 @@
 """Per-viewer profiles describing how each waveform viewer is launched.
 
-Each profile declares the simulator whose wave format it reads (``wave_sim``)
-and how to open an existing waveform (:meth:`ViewerProfile.open_waves`).
+Each simulator has one waveform viewer. A profile declares the simulator whose
+wave format it reads (``wave_sim``) and how to open an existing waveform
+(:meth:`ViewerProfile.open_waves`).
 
-Add a viewer by subclassing :class:`ViewerProfile`, setting ``wave_sim``, and
-registering an instance in :data:`VIEWERS`.
+Add or replace a simulator's viewer by subclassing :class:`ViewerProfile`,
+setting ``wave_sim``, and registering an instance in :data:`VIEWERS`, which is
+keyed by ``wave_sim``.
 """
 
 import shlex
@@ -40,7 +42,6 @@ class ViewerProfile:
         command = make_target_command(
             "waves",
             simulator=self.wave_sim,
-            viewer=self.name,
             dut=dut,
             config=config,
             hdl_coverage=env_flag("HDL_COVERAGE", default=False),
@@ -99,32 +100,6 @@ class GtkwaveProfile(ViewerProfile):
         run(cmd, cwd=build_dir)
 
 
-class SurferProfile(ViewerProfile):
-    name = "surfer"
-    wave_sim = "verilator"
-
-    @override
-    def open_waves(
-        self,
-        project_dir: Path,
-        build_dir: Path,
-        dut: str,
-        config: str | None,
-    ) -> None:
-        wave = self.wave_path(build_dir)
-        require(wave, self.waves_hint(dut, config))
-        state = project_path_from_env(
-            "SURFER_STATE",
-            project_dir,
-            project_dir / "waves" / f"{dut}.surf.ron",
-        )
-        cmd = [env_str("SURFER", "surfer")]
-        if state.is_file():
-            cmd.extend(["--state-file", str(state)])
-        cmd.append(str(wave))
-        run(cmd, cwd=build_dir)
-
-
 class QuestaViewerProfile(ViewerProfile):
     name = "questa"
     wave_sim = "questa"
@@ -169,12 +144,6 @@ class VerdiProfile(ViewerProfile):
 
 
 VIEWERS: dict[str, ViewerProfile] = {
-    profile.name: profile
-    for profile in (GtkwaveProfile(), SurferProfile(), QuestaViewerProfile(), VerdiProfile())
-}
-
-DEFAULT_VIEWERS: dict[str, str] = {
-    "verilator": GtkwaveProfile.name,
-    "questa": QuestaViewerProfile.name,
-    "vcs": VerdiProfile.name,
+    profile.wave_sim: profile
+    for profile in (GtkwaveProfile(), QuestaViewerProfile(), VerdiProfile())
 }

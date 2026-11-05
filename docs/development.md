@@ -15,8 +15,8 @@ per-tool coverage and waveform commands.
 - `flow/simulators.py`: a `SimulatorProfile` per simulator: its wave/coverage
   artifact defaults, cocotb runner build/test arguments, post-run wave
   preparation, and coverage behavior.
-- `flow/viewers.py`: a `ViewerProfile` per viewer: the `wave_sim` whose format
-  it reads and the `open-waves` behavior.
+- `flow/viewers.py`: a `ViewerProfile` per simulator's waveform viewer: the
+  `wave_sim` whose format it reads and the `open-waves` behavior.
 - `flow/cli.py`: the dispatcher the Makefile calls (`python -m flow.cli`).
 - `flow/tests/`: the flow's unit tests, which run without any EDA tool.
 
@@ -27,20 +27,21 @@ Each source file's header and docstrings document how it works.
 Tool-specific behavior lives in the profiles, so the generic targets (`test`,
 `waves`, `coverage`, ...) stay the same as the tool set grows. To add a
 simulator, subclass `SimulatorProfile` in `flow/simulators.py` and register it
-in the `SIMULATORS` dict. To add a viewer, subclass `ViewerProfile` in
-`flow/viewers.py` and register it in `VIEWERS` (declaring its `wave_sim`).
-`make help` lists both automatically, and an unknown `SIM`/`VIEWER` is rejected
-with the list of available tools.
+in the `SIMULATORS` dict. Each simulator has one waveform viewer: to add or
+replace one, subclass `ViewerProfile` in `flow/viewers.py`, set its `wave_sim`,
+and register it in `VIEWERS`, which is keyed by `wave_sim`. `make help` lists
+the simulators automatically, and an unknown `SIM` is rejected with the list of
+available simulators.
 
 ## Conventions
 
 - Build and test configuration is read from environment variables. The flow's
   single-source defaults live in `flow/runner.py`: the
-  `SIM`/`VIEWER`/`DUT`/`SV_SOURCES_FILE` selectors (`DEFAULT_*`) and the
+  `SIM`/`DUT`/`SV_SOURCES_FILE` selectors (`DEFAULT_*`) and the
   `default_*` build-dir/coverage/sources/wave-path helpers shared by `cli.py`,
   `simulators.py`, and `viewers.py`. Per-simulator specifics (build/test args,
   coverage artifact) stay in the matching `SimulatorProfile`. The Makefile
-  selects `SIM`/`VIEWER`/`DUT`/`SV_SOURCES_FILE` and passes them to the flow CLI
+  selects `SIM`/`DUT`/`SV_SOURCES_FILE` and passes them to the flow CLI
   as flags; other command-line overrides reach the flow through the environment.
 - Run Python tools through uv (`uv run ...`) or the Makefile targets, never bare
   `ruff`/`ty`/`pytest`.

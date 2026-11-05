@@ -7,7 +7,7 @@ and the versions this template was verified with.
 
 Install the external command-line tools for the simulators and viewers you plan
 to use. uv installs Python and the locked Python packages, including the Python
-and Markdown linters, but Verilator, GTKWave, Surfer, Verible, slang, and LCOV
+and Markdown linters, but Verilator, GTKWave, Verible, slang, and LCOV
 need to be available on `PATH`. The local Python version is pinned to `3.14` in
 `.python-version`, the newest that the locked cocotb release supports; move to
 Python 3.15 once a cocotb release ships wheels for it.
@@ -19,7 +19,6 @@ Python 3.15 once a cocotb release ships wheels for it.
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | [Releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
 | GTKWave | Waveform viewer | [Build from source](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
-| Surfer | Waveform viewer | [Install guide](https://docs.surfer-project.org/book/#installing-a-specific-version) | [User guide](https://docs.surfer-project.org/book/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
 
 ## Simulators
@@ -48,8 +47,7 @@ Unlike the Questa Starter Edition it collects SV covergroups, reports coverage
 through `urg`, and supports source-linked debug in Verdi. It records waveforms
 in Verdi's native FSDB format and loads a reusable restore file
 (`waves/<DUT>.rc`) when present; waveform viewing and the coverage GUI both use
-Verdi, so `vcs` and `verdi` must be on `PATH`. Select it with `SIM=vcs` or the
-compatible `VIEWER=verdi` override.
+Verdi, so `vcs` and `verdi` must be on `PATH`. Select it with `SIM=vcs`.
 
 ## Coverage
 
@@ -73,18 +71,14 @@ both simulators; VCS collects SV covergroups natively.
 
 ## Waveform viewers
 
-| Tool | Inputs | Source browse | Driver trace |
-| --- | --- | --- | --- |
-| GTKWave | VCD, FST, GHW | Yes | Somewhat |
-| Surfer | VCD, FST, GHW | No | No |
-| Questa | WLF | Yes | Yes |
-| Verdi | FSDB | Yes | Yes |
+| Tool | Simulator | Inputs | Source browse | Driver trace |
+| --- | --- | --- | --- | --- |
+| GTKWave | Verilator | VCD, FST, GHW | Yes | Somewhat |
+| Questa | Questa | WLF | Yes | Yes |
+| Verdi | VCS | FSDB | Yes | Yes |
 
 GTKWave reads Verilator's FST output and can view and annotate source with
 values from the waveform through its RTLBrowse window.
-
-Surfer is a fast, modern waveform viewer that reads the same Verilator FST as
-GTKWave; it is still early in development and has fewer features.
 
 Verdi is the waveform viewer and coverage browser for the VCS flow.
 
@@ -100,7 +94,6 @@ Python package versions are locked by uv in `uv.lock`.
 | LCOV | 2.4 |
 | Questa | 2025.1 |
 | slang | 10.0.0 |
-| Surfer | git: 9828710 (between 0.7.0 and 0.8.0) |
 | uv | 0.11.8 |
 | VCS | W-2024.09-SP2-7 |
 | Verdi | W-2024.09-SP2-7 |

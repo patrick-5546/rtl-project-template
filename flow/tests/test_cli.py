@@ -35,15 +35,12 @@ def test_resolve_config_requires_artifact_choice() -> None:
         cli._resolve_config("top", None, require_for_multiple=True)
 
 
-def test_wave_selection_uses_simulator_default() -> None:
-    simulator, viewer = cli._resolve_wave_selection("vcs", None)
-    assert simulator == "vcs"
-    assert viewer.name == "verdi"
-
-
-def test_wave_selection_rejects_incompatible_viewer() -> None:
-    with pytest.raises(SystemExit, match="requires SIM=verilator"):
-        cli._resolve_wave_selection("vcs", "gtkwave")
+def test_viewer_rejects_simulator_without_one() -> None:
+    with (
+        patch.object(cli, "_sim"),
+        pytest.raises(SystemExit, match="SIM=icarus has no waveform viewer"),
+    ):
+        cli._viewer("icarus")
 
 
 def test_test_all_rejects_config() -> None:

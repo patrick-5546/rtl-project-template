@@ -21,11 +21,10 @@ Python package, `flow/`, that drives the tools.
     `rtl/top_abv.sv`.
 - `flow/`: the build, run and view flow that the Makefile calls, with its own
   unit tests in `flow/tests/`.
-- `waves/`: reusable waveform layouts per viewer, named `<DUT>.*`.
+- `waves/`: reusable waveform layouts, one per viewer, named `<DUT>.*`.
 - `docs/`: the guides below.
 - `Makefile`, `pyproject.toml` (uv-managed Python dependencies and tool
-  settings), `.surfer/config.toml`, and `AGENTS.md` (instructions for coding
-  agents).
+  settings), and `AGENTS.md` (instructions for coding agents).
 
 Generated artifacts are ignored by Git and stay under `build/`.
 
@@ -39,7 +38,7 @@ that alone, e.g. for an editor).
 ```sh
 make test   # run the cocotb regression for the default DUT
 make lint   # run all lint and type checks
-make help   # list every target, override variable, simulator and viewer
+make help   # list every target, override variable and simulator
 ```
 
 ## Documentation
