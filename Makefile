@@ -30,6 +30,8 @@ ENABLE_TY ?= 1
 ENABLE_PYREFLY ?= 1
 ENABLE_RUMDL ?= 1
 ENABLE_TYPOS ?= 1
+ENABLE_ACTIONLINT ?= 1
+ENABLE_ZIZMOR ?= 1
 ENABLE_VERIBLE ?= 1
 ENABLE_VERILATOR ?= 1
 ENABLE_SLANG ?= 1
@@ -102,9 +104,9 @@ define RUN_TEST_AND_POSTPROCESS
 endef
 
 .PHONY: all clean configs coverage format help lint \
-	lint-py lint-sv lint-md lint-spell format-py format-sv format-md \
+	lint-py lint-sv lint-md lint-spell lint-gha format-py format-sv format-md \
 	format-py-ruff lint-py-ruff lint-py-ty lint-py-pyrefly \
-	format-md-rumdl lint-md-rumdl lint-spell-typos \
+	format-md-rumdl lint-md-rumdl lint-spell-typos lint-gha-actionlint lint-gha-zizmor \
 	format-sv-verible lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy \
 	open-coverage open-coverage-html open-waves \
 	test test-flow-py waves
@@ -137,8 +139,8 @@ help:
 	@echo "  open-coverage-html [SIM=...] [CONFIG=...] Open the coverage HTML report"
 	@echo ""
 	@echo "Quality:"
-	@echo "  lint                            Run all lint/type/spell checks (py, sv, md, spell)"
-	@echo "  lint-<py|sv|md|spell>           Run the checks for one language, or spelling"
+	@echo "  lint                            Run every check (py, sv, md, spell, gha)"
+	@echo "  lint-<py|sv|md|spell|gha>       Run one group: a language, spelling or workflows"
 	@echo "  format                          Format Python, Markdown, and SystemVerilog"
 	@echo "  format-<py|sv|md>               Format one language"
 	@echo "  all                             Run lint + test DUT=all"
@@ -148,10 +150,11 @@ help:
 	@echo "Per-tool quality targets (<lint|format>-<lang>-<tool>):"
 	@echo "  lint-py-ruff lint-py-ty lint-py-pyrefly format-py-ruff"
 	@echo "  lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy  format-sv-verible"
-	@echo "  lint-md-rumdl  format-md-rumdl  lint-spell-typos"
+	@echo "  lint-md-rumdl  format-md-rumdl  lint-spell-typos  lint-gha-actionlint  lint-gha-zizmor"
 	@echo ""
 	@echo "Tool enable flags (default 1; set 0 to skip a tool in lint/format):"
 	@echo "  ENABLE_RUFF ENABLE_TY ENABLE_PYREFLY ENABLE_RUMDL ENABLE_TYPOS"
+	@echo "  ENABLE_ACTIONLINT ENABLE_ZIZMOR"
 	@echo "  ENABLE_VERIBLE ENABLE_VERILATOR ENABLE_SLANG ENABLE_SLANG_TIDY"
 	@echo ""
 	@echo "Tool executables (override as VAR=/path/to/tool):"
@@ -238,6 +241,15 @@ lint-md-rumdl:
 lint-spell-typos:
 	$(UV) run typos
 
+# actionlint also runs shellcheck on the workflow's and the local action's
+# scripts. zizmor audits their security, including its online audits when
+# GH_TOKEN is set (CI passes the job's token).
+lint-gha-actionlint:
+	$(UV) run actionlint
+
+lint-gha-zizmor:
+	$(UV) run zizmor $(if $(filter undefined,$(origin GH_TOKEN)),--offline) .github
+
 format-sv-verible:
 	$(VERIBLE_FORMAT) --inplace $(SV_VERIBLE_INPUTS)
 
@@ -301,6 +313,14 @@ ifeq ($(ENABLE_TYPOS),1)
 LINT_SPELL_TARGETS += lint-spell-typos
 endif
 
+LINT_GHA_TARGETS :=
+ifeq ($(ENABLE_ACTIONLINT),1)
+LINT_GHA_TARGETS += lint-gha-actionlint
+endif
+ifeq ($(ENABLE_ZIZMOR),1)
+LINT_GHA_TARGETS += lint-gha-zizmor
+endif
+
 LINT_SV_TARGETS :=
 FORMAT_SV_TARGETS :=
 ifeq ($(ENABLE_VERIBLE),1)
@@ -321,12 +341,13 @@ lint-py: $(LINT_PY_TARGETS)
 lint-sv: $(LINT_SV_TARGETS)
 lint-md: $(LINT_MD_TARGETS)
 lint-spell: $(LINT_SPELL_TARGETS)
+lint-gha: $(LINT_GHA_TARGETS)
 
 format-py: $(FORMAT_PY_TARGETS)
 format-sv: $(FORMAT_SV_TARGETS)
 format-md: $(FORMAT_MD_TARGETS)
 
-lint: lint-py lint-sv lint-md lint-spell
+lint: lint-py lint-sv lint-md lint-spell lint-gha
 
 format: format-py format-sv format-md
 
