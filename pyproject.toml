@@ -82,3 +82,7 @@ line-length = 100
 [tool.typos.files]
 # The layouts that the waveform viewers write, and the lockfile's hashes.
 extend-exclude = ["uv.lock", "waves/"]
+
+[tool.typos.default]
+# Abbreviated commit hashes, as the docs give a tool built from Git: "git e40ba79".
+extend-ignore-re = ["git [0-9a-f]{7,40}"]

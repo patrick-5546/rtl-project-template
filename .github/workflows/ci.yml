@@ -17,12 +17,12 @@ env:
   # Fail instead of updating uv.lock, including in the uv runs that make starts.
   UV_LOCKED: "1"
   # The EDA tools, pinned; bump a version with its archive's SHA-256 (docs/development.md).
-  VERILATOR_VERSION: v5.048
-  SLANG_VERSION: v10.0
-  VERIBLE_VERSION: v0.0-4053-g89d4d98a
-  VERIBLE_SHA256: 1edc1f29c70d74213ed373e727183802d5a733e23f9ab9c74462f5b18b76f2c0
-  LCOV_VERSION: v2.4
-  LCOV_SHA256: 3457825c6b2fe4ef77c782b82a23875c84a3c955243823f05d8f2dec0d455820
+  VERILATOR_VERSION: v5.054
+  SLANG_VERSION: v12.1
+  VERIBLE_VERSION: v0.0-4298-g085eef05
+  VERIBLE_SHA256: ca83778c7c2b73272277bd670d1851c8caf973fd3283688aeb0d36d4b3598a90
+  LCOV_VERSION: v2.6
+  LCOV_SHA256: 67a45db99b8ef0260c3fac9a2e3749fd8fa350a15e235dd3c29b356d97755c75
 
 jobs:
   lint:

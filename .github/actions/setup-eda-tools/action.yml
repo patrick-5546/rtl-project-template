@@ -111,7 +111,8 @@ runs:
         LCOV_SHA256: ${{ inputs.lcov-sha256 }}
       run: |
         sudo apt-get update
-        sudo apt-get install -y libcapture-tiny-perl libdatetime-perl
+        # The Perl modules that lcov and genhtml load.
+        sudo apt-get install -y libcapture-tiny-perl libdatetime-perl libdevel-stacktrace-perl libtimedate-perl
         archive="$RUNNER_TEMP/lcov.tar.gz"
         curl -fsSL -o "$archive" \
           "https://github.com/linux-test-project/lcov/releases/download/${LCOV_VERSION}/lcov-${LCOV_VERSION#v}.tar.gz"
