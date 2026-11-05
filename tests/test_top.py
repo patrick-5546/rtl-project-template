@@ -5,9 +5,8 @@ import cocotb
 import pytest
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
-from cocotb_configs import HDL_CONFIGS
 
-from flow.runner import active_parameter, build_and_test, env_flag
+from flow.runner import active_parameter, build_and_test, config_params, env_flag
 
 _ABV = env_flag("ABV", default=False)
 _WIDTH = active_parameter("WIDTH", 8)
@@ -131,12 +130,6 @@ async def check_coverage(dut: Any) -> None:
         raise AssertionError("Coverage holes — bins never hit:\n  " + "\n  ".join(missed))
 
 
-@pytest.mark.parametrize(
-    ("config", "parameters"),
-    [
-        pytest.param(config, parameters, id=config)
-        for config, parameters in HDL_CONFIGS["top"].items()
-    ],
-)
-def test_top(config: str, parameters: dict[str, int]) -> None:
+@pytest.mark.parametrize(("config", "parameters"), config_params(Path(__file__).stem))
+def test_top(config: str, parameters: dict[str, object]) -> None:
     build_and_test(test_module=Path(__file__).stem, config=config, parameters=parameters)

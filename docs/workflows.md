@@ -35,16 +35,23 @@ each filelist is handed to the simulator with its own `-f`.
 
 - A module's tests go in `tests/test_<module>.py`, where `<module>` is the RTL
   top module: the flow derives the top level from the filename, so tests pass no
-  `hdl_toplevel`. The file's pytest entry point calls `build_and_test` from
-  `flow.runner` with `test_module=Path(__file__).stem`; see `tests/test_top.py`.
+  `hdl_toplevel`. The file's pytest entry point, its harness, runs the cocotb
+  tests once per HDL configuration (see `tests/test_top.py`):
+
+  ```python
+  @pytest.mark.parametrize(("config", "parameters"), config_params(Path(__file__).stem))
+  def test_top(config: str, parameters: dict[str, object]) -> None:
+      build_and_test(test_module=Path(__file__).stem, config=config, parameters=parameters)
+  ```
+
 - Keep tests deterministic and focused on behavior visible at the module's
   ports.
 - Use current cocotb APIs: `unit="ns"`, not the deprecated `units="ns"`.
 
 To split a module's tests across files, put them in `test_<module>__<variant>.py`
 files that hold only `@cocotb.test()` functions, with no pytest entry point. A
-`test_<module>.py` aggregator globs them (`glob("test_<module>__*.py")`) and
-passes the sorted stems to `build_and_test`, so they build once and share a
+`test_<module>.py` aggregator's harness globs them (`glob("test_<module>__*.py")`)
+and passes the sorted stems as `test_module`, so they build once and share a
 single end-of-test summary. Filename variants group cocotb modules; named
 configurations select HDL parameter values and are independent of that naming
 convention.
@@ -63,15 +70,16 @@ HDL_CONFIGS = {
 }
 ```
 
-The pytest harness parameterizes the same mapping and passes each pair to
-`build_and_test(..., config=config, parameters=parameters)`. Cocotb test
-constants can read the active elaboration with `active_parameter("WIDTH", 8)`.
+`config_params` turns a DUT's entry into its harness's parameters, and a DUT
+without one gets a single configuration, `default`, with no overrides. Cocotb
+test constants can read the active elaboration with `active_parameter("WIDTH", 8)`.
 The runner exports the configuration as `COCOTB_CONFIG` and each parameter as
 `COCOTB_PARAM_<name>`.
 
 ## Build directories
 
-Configuration and instrumentation modes use separate build directories:
+Configuration and instrumentation modes use separate build directories, where
+`<config>` is `default` for a DUT without named configurations:
 
 ```text
 build/<dut>/<sim>/<config>/normal/

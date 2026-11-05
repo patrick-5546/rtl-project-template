@@ -39,7 +39,7 @@ class ViewerProfile:
         """Canonical waveform path produced by this viewer's simulator."""
         return SIMULATORS[self.wave_sim].wave_path(build_dir)
 
-    def waves_hint(self, dut: str, config: str | None) -> str:
+    def waves_hint(self, dut: str, config: str) -> str:
         """Return the command that generates this viewer's waveform artifacts."""
         command = make_target_command(
             "waves",
@@ -55,7 +55,7 @@ class ViewerProfile:
         project_dir: Path,
         build_dir: Path,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         raise NotImplementedError
 
@@ -78,7 +78,7 @@ class GtkwaveProfile(ViewerProfile):
         project_dir: Path,
         build_dir: Path,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
@@ -125,7 +125,7 @@ class QuestaViewerProfile(ViewerProfile):
         project_dir: Path,
         build_dir: Path,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
@@ -146,7 +146,7 @@ class VerdiProfile(ViewerProfile):
         project_dir: Path,
         build_dir: Path,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
