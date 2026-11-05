@@ -21,6 +21,10 @@ Python 3.15 once a cocotb release ships wheels for it.
 | GTKWave | Waveform viewer | [Build from source](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
 
+LCOV's `lcov` and `genhtml` need the Perl modules Capture::Tiny, DateTime,
+Devel::StackTrace and TimeDate: on Debian and Ubuntu, `libcapture-tiny-perl`,
+`libdatetime-perl`, `libdevel-stacktrace-perl` and `libtimedate-perl`.
+
 ## Simulators
 
 | Tool | Model | Used here for |
@@ -90,18 +94,18 @@ Verdi is the waveform viewer and coverage browser for the VCS flow.
 
 ## Verified environment
 
-This template was verified on Ubuntu 22.04 with these tool versions:
-
-Python package versions are locked by uv in `uv.lock`.
+This template was verified with these tool versions, on Ubuntu 26.04 and in CI
+on Ubuntu 24.04. CI pins the open-source ones in `.github/workflows/ci.yml`, and
+uv locks the Python packages in `uv.lock`.
 
 | Tool | Verified version |
 | --- | --- |
-| GTKWave | 3.3.127 |
-| LCOV | 2.4 |
+| GTKWave | 3.3.126, and 4.0.0-prealpha (git e40ba79) |
+| LCOV | 2.6 |
 | Questa | 2025.1 |
-| slang | 10.0.0 |
-| uv | 0.11.8 |
+| slang | 12.1 |
+| uv | 0.13.7 |
 | VCS | W-2024.09-SP2-7 |
 | Verdi | W-2024.09-SP2-7 |
-| Verible | v0.0-4053-g89d4d98a |
-| Verilator | 5.048 |
+| Verible | v0.0-4298-g085eef05 |
+| Verilator | 5.054 |
