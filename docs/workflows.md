@@ -19,9 +19,15 @@ that open one waveform or coverage report (`waves`, `open-waves`,
 `open-coverage`, `open-coverage-html`) need `CONFIG` when the DUT has several
 configurations.
 
-Select individual tests by exact name (`TEST=`) or regex (`TEST_FILTER=`), and
-reuse an existing simulator build with `REBUILD=0` for faster debug loops. Point
-`SV_SOURCES_FILE` at one or more space-separated `.vf` filelists to compile
+Select individual tests by exact name (`TEST=`) or regex (`TEST_FILTER=`). For
+faster debug loops, `REBUILD=0` lets Questa compile incrementally and VCS reuse
+its last build, as long as the build's inputs -- simulator, defines such as
+`ABV`, parameters, build arguments and waveform tracing -- are the ones that
+build was made from; otherwise the flow rebuilds and says why. It does not track
+RTL edits, so rebuild after them. Verilator always runs its own incremental
+build, so `REBUILD` does not change it.
+
+Point `SV_SOURCES_FILE` at one or more space-separated `.vf` filelists to compile
 additional RTL (e.g. `make test SV_SOURCES_FILE='rtl/sources.vf rtl/extra.vf'`);
 each filelist is handed to the simulator with its own `-f`.
 
@@ -94,8 +100,8 @@ build/<dut>/<sim>/<config>/coverage/
 build/<dut>/<sim>/<config>/waves-coverage/
 ```
 
-This prevents `REBUILD=0` from reusing an executable built with incompatible
-parameters, waveform tracing, or coverage instrumentation. Each directory also
+Each configuration and instrumentation thus keeps its own build, so switching
+between them does not rebuild the others. Each directory also
 holds its runs' waveform, coverage data and reports. The combined
 `WAVES=1 HDL_COVERAGE=1` mode uses `waves-coverage`, so a waveform or coverage
 database exists in two modes: `open-waves`, `open-coverage` and

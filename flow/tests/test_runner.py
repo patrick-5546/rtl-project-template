@@ -210,3 +210,32 @@ def test_wave_metadata_is_prepared_before_a_failing_test(
         build_and_test("test_top")
 
     assert events == ["build", "prepare", "test"]
+
+
+def rebuilds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, **environment: str) -> bool:
+    """Run build_and_test with REBUILD=0 and a fake cocotb runner; return its ``always``."""
+    simulator = MagicMock()
+    simulator.log = logging.getLogger("flow-test-rebuild")
+    for name in ("ABV", "WAVES", "HDL_COVERAGE", "VERILATOR", "COCOTB_EXECUTED_CASES_FILE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("SIM", "verilator")
+    monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
+    monkeypatch.setenv("REBUILD", "0")
+    for name, value in environment.items():
+        monkeypatch.setenv(name, value)
+    with patch("flow.runner.get_runner", return_value=simulator):
+        build_and_test("test_top", config="width4", parameters={"WIDTH": 4})
+    return simulator.build.call_args.kwargs["always"]
+
+
+def test_rebuild_0_rebuilds_only_when_the_build_inputs_change(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert rebuilds(monkeypatch, tmp_path) is True
+    assert rebuilds(monkeypatch, tmp_path) is False
+    capsys.readouterr()
+    assert rebuilds(monkeypatch, tmp_path, ABV="1") is True
+    assert "because its defines changed" in capsys.readouterr().out
+    assert rebuilds(monkeypatch, tmp_path, ABV="1") is False
