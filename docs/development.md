@@ -79,7 +79,7 @@ test that raises it, in both suites.
 - `lint-sv`: Verible, Verilator and slang, built or downloaded at the pinned
   versions;
 - `lint-py` and `lint-md`: the Python and Markdown checks;
-- `coverage`: `make coverage-all` with Verilator and LCOV;
+- `coverage`: `make coverage DUT=all` with Verilator and LCOV;
 - `flow-tests`: `make test-flow-py`.
 
 ## Updating dependencies

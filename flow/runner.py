@@ -31,9 +31,9 @@ DEFAULT_SIM = "verilator"
 DEFAULT_DUT = "top"
 DEFAULT_SOURCES_FILE = "rtl/sources.vf"
 
-# Sentinel ``DUT`` value meaning "every DUT": ``make test-all`` passes it so each
-# collected ``tests/test_*.py`` builds and runs its own module instead of being
-# filtered to a single one. ``make test`` and the single-target commands use a
+# Sentinel ``DUT`` value meaning "every DUT": ``make test DUT=all`` passes it so
+# each collected ``tests/test_*.py`` builds and runs its own module instead of
+# being filtered to a single one. The commands that open one artifact use a
 # concrete module (defaulting to ``DEFAULT_DUT``) instead.
 ALL_DUTS = "all"
 CONFIG_MANIFEST = Path("tests") / "cocotb_configs.py"
@@ -315,8 +315,8 @@ def discover_duts(tests_dir: Path) -> list[str]:
 
     Each ``test_*.py`` maps to its module via :func:`dut_from_test_module`;
     several files (e.g. ``test_top.py`` and ``test_top__smoke.py``) may share one
-    module. Used for the ``DUT`` validation in the flow CLI, the ``list-duts``
-    command, and the ``coverage-all`` loop.
+    module. Used for the ``DUT`` validation and selection in the flow CLI and its
+    ``list-duts`` command.
     """
     modules = {dut_from_test_module(path.stem) for path in tests_dir.glob("test_*.py")}
     return sorted(modules)
@@ -448,8 +448,8 @@ def build_and_test(
     The ``DUT`` environment variable (set by the flow CLI from
     ``make ... DUT=<module>``) is a *selector*, not an override: when it names a
     concrete module other than this file's, the test self-skips, so one pytest
-    run can hold test files for several DUTs (``make test-all`` passes
-    ``DUT=all`` to run them all). The derived module drives the build dir, the
+    run can hold test files for several DUTs (``make test DUT=all`` runs them
+    all). The derived module drives the build dir, the
     GTKWave stems, and the ``waves/<DUT>.*`` layouts.
 
     All other configuration (SIM, BUILD_DIR, TEST, ABV, HDL_COVERAGE,

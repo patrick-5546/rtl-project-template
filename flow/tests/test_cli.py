@@ -1,5 +1,6 @@
 import argparse
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -9,18 +10,61 @@ from flow import cli
 from flow.simulators import SimulatorProfile
 
 
-@pytest.mark.parametrize(("requested", "expected"), [("width4", "width4"), (None, None)])
-def test_resolve_config(requested: str | None, expected: str | None) -> None:
-    with patch.object(cli, "_configs", return_value={"width4": {}, "width8": {}}):
-        assert cli._resolve_config("top", requested) == expected
+@pytest.fixture
+def project(tmp_path: Path) -> Iterator[Path]:
+    """A project with DUT ``top`` in two configurations and an unconfigured ``other``."""
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "cocotb_configs.py").write_text(
+        "HDL_CONFIGS = {'top': {'width4': {'WIDTH': 4}, 'width8': {'WIDTH': 8}}}\n",
+        encoding="utf-8",
+    )
+    for harness in ("test_top.py", "test_top__smoke.py", "test_other.py"):
+        (tests / harness).touch()
+    with patch.object(cli, "PROJECT_DIR", tmp_path), patch.object(cli, "TESTS_DIR", tests):
+        yield tmp_path
 
 
-def test_single_config_requires_a_choice() -> None:
-    with (
-        patch.object(cli, "_configs", return_value={"width4": {}, "width8": {}}),
-        pytest.raises(SystemExit, match="multiple configurations"),
-    ):
-        cli._single_config("top", None)
+@pytest.mark.parametrize(
+    ("dut", "config", "expected"),
+    [
+        ("top", None, [("top", "width4"), ("top", "width8")]),
+        ("top", "width8", [("top", "width8")]),
+        ("all", None, [("other", "default"), ("top", "width4"), ("top", "width8")]),
+    ],
+)
+@pytest.mark.usefixtures("project")
+def test_selected_cases(dut: str, config: str | None, expected: list[tuple[str, str]]) -> None:
+    assert cli._selected_cases(dut, config) == expected
+
+
+@pytest.mark.parametrize(
+    ("dut", "config", "message"),
+    [
+        ("all", "width4", "cannot be combined"),
+        ("top", "width16", "Unknown CONFIG 'width16'"),
+        ("nope", None, "Unknown DUT 'nope'"),
+    ],
+)
+@pytest.mark.usefixtures("project")
+def test_selected_cases_reject(dut: str, config: str | None, message: str) -> None:
+    with pytest.raises(SystemExit, match=message):
+        cli._selected_cases(dut, config)
+
+
+@pytest.mark.usefixtures("project")
+def test_single_case_takes_the_only_config() -> None:
+    assert cli._single_case("other", None) == ("other", "default")
+
+
+@pytest.mark.parametrize(
+    ("dut", "message"),
+    [("top", "multiple configurations"), ("all", "Set DUT to one module")],
+)
+@pytest.mark.usefixtures("project")
+def test_single_case_requires_one(dut: str, message: str) -> None:
+    with pytest.raises(SystemExit, match=message):
+        cli._single_case(dut, None)
 
 
 def test_viewer_rejects_simulator_without_one() -> None:
@@ -31,37 +75,9 @@ def test_viewer_rejects_simulator_without_one() -> None:
         cli._viewer("icarus")
 
 
-def test_test_all_rejects_config() -> None:
-    args = argparse.Namespace(
-        sim="verilator",
-        dut="all",
-        sources_file="rtl/sources.vf",
-        config="width4",
-    )
-    with (
-        patch.object(cli, "_require_dut"),
-        pytest.raises(SystemExit, match="cannot be combined"),
-    ):
-        cli.cmd_test(args)
+def record_cases(cases: str) -> MagicMock:
+    """A fake pytest run whose build_and_test calls ran *cases*."""
 
-
-def test_selected_config_must_run(tmp_path: Path) -> None:
-    completed = subprocess.CompletedProcess(args=[], returncode=0)
-    with (
-        patch.object(cli, "PROJECT_DIR", tmp_path),
-        patch.object(cli, "_sim"),
-        patch.object(cli.subprocess, "run", return_value=completed),
-        pytest.raises(SystemExit, match=r"No build_and_test call ran: top\.width4"),
-    ):
-        cli.run_regression(
-            "verilator",
-            dut="top",
-            sources_file="rtl/sources.vf",
-            config="width4",
-        )
-
-
-def test_regression_accepts_complete_config_matrix(tmp_path: Path) -> None:
     def run_and_record(
         command: list[str],
         *,
@@ -70,73 +86,42 @@ def test_regression_accepts_complete_config_matrix(tmp_path: Path) -> None:
         check: bool,
     ) -> subprocess.CompletedProcess[list[str]]:
         del command, cwd, check
-        Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text(
-            "top\twidth4\ntop\twidth8\n", encoding="utf-8"
-        )
+        Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text(cases, encoding="utf-8")
         return subprocess.CompletedProcess(args=[], returncode=0)
 
+    return MagicMock(side_effect=run_and_record)
+
+
+@pytest.mark.parametrize(
+    ("dut", "config", "ran", "missing"),
+    [
+        ("top", "width4", "", r"top\.width4"),
+        ("all", None, "top\twidth4\nother\tdefault\n", r"top\.width8"),
+    ],
+)
+@pytest.mark.usefixtures("project")
+def test_regression_requires_every_selected_case(
+    dut: str, config: str | None, ran: str, missing: str
+) -> None:
     with (
-        patch.object(cli, "PROJECT_DIR", tmp_path),
         patch.object(cli, "_sim"),
-        patch.object(cli, "_expected_cases", return_value={("top", "width4"), ("top", "width8")}),
-        patch.object(cli.subprocess, "run", side_effect=run_and_record),
+        patch.object(cli.subprocess, "run", record_cases(ran)),
+        pytest.raises(SystemExit, match=rf"No build_and_test call ran: {missing}\."),
     ):
-        cli.run_regression(
-            "verilator",
-            dut="top",
-            sources_file="rtl/sources.vf",
-            config=None,
-        )
+        cli.run_regression("verilator", dut=dut, sources_file="rtl/sources.vf", config=config)
 
 
-def test_regression_rejects_incomplete_all_dut_matrix(tmp_path: Path) -> None:
-    def run_and_record(
-        command: list[str],
-        *,
-        cwd: Path,
-        env: dict[str, str],
-        check: bool,
-    ) -> subprocess.CompletedProcess[list[str]]:
-        del command, cwd, check
-        Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text(
-            "top\twidth4\nother\tdefault\n", encoding="utf-8"
-        )
-        return subprocess.CompletedProcess(args=[], returncode=0)
-
-    expected = {("top", "width4"), ("top", "width8"), ("other", "default")}
+@pytest.mark.usefixtures("project")
+def test_regression_accepts_every_selected_case() -> None:
     with (
-        patch.object(cli, "PROJECT_DIR", tmp_path),
         patch.object(cli, "_sim"),
-        patch.object(cli, "_expected_cases", return_value=expected),
-        patch.object(cli.subprocess, "run", side_effect=run_and_record),
-        pytest.raises(SystemExit, match=r"top\.width8"),
+        patch.object(cli.subprocess, "run", record_cases("top\twidth4\ntop\twidth8\n")),
     ):
-        cli.run_regression(
-            "verilator",
-            dut="all",
-            sources_file="rtl/sources.vf",
-            config=None,
-        )
+        cli.run_regression("verilator", dut="top", sources_file="rtl/sources.vf", config=None)
 
 
-def test_expected_cases_include_the_default_config(tmp_path: Path) -> None:
-    tests = tmp_path / "tests"
-    tests.mkdir()
-    (tests / "cocotb_configs.py").write_text(
-        "HDL_CONFIGS = {'configured': {'small': {}, 'large': {}}}\n", encoding="utf-8"
-    )
-    with (
-        patch.object(cli, "PROJECT_DIR", tmp_path),
-        patch.object(cli, "discover_duts", return_value=["configured", "plain"]),
-    ):
-        assert cli._expected_cases("all") == {
-            ("configured", "small"),
-            ("configured", "large"),
-            ("plain", "default"),
-        }
-
-
-def test_report_coverage_all_attempts_every_case(tmp_path: Path) -> None:
+@pytest.mark.usefixtures("project")
+def test_report_coverage_attempts_every_case() -> None:
     def coverage_data_path(build_dir: Path) -> Path:
         return build_dir / "coverage.dat"
 
@@ -145,13 +130,11 @@ def test_report_coverage_all_attempts_every_case(tmp_path: Path) -> None:
     profile.supports_coverage = True
     profile.coverage_data_path.side_effect = coverage_data_path
     profile.report_coverage.side_effect = [SystemExit(3), None]
-    args = argparse.Namespace(sim="verilator")
+    args = argparse.Namespace(sim="verilator", dut="top", config=None)
     with (
-        patch.object(cli, "PROJECT_DIR", tmp_path),
         patch.object(cli, "_sim", return_value=profile),
-        patch.object(cli, "_expected_cases", return_value={("top", "width4"), ("top", "width8")}),
         pytest.raises(SystemExit) as error,
     ):
-        cli.cmd_report_coverage_all(args)
+        cli.cmd_report_coverage(args)
     assert error.value.code == 3
     assert profile.report_coverage.call_count == 2

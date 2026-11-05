@@ -58,12 +58,6 @@ def _configs(dut: str) -> dict[str, dict[str, object]]:
     return hdl_configs(PROJECT_DIR, dut)
 
 
-def _expected_cases(dut: str) -> set[tuple[str, str]]:
-    """Return every DUT/configuration case that *dut* selects."""
-    duts = discover_duts(TESTS_DIR) if dut == ALL_DUTS else [dut]
-    return {(case_dut, config) for case_dut in duts for config in _configs(case_dut)}
-
-
 def _read_executed_cases(path: Path) -> set[tuple[str, str]]:
     """Read DUT/configuration pairs recorded by successful ``build_and_test`` calls."""
     if not path.is_file():
@@ -87,38 +81,61 @@ def _system_exit_status(error: SystemExit) -> int:
     return error.code if isinstance(error.code, int) else 1
 
 
-def _require_dut(dut: str, *, allow_all: bool = False) -> None:
+def _require_dut(dut: str) -> None:
     duts = discover_duts(TESTS_DIR)
-    if (allow_all and dut == ALL_DUTS) or dut in duts:
+    if dut in duts:
         return
     available = ", ".join(duts) or "(none)"
     raise SystemExit(f"Unknown DUT '{dut}'. Available: {available}")
 
 
-def _resolve_config(dut: str, requested: str | None) -> str | None:
-    """Return the validated CONFIG, *dut*'s only configuration, or None for all of them."""
-    configs = _configs(dut)
-    if requested:
-        if requested not in configs:
+def _selected_cases(dut: str, config: str | None) -> list[tuple[str, str]]:
+    """Return the DUT/configuration cases that *dut* and *config* select, sorted.
+
+    *dut* is a module or :data:`ALL_DUTS`, and an unset *config* selects every
+    configuration of each selected DUT. Batch commands (test, report-coverage)
+    run every selected case.
+    """
+    if dut == ALL_DUTS:
+        if config:
+            raise SystemExit("CONFIG cannot be combined with DUT=all")
+        duts = discover_duts(TESTS_DIR)
+        if not duts:
+            raise SystemExit("No DUTs found: add a tests/test_<module>.py harness.")
+    else:
+        _require_dut(dut)
+        duts = [dut]
+    cases: list[tuple[str, str]] = []
+    for case_dut in duts:
+        configs = _configs(case_dut)
+        if config is None:
+            cases.extend((case_dut, name) for name in configs)
+        elif config in configs:
+            cases.append((case_dut, config))
+        else:
             available = ", ".join(configs)
             raise SystemExit(
-                f"Unknown CONFIG '{requested}' for DUT '{dut}'. Available: {available}"
+                f"Unknown CONFIG '{config}' for DUT '{case_dut}'. Available: {available}"
             )
-        return requested
-    if len(configs) == 1:
-        return next(iter(configs))
-    return None
+    return sorted(cases)
 
 
-def _single_config(dut: str, requested: str | None) -> str:
-    """Return the one configuration a command for a single artifact needs."""
-    config = _resolve_config(dut, requested)
-    if config is None:
-        available = ", ".join(_configs(dut))
+def _single_case(dut: str, config: str | None) -> tuple[str, str]:
+    """Return the one case that a command opening a single artifact needs.
+
+    *dut* must be a module, and *config* may be unset when it has only one
+    configuration.
+    """
+    if dut == ALL_DUTS:
+        available = ", ".join(discover_duts(TESTS_DIR))
+        raise SystemExit(f"Set DUT to one module, not all. Available: {available}")
+    cases = _selected_cases(dut, config)
+    if len(cases) > 1:
+        available = ", ".join(case_config for _, case_config in cases)
         raise SystemExit(
             f"DUT '{dut}' has multiple configurations; set CONFIG to one of: {available}"
         )
-    return config
+    return cases[0]
 
 
 def _build_dir(dut: str, simulator: str, config: str, artifact: str = "normal") -> Path:
@@ -167,8 +184,10 @@ def run_regression(
     as the ``SIM``/``DUT``/``SV_SOURCES_FILE`` environment variables (the channel
     into ``build_and_test``); ``ABV``/``TEST``/``REBUILD``/... are inherited from
     the environment (the Makefile exports command-line ``VAR=value`` overrides).
+    Every case that *dut* and *config* select must run (:func:`_selected_cases`).
     """
     _sim(simulator)
+    expected = set(_selected_cases(dut, config))
     env = os.environ.copy()
     env["SIM"] = simulator
     env["DUT"] = dut
@@ -189,7 +208,6 @@ def run_regression(
         result = subprocess.run(cmd, cwd=PROJECT_DIR, env=env, check=False)
         if result.returncode != 0:
             raise SystemExit(result.returncode)
-        expected = {(dut, config)} if config else _expected_cases(dut)
         missing = expected - _read_executed_cases(executed_cases_file)
         if missing:
             missing_names = ", ".join(_format_case(case) for case in sorted(missing))
@@ -200,54 +218,23 @@ def run_regression(
 
 
 def cmd_test(args: argparse.Namespace) -> None:
-    _require_dut(args.dut, allow_all=True)
-    if args.dut == ALL_DUTS and args.config:
-        raise SystemExit("CONFIG cannot be combined with DUT=all")
-    config = (
-        _resolve_config(args.dut, args.config)
-        if args.dut != ALL_DUTS and args.config
-        else args.config
-    )
     run_regression(
         args.sim,
         dut=args.dut,
         sources_file=args.sources_file,
-        config=config,
+        config=args.config,
     )
 
 
 def cmd_report_coverage(args: argparse.Namespace) -> None:
-    _require_dut(args.dut)
+    """Report coverage for every case that DUT and CONFIG select, as test runs them."""
     profile = _sim(args.sim)
-    config = _single_config(args.dut, args.config)
+    cases = _selected_cases(args.dut, args.config)
     waves = env_flag("WAVES", default=False)
-    _require_coverage(profile, args.dut, config, waves=waves)
-    artifact = artifact_build_mode(
-        waves=waves,
-        hdl_coverage=True,
-    )
-    build_dir = _build_dir(args.dut, args.sim, config, artifact)
-    profile.report_coverage(
-        PROJECT_DIR,
-        build_dir,
-        _coverage_data(profile, build_dir),
-        dut=args.dut,
-        config=config,
-    )
-
-
-def cmd_report_coverage_all(args: argparse.Namespace) -> None:
-    """Generate reports for every expected DUT/configuration coverage artifact."""
-    profile = _sim(args.sim)
-    cases = _expected_cases(ALL_DUTS)
-    if not cases:
-        raise SystemExit("No DUTs were discovered for coverage reporting.")
-    first_dut, first_config = min(cases, key=_format_case)
-    waves = env_flag("WAVES", default=False)
-    _require_coverage(profile, first_dut, first_config, waves=waves)
+    _require_coverage(profile, *cases[0], waves=waves)
     artifact = artifact_build_mode(waves=waves, hdl_coverage=True)
     report_status = 0
-    for dut, config in sorted(cases, key=_format_case):
+    for dut, config in cases:
         build_dir = _build_dir(dut, args.sim, config, artifact)
         try:
             profile.report_coverage(
@@ -268,55 +255,52 @@ def cmd_report_coverage_all(args: argparse.Namespace) -> None:
 
 
 def cmd_open_coverage(args: argparse.Namespace) -> None:
-    _require_dut(args.dut)
     profile = _sim(args.sim)
-    config = _single_config(args.dut, args.config)
+    dut, config = _single_case(args.dut, args.config)
     waves = env_flag("WAVES", default=False)
-    _require_coverage(profile, args.dut, config, waves=waves)
+    _require_coverage(profile, dut, config, waves=waves)
     artifact = artifact_build_mode(
         waves=waves,
         hdl_coverage=True,
     )
-    build_dir = _build_dir(args.dut, args.sim, config, artifact)
+    build_dir = _build_dir(dut, args.sim, config, artifact)
     profile.open_coverage(
         PROJECT_DIR,
         build_dir,
         _coverage_data(profile, build_dir),
-        dut=args.dut,
+        dut=dut,
         config=config,
     )
 
 
 def cmd_open_coverage_html(args: argparse.Namespace) -> None:
-    _require_dut(args.dut)
     profile = _sim(args.sim)
-    config = _single_config(args.dut, args.config)
+    dut, config = _single_case(args.dut, args.config)
     waves = env_flag("WAVES", default=False)
-    _require_coverage(profile, args.dut, config, waves=waves)
+    _require_coverage(profile, dut, config, waves=waves)
     artifact = artifact_build_mode(
         waves=waves,
         hdl_coverage=True,
     )
     profile.open_coverage_html(
         PROJECT_DIR,
-        _build_dir(args.dut, args.sim, config, artifact),
-        dut=args.dut,
+        _build_dir(dut, args.sim, config, artifact),
+        dut=dut,
         config=config,
     )
 
 
 def cmd_open_waves(args: argparse.Namespace) -> None:
-    _require_dut(args.dut)
     viewer = _viewer(args.sim)
-    config = _single_config(args.dut, args.config)
+    dut, config = _single_case(args.dut, args.config)
     artifact = artifact_build_mode(
         waves=True,
         hdl_coverage=env_flag("HDL_COVERAGE", default=False),
     )
     viewer.open_waves(
         PROJECT_DIR,
-        _build_dir(args.dut, args.sim, config, artifact),
-        args.dut,
+        _build_dir(dut, args.sim, config, artifact),
+        dut,
         config,
     )
 
@@ -330,16 +314,16 @@ def cmd_list_duts(args: argparse.Namespace) -> None:
 
 
 def cmd_list_configs(args: argparse.Namespace) -> None:
-    _require_dut(args.dut)
-    print("\n".join(_configs(args.dut)))
+    cases = _selected_cases(args.dut, None)
+    if args.dut == ALL_DUTS:
+        print("\n".join(_format_case(case) for case in cases))
+    else:
+        print("\n".join(config for _, config in cases))
 
 
 def cmd_validate_config(args: argparse.Namespace) -> None:
-    _require_dut(args.dut)
-    if args.artifact:
-        _single_config(args.dut, args.config)
-    else:
-        _resolve_config(args.dut, args.config)
+    """Check that DUT and CONFIG select the one case that a waves run needs."""
+    _single_case(args.dut, args.config)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -364,10 +348,6 @@ def main(argv: list[str] | None = None) -> None:
         p.add_argument("--config")
         p.set_defaults(func=func)
 
-    report_coverage_all_parser = sub.add_parser("report-coverage-all")
-    report_coverage_all_parser.add_argument("--sim", default=DEFAULT_SIM)
-    report_coverage_all_parser.set_defaults(func=cmd_report_coverage_all)
-
     open_waves_parser = sub.add_parser("open-waves")
     open_waves_parser.add_argument("--sim", default=DEFAULT_SIM)
     open_waves_parser.add_argument("--dut", default=DEFAULT_DUT)
@@ -381,7 +361,6 @@ def main(argv: list[str] | None = None) -> None:
     validate_config_parser = sub.add_parser("validate-config")
     validate_config_parser.add_argument("--dut", default=DEFAULT_DUT)
     validate_config_parser.add_argument("--config")
-    validate_config_parser.add_argument("--artifact", action="store_true")
     validate_config_parser.set_defaults(func=cmd_validate_config)
 
     sub.add_parser("list-sims").set_defaults(func=cmd_list_sims)

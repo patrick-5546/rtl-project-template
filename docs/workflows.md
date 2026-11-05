@@ -10,11 +10,14 @@ The simulation flow is cocotb through pytest. Pass the simulator as `SIM=<sim>`
 to test, coverage, and waveform targets; the waveform targets open that
 simulator's viewer.
 
-`make test` runs every named configuration for one DUT.
-List them with `make configs` and select one with `make test CONFIG=<config>`.
-`make test-all` runs every `tests/test_*.py` across all DUTs and verifies that
-each configured or unconfigured DUT case executed; pass `DUT=<module>` to
-select a DUT for test, wave, and coverage commands.
+`make test` runs every HDL configuration of one DUT, `top` unless
+`DUT=<module>` selects another. `DUT=all` selects every DUT that has a
+`tests/test_<module>.py` harness, and `CONFIG=<config>` one configuration; list
+them with `make configs` (or `make configs DUT=all`). The run fails unless every
+selected configuration ran. `coverage` selects the same way, while the commands
+that open one waveform or coverage report (`waves`, `open-waves`,
+`open-coverage`, `open-coverage-html`) need `CONFIG` when the DUT has several
+configurations.
 
 Select individual tests by exact name (`TEST=`) or regex (`TEST_FILTER=`), and
 reuse an existing simulator build with `REBUILD=0` for faster debug loops. Point
@@ -107,10 +110,9 @@ with `ABV=1`.
 
 ## Coverage
 
-`make coverage CONFIG=<name>` runs Verilator with line, toggle, FSM, and
-`cover property` coverage, enables `ABV` automatically, and writes LCOV data.
-`make coverage-all` runs the same unified DUT/configuration regression as
-`test-all`, then generates a report for every isolated coverage database;
+`make coverage` runs the regression with Verilator's line, toggle, FSM, and
+`cover property` coverage, enables `ABV` automatically, and writes LCOV data and
+an annotated report for each selected configuration (`DUT=all` for every DUT);
 `make open-coverage-html CONFIG=<name>` generates and opens the HTML report.
 The same `coverage SIM=<sim>` pattern works for Questa and VCS. `open-coverage`
 opens a simulator's native GUI coverage viewer where one exists (Questa, and
