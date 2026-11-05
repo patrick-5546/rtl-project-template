@@ -47,6 +47,9 @@ each filelist is handed to the simulator with its own `-f`.
       build_and_test(test_module=Path(__file__).stem, config=config, parameters=parameters)
   ```
 
+  Name the harness `test_<module>`: the flow runs each selected DUT and
+  configuration by its pytest node ID, `tests/test_<module>.py::test_<module>[<config>]`.
+  A bare `uv run pytest` runs every harness in every configuration.
 - Keep tests deterministic and focused on behavior visible at the module's
   ports.
 - Use current cocotb APIs: `unit="ns"`, not the deprecated `units="ns"`.

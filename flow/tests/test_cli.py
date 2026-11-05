@@ -112,12 +112,27 @@ def test_regression_requires_every_selected_case(
 
 
 @pytest.mark.usefixtures("project")
-def test_regression_accepts_every_selected_case() -> None:
+def test_regression_runs_each_selected_case_by_node_id() -> None:
+    run = record_cases("top\twidth4\ntop\twidth8\n")
+    with patch.object(cli, "_sim"), patch.object(cli.subprocess, "run", run):
+        cli.run_regression("verilator", dut="top", sources_file="rtl/sources.vf", config=None)
+    assert run.call_args.args[0][-2:] == [
+        "tests/test_top.py::test_top[width4]",
+        "tests/test_top.py::test_top[width8]",
+    ]
+
+
+@pytest.mark.usefixtures("project")
+def test_regression_explains_a_missing_harness(capsys: pytest.CaptureFixture[str]) -> None:
+    not_found = subprocess.CompletedProcess(args=[], returncode=cli.PYTEST_USAGE_ERROR)
     with (
         patch.object(cli, "_sim"),
-        patch.object(cli.subprocess, "run", record_cases("top\twidth4\ntop\twidth8\n")),
+        patch.object(cli.subprocess, "run", return_value=not_found),
+        pytest.raises(SystemExit) as error,
     ):
-        cli.run_regression("verilator", dut="top", sources_file="rtl/sources.vf", config=None)
+        cli.run_regression("verilator", dut="other", sources_file="rtl/sources.vf", config=None)
+    assert error.value.code == cli.PYTEST_USAGE_ERROR
+    assert "test_<dut> in tests/test_<dut>.py" in capsys.readouterr().err
 
 
 @pytest.mark.usefixtures("project")
