@@ -10,6 +10,7 @@ keyed by ``wave_sim``.
 """
 
 import shlex
+import shutil
 from pathlib import Path
 from typing import override
 
@@ -17,6 +18,7 @@ from flow.runner import (
     default_questa_do,
     env_flag,
     env_str,
+    expose_tool_on_path,
     make_target_command,
     project_path_from_env,
     require,
@@ -59,6 +61,14 @@ class ViewerProfile:
 
 
 class GtkwaveProfile(ViewerProfile):
+    """GTKWave 3, or GTKWave 4 when ``GTKWAVE`` names its executable.
+
+    GTKWave starts RTLBrowse by name from ``PATH``, so the directory of an
+    overridden ``GTKWAVE`` goes first on ``PATH``, keeping each GTKWave with its
+    own RTLBrowse. GTKWave 4 ships no ``json2stems``; the stems still come from
+    GTKWave 3's (``JSON2STEMS``), in the format that both versions read.
+    """
+
     name = "gtkwave"
     wave_sim = "verilator"
 
@@ -79,6 +89,7 @@ class GtkwaveProfile(ViewerProfile):
             project_dir,
             project_dir / "waves" / f"{dut}.gtkw",
         )
+        expose_tool_on_path("GTKWAVE")
         cmd = [gtkwave, *gtkwave_args]
         if not env_flag("NO_RTLBROWSE", default=False):
             top = dut
@@ -88,10 +99,14 @@ class GtkwaveProfile(ViewerProfile):
             stems = json_dir / f"{top}.stems"
             require(tree_json, self.waves_hint(dut, config))
             require(tree_meta, self.waves_hint(dut, config))
-            run(
-                [env_str("JSON2STEMS", "json2stems"), str(tree_meta), str(tree_json), str(stems)],
-                cwd=build_dir,
-            )
+            json2stems = env_str("JSON2STEMS", "json2stems")
+            if shutil.which(json2stems) is None:
+                raise SystemExit(
+                    f"{json2stems}: command not found. It comes with GTKWave 3 (GTKWave 4 has "
+                    "none): install it, point JSON2STEMS at it, or skip RTLBrowse with "
+                    "NO_RTLBROWSE=1."
+                )
+            run([json2stems, str(tree_meta), str(tree_json), str(stems)], cwd=build_dir)
             print(f"GTKWave stems: {stems}")
             cmd += ["-t", str(stems)]
         cmd.append(str(wave))
