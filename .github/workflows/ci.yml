@@ -64,6 +64,12 @@ jobs:
       - name: Add slang to PATH
         run: echo "/opt/slang/bin" >> "$GITHUB_PATH"
 
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+
+      - run: uv sync
+
       - run: make lint-sv
 
   lint-py:

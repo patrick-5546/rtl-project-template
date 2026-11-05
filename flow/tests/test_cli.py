@@ -67,6 +67,12 @@ def test_single_case_requires_one(dut: str, message: str) -> None:
         cli._single_case(dut, None)
 
 
+@pytest.mark.usefixtures("project")
+def test_lint_cases_override_each_configs_parameters(capsys: pytest.CaptureFixture[str]) -> None:
+    cli.cmd_lint_cases(argparse.Namespace())
+    assert capsys.readouterr().out == "top -GWIDTH=4\ntop -GWIDTH=8\n"
+
+
 def test_viewer_rejects_simulator_without_one() -> None:
     with (
         patch.object(cli, "_sim"),

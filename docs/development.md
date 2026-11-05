@@ -65,6 +65,11 @@ another build of a tool with its executable variable (e.g.
 typos skips the viewer layouts and `uv.lock`; allow a project's own words in
 `[tool.typos]` in `pyproject.toml`.
 
+Verilator, slang and slang-tidy lint the RTL once with its default parameters,
+then once more for each named HDL configuration that overrides parameters, with
+that configuration's DUT as the top module, so a warning that only one
+configuration's widths cause still fails `make lint`.
+
 ## Testing the flow
 
 `make test-flow-py` runs the flow's unit tests in `flow/tests/`. They mock the

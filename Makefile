@@ -242,14 +242,32 @@ lint-sv-verible:
 	done
 	$(VERIBLE_LINT) $(SV_VERIBLE_INPUTS)
 
+# Verilator and slang lint the RTL once with its default parameters, then once
+# more for each named HDL configuration that overrides parameters, with its DUT
+# as the top module. `$(call LINT_EACH_CONFIG,<lint command>,<top-module option>)`
+# runs those passes; `flow lint-cases` prints them as `<dut> -G<name>=<value>...`.
+define LINT_EACH_CONFIG
+	@$(FLOW) lint-cases | while read -r dut overrides; do \
+		echo "$(1) $(2) $$dut $$overrides $(SV_SOURCES_ARGS)"; \
+		$(1) $(2) "$$dut" $$overrides $(SV_SOURCES_ARGS); \
+	done
+endef
+
+VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall --sv +define+ABV +define+NO_COVERGROUPS rtl/verilator_waivers.vlt
+SLANG_LINT = $(SLANG) -Werror +define+ABV
+
 lint-sv-verilator:
-	$(VERILATOR) --lint-only --timing -Wall --sv +define+ABV +define+NO_COVERGROUPS rtl/verilator_waivers.vlt $(SV_SOURCES_ARGS)
+	$(VERILATOR_LINT) $(SV_SOURCES_ARGS)
+	$(call LINT_EACH_CONFIG,$(VERILATOR_LINT),--top-module)
 
 lint-sv-slang:
-	$(SLANG) -Werror +define+ABV $(SV_SOURCES_ARGS)
+	$(SLANG_LINT) $(SV_SOURCES_ARGS)
+	$(call LINT_EACH_CONFIG,$(SLANG_LINT),--top)
 
+# The configuration passes print only slang-tidy's errors, not every check's PASS.
 lint-sv-slang-tidy:
 	$(SLANG_TIDY) +define+ABV $(SV_SOURCES_ARGS)
+	$(call LINT_EACH_CONFIG,$(SLANG_TIDY) --quiet +define+ABV,--top)
 
 # Per-tool ENABLE_<TOOL> flags select which targets the language aggregates run;
 # a disabled tool drops out of `lint`/`format` but its target stays invocable.
