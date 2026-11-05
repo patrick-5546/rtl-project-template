@@ -11,6 +11,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 from flow.runner import (
@@ -149,6 +150,45 @@ def _coverage_data(profile: SimulatorProfile, build_dir: Path) -> Path:
     return default_coverage_dat(build_dir, profile)
 
 
+def _artifact_dir(
+    simulator: str,
+    dut: str,
+    config: str,
+    *,
+    instrumentation: str,
+    artifact: Callable[[Path], Path],
+) -> Path:
+    """Return the build directory that holds one case's waveform or coverage data.
+
+    *instrumentation* is ``"waves"`` or ``"coverage"``. A waveform exists in the
+    ``waves`` and ``waves-coverage`` builds, and coverage data in ``coverage`` and
+    ``waves-coverage``. The other instrumentation's flag (``HDL_COVERAGE`` for a
+    waveform, ``WAVES`` for coverage) selects one of the two; unset, the build
+    whose *artifact* is newer is used, and named. With neither artifact present,
+    the build without the other instrumentation is returned, for its hint.
+    """
+    other_flag = "HDL_COVERAGE" if instrumentation == "waves" else "WAVES"
+    pinned = env_flag(other_flag, default=False) if os.environ.get(other_flag) else None
+    candidates = [
+        _build_dir(
+            dut,
+            simulator,
+            config,
+            artifact_build_mode(
+                waves=instrumentation == "waves" or other,
+                hdl_coverage=instrumentation == "coverage" or other,
+            ),
+        )
+        for other in ((pinned,) if pinned is not None else (False, True))
+    ]
+    existing = [build_dir for build_dir in candidates if artifact(build_dir).exists()]
+    if pinned is not None or not existing:
+        return candidates[0]
+    newest = max(existing, key=lambda build_dir: artifact(build_dir).stat().st_mtime)
+    print(f"Using the {instrumentation} data in {newest}", flush=True)
+    return newest
+
+
 def _require_coverage(
     profile: SimulatorProfile,
     dut: str,
@@ -241,12 +281,16 @@ def cmd_report_coverage(args: argparse.Namespace) -> None:
     """Report coverage for every case that DUT and CONFIG select, as test runs them."""
     profile = _sim(args.sim)
     cases = _selected_cases(args.dut, args.config)
-    waves = env_flag("WAVES", default=False)
-    _require_coverage(profile, *cases[0], waves=waves)
-    artifact = artifact_build_mode(waves=waves, hdl_coverage=True)
+    _require_coverage(profile, *cases[0], waves=env_flag("WAVES", default=False))
     report_status = 0
     for dut, config in cases:
-        build_dir = _build_dir(dut, args.sim, config, artifact)
+        build_dir = _artifact_dir(
+            args.sim,
+            dut,
+            config,
+            instrumentation="coverage",
+            artifact=profile.coverage_data_path,
+        )
         try:
             profile.report_coverage(
                 PROJECT_DIR,
@@ -268,13 +312,10 @@ def cmd_report_coverage(args: argparse.Namespace) -> None:
 def cmd_open_coverage(args: argparse.Namespace) -> None:
     profile = _sim(args.sim)
     dut, config = _single_case(args.dut, args.config)
-    waves = env_flag("WAVES", default=False)
-    _require_coverage(profile, dut, config, waves=waves)
-    artifact = artifact_build_mode(
-        waves=waves,
-        hdl_coverage=True,
+    _require_coverage(profile, dut, config, waves=env_flag("WAVES", default=False))
+    build_dir = _artifact_dir(
+        args.sim, dut, config, instrumentation="coverage", artifact=profile.coverage_data_path
     )
-    build_dir = _build_dir(dut, args.sim, config, artifact)
     profile.open_coverage(
         PROJECT_DIR,
         build_dir,
@@ -287,33 +328,20 @@ def cmd_open_coverage(args: argparse.Namespace) -> None:
 def cmd_open_coverage_html(args: argparse.Namespace) -> None:
     profile = _sim(args.sim)
     dut, config = _single_case(args.dut, args.config)
-    waves = env_flag("WAVES", default=False)
-    _require_coverage(profile, dut, config, waves=waves)
-    artifact = artifact_build_mode(
-        waves=waves,
-        hdl_coverage=True,
+    _require_coverage(profile, dut, config, waves=env_flag("WAVES", default=False))
+    build_dir = _artifact_dir(
+        args.sim, dut, config, instrumentation="coverage", artifact=profile.coverage_data_path
     )
-    profile.open_coverage_html(
-        PROJECT_DIR,
-        _build_dir(dut, args.sim, config, artifact),
-        dut=dut,
-        config=config,
-    )
+    profile.open_coverage_html(PROJECT_DIR, build_dir, dut=dut, config=config)
 
 
 def cmd_open_waves(args: argparse.Namespace) -> None:
     viewer = _viewer(args.sim)
     dut, config = _single_case(args.dut, args.config)
-    artifact = artifact_build_mode(
-        waves=True,
-        hdl_coverage=env_flag("HDL_COVERAGE", default=False),
+    build_dir = _artifact_dir(
+        args.sim, dut, config, instrumentation="waves", artifact=viewer.wave_path
     )
-    viewer.open_waves(
-        PROJECT_DIR,
-        _build_dir(dut, args.sim, config, artifact),
-        dut,
-        config,
-    )
+    viewer.open_waves(PROJECT_DIR, build_dir, dut, config)
 
 
 def cmd_list_sims(args: argparse.Namespace) -> None:

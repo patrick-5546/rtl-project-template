@@ -95,11 +95,17 @@ build/<dut>/<sim>/<config>/waves-coverage/
 ```
 
 This prevents `REBUILD=0` from reusing an executable built with incompatible
-parameters, waveform tracing, or coverage instrumentation. The combined
-`WAVES=1 HDL_COVERAGE=1` mode uses `waves-coverage`; pass the other mode flag
-when reopening it (`open-waves HDL_COVERAGE=1` or
-`open-coverage-html WAVES=1`). Each directory also holds the run's waveform,
-coverage data and reports. Keep generated files under `build/`; Git ignores it.
+parameters, waveform tracing, or coverage instrumentation. Each directory also
+holds its runs' waveform, coverage data and reports. The combined
+`WAVES=1 HDL_COVERAGE=1` mode uses `waves-coverage`, so a waveform or coverage
+database exists in two modes: `open-waves`, `open-coverage` and
+`open-coverage-html` use the newer one and say which, unless `HDL_COVERAGE`
+(for a waveform) or `WAVES` (for coverage) selects one.
+`make coverage` and `make waves` always open what their own run made.
+
+`BUILD_DIR=<path>` moves the `build/` root, keeping the layout below it. Keep
+generated files there; Git ignores `build/`, and `make clean` removes it but not
+a relocated `BUILD_DIR`.
 
 ## Assertion-based verification
 
