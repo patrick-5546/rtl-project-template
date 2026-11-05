@@ -22,9 +22,9 @@ from flow.runner import (
     artifact_build_mode,
     default_build_dir,
     default_coverage_dat,
-    discover_configs,
     discover_duts,
     env_flag,
+    hdl_configs,
     make_target_command,
 )
 from flow.simulators import SIMULATORS, SimulatorProfile
@@ -55,38 +55,31 @@ def _viewer(simulator: str) -> ViewerProfile:
 
 
 def _configs(dut: str) -> dict[str, dict[str, object]]:
-    return discover_configs(PROJECT_DIR, dut)
+    return hdl_configs(PROJECT_DIR, dut)
 
 
-def _expected_cases(dut: str) -> set[tuple[str, str | None]]:
-    """Return the configured or single unconfigured cases expected for *dut*."""
+def _expected_cases(dut: str) -> set[tuple[str, str]]:
+    """Return every DUT/configuration case that *dut* selects."""
     duts = discover_duts(TESTS_DIR) if dut == ALL_DUTS else [dut]
-    cases: set[tuple[str, str | None]] = set()
-    for case_dut in duts:
-        configs = _configs(case_dut)
-        if configs:
-            cases.update((case_dut, config) for config in configs)
-        else:
-            cases.add((case_dut, None))
-    return cases
+    return {(case_dut, config) for case_dut in duts for config in _configs(case_dut)}
 
 
-def _read_executed_cases(path: Path) -> set[tuple[str, str | None]]:
+def _read_executed_cases(path: Path) -> set[tuple[str, str]]:
     """Read DUT/configuration pairs recorded by successful ``build_and_test`` calls."""
     if not path.is_file():
         return set()
-    cases: set[tuple[str, str | None]] = set()
+    cases: set[tuple[str, str]] = set()
     for line in path.read_text(encoding="utf-8").splitlines():
         case_dut, separator, config = line.partition("\t")
-        if not separator or not case_dut:
+        if not separator or not case_dut or not config:
             raise SystemExit(f"Invalid cocotb execution record: {line!r}")
-        cases.add((case_dut, config or None))
+        cases.add((case_dut, config))
     return cases
 
 
-def _format_case(case: tuple[str, str | None]) -> str:
+def _format_case(case: tuple[str, str]) -> str:
     dut, config = case
-    return f"{dut}.{config}" if config else dut
+    return f"{dut}.{config}"
 
 
 def _system_exit_status(error: SystemExit) -> int:
@@ -102,31 +95,33 @@ def _require_dut(dut: str, *, allow_all: bool = False) -> None:
     raise SystemExit(f"Unknown DUT '{dut}'. Available: {available}")
 
 
-def _resolve_config(dut: str, requested: str | None, *, require_for_multiple: bool) -> str | None:
+def _resolve_config(dut: str, requested: str | None) -> str | None:
+    """Return the validated CONFIG, *dut*'s only configuration, or None for all of them."""
     configs = _configs(dut)
     if requested:
         if requested not in configs:
-            available = ", ".join(configs) or "(none)"
+            available = ", ".join(configs)
             raise SystemExit(
                 f"Unknown CONFIG '{requested}' for DUT '{dut}'. Available: {available}"
             )
         return requested
     if len(configs) == 1:
         return next(iter(configs))
-    if require_for_multiple and len(configs) > 1:
-        available = ", ".join(configs)
-        raise SystemExit(
-            f"DUT '{dut}' has multiple configurations; set CONFIG to one of: {available}"
-        )
     return None
 
 
-def _build_dir(
-    dut: str,
-    simulator: str,
-    config: str | None = None,
-    artifact: str = "normal",
-) -> Path:
+def _single_config(dut: str, requested: str | None) -> str:
+    """Return the one configuration a command for a single artifact needs."""
+    config = _resolve_config(dut, requested)
+    if config is None:
+        available = ", ".join(_configs(dut))
+        raise SystemExit(
+            f"DUT '{dut}' has multiple configurations; set CONFIG to one of: {available}"
+        )
+    return config
+
+
+def _build_dir(dut: str, simulator: str, config: str, artifact: str = "normal") -> Path:
     return default_build_dir(PROJECT_DIR, dut, simulator, config, artifact)
 
 
@@ -137,7 +132,7 @@ def _coverage_data(profile: SimulatorProfile, build_dir: Path) -> Path:
 def _require_coverage(
     profile: SimulatorProfile,
     dut: str,
-    config: str | None,
+    config: str,
     *,
     waves: bool,
 ) -> None:
@@ -209,7 +204,7 @@ def cmd_test(args: argparse.Namespace) -> None:
     if args.dut == ALL_DUTS and args.config:
         raise SystemExit("CONFIG cannot be combined with DUT=all")
     config = (
-        _resolve_config(args.dut, args.config, require_for_multiple=False)
+        _resolve_config(args.dut, args.config)
         if args.dut != ALL_DUTS and args.config
         else args.config
     )
@@ -224,7 +219,7 @@ def cmd_test(args: argparse.Namespace) -> None:
 def cmd_report_coverage(args: argparse.Namespace) -> None:
     _require_dut(args.dut)
     profile = _sim(args.sim)
-    config = _resolve_config(args.dut, args.config, require_for_multiple=True)
+    config = _single_config(args.dut, args.config)
     waves = env_flag("WAVES", default=False)
     _require_coverage(profile, args.dut, config, waves=waves)
     artifact = artifact_build_mode(
@@ -275,7 +270,7 @@ def cmd_report_coverage_all(args: argparse.Namespace) -> None:
 def cmd_open_coverage(args: argparse.Namespace) -> None:
     _require_dut(args.dut)
     profile = _sim(args.sim)
-    config = _resolve_config(args.dut, args.config, require_for_multiple=True)
+    config = _single_config(args.dut, args.config)
     waves = env_flag("WAVES", default=False)
     _require_coverage(profile, args.dut, config, waves=waves)
     artifact = artifact_build_mode(
@@ -295,7 +290,7 @@ def cmd_open_coverage(args: argparse.Namespace) -> None:
 def cmd_open_coverage_html(args: argparse.Namespace) -> None:
     _require_dut(args.dut)
     profile = _sim(args.sim)
-    config = _resolve_config(args.dut, args.config, require_for_multiple=True)
+    config = _single_config(args.dut, args.config)
     waves = env_flag("WAVES", default=False)
     _require_coverage(profile, args.dut, config, waves=waves)
     artifact = artifact_build_mode(
@@ -313,7 +308,7 @@ def cmd_open_coverage_html(args: argparse.Namespace) -> None:
 def cmd_open_waves(args: argparse.Namespace) -> None:
     _require_dut(args.dut)
     viewer = _viewer(args.sim)
-    config = _resolve_config(args.dut, args.config, require_for_multiple=True)
+    config = _single_config(args.dut, args.config)
     artifact = artifact_build_mode(
         waves=True,
         hdl_coverage=env_flag("HDL_COVERAGE", default=False),
@@ -341,7 +336,10 @@ def cmd_list_configs(args: argparse.Namespace) -> None:
 
 def cmd_validate_config(args: argparse.Namespace) -> None:
     _require_dut(args.dut)
-    _resolve_config(args.dut, args.config, require_for_multiple=args.artifact)
+    if args.artifact:
+        _single_config(args.dut, args.config)
+    else:
+        _resolve_config(args.dut, args.config)
 
 
 def main(argv: list[str] | None = None) -> None:

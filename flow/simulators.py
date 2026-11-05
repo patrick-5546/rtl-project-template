@@ -176,7 +176,7 @@ class SimulatorProfile:
     def coverage_html_index(self, build_dir: Path) -> Path:
         raise NotImplementedError
 
-    def coverage_hint(self, dut: str, config: str | None) -> str:
+    def coverage_hint(self, dut: str, config: str) -> str:
         command = make_target_command(
             "coverage",
             simulator=self.name,
@@ -193,7 +193,7 @@ class SimulatorProfile:
         coverage_data: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         raise NotImplementedError
 
@@ -204,7 +204,7 @@ class SimulatorProfile:
         coverage_data: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         raise NotImplementedError
 
@@ -214,7 +214,7 @@ class SimulatorProfile:
         build_dir: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         open_html(
             self.coverage_html_index(build_dir),
@@ -264,7 +264,7 @@ class VerilatorProfile(SimulatorProfile):
         coverage_data: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         require(coverage_data, self.coverage_hint(dut, config))
         annotated = build_dir / "coverage_annotated"
@@ -309,7 +309,7 @@ class VerilatorProfile(SimulatorProfile):
         coverage_data: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         command = make_target_command(
             "open-coverage-html",
@@ -327,7 +327,7 @@ class VerilatorProfile(SimulatorProfile):
         build_dir: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         info = build_dir / "coverage.info"
         require(info, self.coverage_hint(dut, config))
@@ -453,7 +453,7 @@ class QuestaProfile(SimulatorProfile):
         coverage_data: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         vcover = env_str("VCOVER", "vcover")
         html_dir = build_dir / "coverage_html"
@@ -475,7 +475,7 @@ class QuestaProfile(SimulatorProfile):
         coverage_data: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         require(coverage_data, self.coverage_hint(dut, config))
         run([vsim_exe(), "-gui", "-viewcov", str(coverage_data)], cwd=build_dir)
@@ -530,7 +530,7 @@ class VcsProfile(SimulatorProfile):
         coverage_data: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         require(coverage_data, self.coverage_hint(dut, config), kind="dir")
         urg = env_str("URG", "urg")
@@ -554,7 +554,7 @@ class VcsProfile(SimulatorProfile):
         coverage_data: Path,
         *,
         dut: str,
-        config: str | None,
+        config: str,
     ) -> None:
         require(coverage_data, self.coverage_hint(dut, config), kind="dir")
         cmd = [*verdi_command(), "-cov", "-covdir", str(coverage_data)]

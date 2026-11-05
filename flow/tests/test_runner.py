@@ -11,6 +11,7 @@ from flow.runner import (
     artifact_build_mode,
     build_and_test,
     build_jobs,
+    config_params,
     default_build_dir,
     default_coverage_dat,
     discover_configs,
@@ -102,6 +103,20 @@ def test_discover_configs_rejects_invalid_manifest(
     (tests / "cocotb_configs.py").write_text(body)
     with pytest.raises((TypeError, ValueError), match=message):
         discover_configs(tmp_path, "top")
+
+
+def test_config_params_give_each_dut_a_config(tmp_path: Path) -> None:
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "cocotb_configs.py").write_text(
+        "HDL_CONFIGS = {'top': {'width4': {'WIDTH': 4}}}\n", encoding="utf-8"
+    )
+    configured = config_params("test_top__smoke", tmp_path)
+    assert [(param.id, *param.values) for param in configured] == [
+        ("width4", "width4", {"WIDTH": 4})
+    ]
+    unconfigured = config_params("test_other", tmp_path)
+    assert [(param.id, *param.values) for param in unconfigured] == [("default", "default", {})]
 
 
 def test_discover_duts_deduplicates_filename_variants(tmp_path: Path) -> None:

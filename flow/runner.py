@@ -14,7 +14,11 @@ import cocotb_tools.runner as cocotb_runner
 from cocotb_tools.runner import get_runner
 
 if TYPE_CHECKING:
+    from _pytest.mark.structures import ParameterSet
+
     from flow.simulators import SimulatorProfile
+
+PROJECT_DIR = Path(__file__).resolve().parents[1]
 
 # Default tool/DUT selections and SV filelist. Each is duplicated only by the
 # matching Makefile selector (``SIM``/``DUT``/``SV_SOURCES_FILE``):
@@ -33,6 +37,9 @@ DEFAULT_SOURCES_FILE = "rtl/sources.vf"
 # concrete module (defaulting to ``DEFAULT_DUT``) instead.
 ALL_DUTS = "all"
 CONFIG_MANIFEST = Path("tests") / "cocotb_configs.py"
+# The one configuration, with no parameter overrides, of a DUT that has no named
+# configurations in CONFIG_MANIFEST, so every DUT has at least one.
+DEFAULT_CONFIG = "default"
 EXECUTED_CASES_FILE_ENV = "COCOTB_EXECUTED_CASES_FILE"
 
 
@@ -125,7 +132,7 @@ def make_target_command(
     if selected_dut and selected_dut != ALL_DUTS:
         cmd.append(f"DUT={selected_dut}")
     selected_config = config or os.environ.get("CONFIG")
-    if selected_config:
+    if selected_config and selected_config != DEFAULT_CONFIG:
         cmd.append(f"CONFIG={selected_config}")
     if waves:
         cmd.append("WAVES=1")
@@ -353,11 +360,28 @@ def discover_configs(project_dir: Path, dut: str) -> dict[str, dict[str, object]
     return result
 
 
+def hdl_configs(project_dir: Path, dut: str) -> dict[str, dict[str, object]]:
+    """*dut*'s named HDL configurations, or its one :data:`DEFAULT_CONFIG` without them."""
+    return discover_configs(project_dir, dut) or {DEFAULT_CONFIG: {}}
+
+
+def config_params(test_module: str, project_dir: Path = PROJECT_DIR) -> list[ParameterSet]:
+    """One pytest parameter set per HDL configuration of *test_module*'s DUT.
+
+    A harness parameterizes its ``(config, parameters)`` arguments with these and
+    passes both to :func:`build_and_test`; each set's id is its configuration name.
+    """
+    import pytest
+
+    configs = hdl_configs(project_dir, dut_from_test_module(test_module))
+    return [pytest.param(name, parameters, id=name) for name, parameters in configs.items()]
+
+
 def default_build_dir(
     project_dir: Path,
     dut: str,
     simulator: str,
-    config: str | None = None,
+    config: str,
     artifact: str = "normal",
 ) -> Path:
     """Return a config- and instrumentation-isolated simulator build path."""
@@ -366,9 +390,7 @@ def default_build_dir(
         project_dir,
         project_dir / "build" / dut / simulator,
     )
-    if config:
-        base /= validate_config_name(config)
-    return base / validate_config_name(artifact)
+    return base / validate_config_name(config) / validate_config_name(artifact)
 
 
 def default_coverage_dat(build_dir: Path, profile: SimulatorProfile | None) -> Path:
@@ -406,8 +428,8 @@ def verdi_command() -> list[str]:
 def build_and_test(
     test_module: str | list[str],
     *,
+    config: str = DEFAULT_CONFIG,
     parameters: Mapping[str, object] | None = None,
-    config: str | None = None,
 ) -> None:
     """Build RTL and run the cocotb tests in *test_module* for its DUT.
 
@@ -420,6 +442,9 @@ def build_and_test(
     The DUT is derived from *test_module* (the first entry, for a list) by
     filename convention (:func:`dut_from_test_module`):
     ``test_<module>__<variant>`` -> ``<module>``.
+    *config* names the HDL configuration and *parameters* holds its top-level
+    parameter overrides; a harness passes each pair that :func:`config_params`
+    yields. Each configuration builds in its own directory.
     The ``DUT`` environment variable (set by the flow CLI from
     ``make ... DUT=<module>``) is a *selector*, not an override: when it names a
     concrete module other than this file's, the test self-skips, so one pytest
@@ -435,12 +460,8 @@ def build_and_test(
     """
     first_module = test_module if isinstance(test_module, str) else test_module[0]
     hdl_toplevel = dut_from_test_module(first_module)
-    parameters_provided = parameters is not None
     parameters = dict(parameters or {})
-    if parameters_provided != bool(config):
-        raise ValueError("parameters and config must be supplied together")
-    if config:
-        validate_config_name(config)
+    validate_config_name(config)
     invalid_parameters = [
         name for name in parameters if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", name)
     ]
@@ -455,26 +476,19 @@ def build_and_test(
             f"DUT={selector!r} selected; this file targets {hdl_toplevel!r}"
         )
     selected_config = os.environ.get("CONFIG") or None
-    if selected_config:
-        validate_config_name(selected_config)
-        if config is None:
-            raise ValueError(
-                f"CONFIG={selected_config!r} selected, but {first_module!r} "
-                "did not supply config and parameters"
-            )
-        if config != selected_config:
-            import pytest
+    if selected_config and config != selected_config:
+        import pytest
 
-            raise pytest.skip.Exception(
-                f"CONFIG={selected_config!r} selected; this case targets {config!r}"
-            )
+        raise pytest.skip.Exception(
+            f"CONFIG={selected_config!r} selected; this case targets {config!r}"
+        )
     executed_cases_file = os.environ.get(EXECUTED_CASES_FILE_ENV) or None
 
     # Lazy import: ``flow.simulators`` imports this module, so importing it at
     # module scope would be circular.
     from flow.simulators import SIMULATORS
 
-    project_dir = Path(__file__).resolve().parents[1]
+    project_dir = PROJECT_DIR
     test_dir = project_dir / "tests"
     simulator = env_str("SIM", DEFAULT_SIM)
     profile = SIMULATORS.get(simulator)
@@ -574,8 +588,7 @@ def build_and_test(
         "PYTHONPATH": pythonpath,
         **{f"COCOTB_PARAM_{name}": str(value) for name, value in parameters.items()},
     }
-    if config:
-        extra_env["COCOTB_CONFIG"] = config
+    extra_env["COCOTB_CONFIG"] = config
     # vsim wraps cocotb's stdout (its transcript), so cocotb's TTY check fails
     # and it strips ANSI color that Verilator/VCS keep. On a real terminal (not
     # GUI, and only if the user hasn't pinned color via COCOTB_ANSI_OUTPUT or
@@ -606,4 +619,4 @@ def build_and_test(
     )
     if executed_cases_file:
         with Path(executed_cases_file).open("a", encoding="utf-8") as stream:
-            stream.write(f"{hdl_toplevel}\t{config or ''}\n")
+            stream.write(f"{hdl_toplevel}\t{config}\n")

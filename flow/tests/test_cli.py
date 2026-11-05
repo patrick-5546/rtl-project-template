@@ -9,30 +9,18 @@ from flow import cli
 from flow.simulators import SimulatorProfile
 
 
-@pytest.mark.parametrize(
-    ("requested", "require_multiple", "expected"),
-    [
-        ("width4", False, "width4"),
-        (None, False, None),
-    ],
-)
-def test_resolve_config(
-    requested: str | None,
-    require_multiple: bool,
-    expected: str | None,
-) -> None:
+@pytest.mark.parametrize(("requested", "expected"), [("width4", "width4"), (None, None)])
+def test_resolve_config(requested: str | None, expected: str | None) -> None:
     with patch.object(cli, "_configs", return_value={"width4": {}, "width8": {}}):
-        assert (
-            cli._resolve_config("top", requested, require_for_multiple=require_multiple) == expected
-        )
+        assert cli._resolve_config("top", requested) == expected
 
 
-def test_resolve_config_requires_artifact_choice() -> None:
+def test_single_config_requires_a_choice() -> None:
     with (
         patch.object(cli, "_configs", return_value={"width4": {}, "width8": {}}),
         pytest.raises(SystemExit, match="multiple configurations"),
     ):
-        cli._resolve_config("top", None, require_for_multiple=True)
+        cli._single_config("top", None)
 
 
 def test_viewer_rejects_simulator_without_one() -> None:
@@ -111,11 +99,11 @@ def test_regression_rejects_incomplete_all_dut_matrix(tmp_path: Path) -> None:
     ) -> subprocess.CompletedProcess[list[str]]:
         del command, cwd, check
         Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text(
-            "top\twidth4\nother\t\n", encoding="utf-8"
+            "top\twidth4\nother\tdefault\n", encoding="utf-8"
         )
         return subprocess.CompletedProcess(args=[], returncode=0)
 
-    expected = {("top", "width4"), ("top", "width8"), ("other", None)}
+    expected = {("top", "width4"), ("top", "width8"), ("other", "default")}
     with (
         patch.object(cli, "PROJECT_DIR", tmp_path),
         patch.object(cli, "_sim"),
@@ -131,18 +119,20 @@ def test_regression_rejects_incomplete_all_dut_matrix(tmp_path: Path) -> None:
         )
 
 
-def test_expected_cases_includes_unconfigured_dut() -> None:
-    def configs(dut: str) -> dict[str, dict[str, object]]:
-        return {"small": {}, "large": {}} if dut == "configured" else {}
-
+def test_expected_cases_include_the_default_config(tmp_path: Path) -> None:
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "cocotb_configs.py").write_text(
+        "HDL_CONFIGS = {'configured': {'small': {}, 'large': {}}}\n", encoding="utf-8"
+    )
     with (
+        patch.object(cli, "PROJECT_DIR", tmp_path),
         patch.object(cli, "discover_duts", return_value=["configured", "plain"]),
-        patch.object(cli, "_configs", side_effect=configs),
     ):
         assert cli._expected_cases("all") == {
             ("configured", "small"),
             ("configured", "large"),
-            ("plain", None),
+            ("plain", "default"),
         }
 
 
