@@ -132,3 +132,36 @@ def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
 def test_vcs_keeps_its_coverage_database_with_its_build(tmp_path: Path, rebuild: bool) -> None:
     outputs = VcsProfile().run_outputs(tmp_path, rebuild=rebuild)
     assert (tmp_path / "coverage.vdb" in outputs) is rebuild
+
+
+@pytest.mark.parametrize("coverage_html", [None, "1"])
+def test_verilator_report_writes_html_on_request(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    coverage_html: str | None,
+) -> None:
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    (build_dir / "coverage.dat").touch()
+    monkeypatch.delenv("GENHTML", raising=False)
+    if coverage_html is None:
+        monkeypatch.delenv("COVERAGE_HTML", raising=False)
+    else:
+        monkeypatch.setenv("COVERAGE_HTML", coverage_html)
+    tools: list[str] = []
+
+    def fake_run(cmd: list[str], *, cwd: Path) -> None:
+        del cwd
+        tools.append(cmd[0])
+        if "--write-info" in cmd:
+            Path(cmd[cmd.index("--write-info") + 1]).write_text("end_of_record\n", encoding="utf-8")
+
+    profile = VerilatorProfile()
+    with (
+        patch.object(profile, "require_coverage_version"),
+        patch("flow.simulators.run", side_effect=fake_run),
+    ):
+        profile.report_coverage(
+            tmp_path, build_dir, build_dir / "coverage.dat", dut="top", config="width4"
+        )
+    assert ("genhtml" in tools) is (coverage_html == "1")

@@ -321,6 +321,33 @@ class VerilatorProfile(SimulatorProfile):
         print(f"Coverage data: {coverage_data}")
         print(f"Annotated report: {annotated}")
         print(f"LCOV data: {info}")
+        # The HTML report needs LCOV's genhtml, so it is written only on request
+        # (COVERAGE_HTML=1, or open-coverage-html), never as part of every report.
+        if env_flag("COVERAGE_HTML", default=False):
+            print(f"HTML report: {self.write_coverage_html(project_dir, build_dir)}")
+
+    def write_coverage_html(self, project_dir: Path, build_dir: Path) -> Path:
+        """Write the HTML report of *build_dir*'s LCOV data with genhtml; return its index."""
+        html_dir = build_dir / "coverage_html"
+        shutil.rmtree(html_dir, ignore_errors=True)
+        run(
+            [
+                env_str("GENHTML", "genhtml"),
+                "--branch-coverage",
+                "--no-function-coverage",
+                "--show-details",
+                "--legend",
+                "--title",
+                "Verilator coverage",
+                "--prefix",
+                str(project_dir),
+                "--output-directory",
+                str(html_dir),
+                str(build_dir / "coverage.info"),
+            ],
+            cwd=project_dir,
+        )
+        return html_dir / "index.html"
 
     @override
     def open_coverage(
@@ -350,28 +377,9 @@ class VerilatorProfile(SimulatorProfile):
         dut: str,
         config: str,
     ) -> None:
-        info = build_dir / "coverage.info"
-        require(info, self.coverage_hint(dut, config))
-        html_dir = build_dir / "coverage_html"
-        shutil.rmtree(html_dir, ignore_errors=True)
-        run(
-            [
-                env_str("GENHTML", "genhtml"),
-                "--branch-coverage",
-                "--no-function-coverage",
-                "--show-details",
-                "--legend",
-                "--title",
-                "Verilator coverage",
-                "--prefix",
-                str(project_dir),
-                "--output-directory",
-                str(html_dir),
-                str(info),
-            ],
-            cwd=project_dir,
-        )
-        open_html(html_dir / "index.html", hint="Check the genhtml output above.")
+        require(build_dir / "coverage.info", self.coverage_hint(dut, config))
+        index = self.write_coverage_html(project_dir, build_dir)
+        open_html(index, hint="Check the genhtml output above.")
 
     @override
     def prepare_waves(
