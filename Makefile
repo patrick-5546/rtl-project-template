@@ -87,17 +87,12 @@ endef
 	format-md-markdownlint lint-md-markdownlint \
 	format-sv-verible lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy \
 	open-coverage open-coverage-html open-waves \
-	sync update-py-deps \
 	test test-all test-flow-py coverage-all waves
 
 all: lint test-all
 
 help:
 	@echo "Usage: make <target> [VAR=value ...]"
-	@echo ""
-	@echo "Setup:"
-	@echo "  sync                            Install/update the uv-managed Python env"
-	@echo "  update-py-deps                  Upgrade Python deps (uv lock --upgrade + sync)"
 	@echo ""
 	@echo "Test:"
 	@echo "  test [SIM=questa]               Run the cocotb regression for one DUT"
@@ -162,12 +157,6 @@ help:
 	@echo "  VERDI_RC=                       Verdi layout"
 	@echo "  CM_HIER= / ELLIST=              Optional VCS coverage hierarchy / exclusions"
 	@echo "  HTML_VIEWER=wslview             HTML opener (e.g. wslview on WSL)"
-
-sync:
-	$(UV) sync
-
-update-py-deps:
-	$(UV) sync --upgrade
 
 # Build the RTL and run the cocotb tests. flow/cli.py sets up the per-simulator
 # pytest invocation (the supported cocotb runner path); command-line VAR=value
