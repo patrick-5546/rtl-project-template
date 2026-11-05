@@ -19,6 +19,9 @@ dev = [
 
 [tool.uv]
 package = false
+# Lock only releases at least a week old, as Dependabot's cooldown waits for: most
+# compromised releases are found and pulled within days.
+exclude-newer = "7 days"
 
 [tool.pytest]
 minversion = "9.1"

@@ -80,9 +80,19 @@ test that raises it, in both suites.
 
 ## Updating dependencies
 
-Upgrade the locked Python packages with `uv lock --upgrade`, or one package with
-`uv lock --upgrade-package <name>`; the next `uv run` installs them. The EDA tool
-versions that CI uses are pinned in `.github/workflows/ci.yml`.
+uv locks only releases that are at least a week old (`exclude-newer` in
+`pyproject.toml`), since most compromised releases are found and pulled within
+days. Upgrade the locked Python packages with `uv lock --upgrade`, or one
+package with `uv lock --upgrade-package <name>`; the next `uv run` installs
+them. To take a newer release, such as a security fix, add the package to
+`pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
+`false` and run `uv lock`; remove the entry once the release is a week old. A
+minimum version in `pyproject.toml` must be a week old too, or locking fails.
+python-constraint, which cocotb-coverage needs, stays at 1.3.1: its only newer
+release, 1.4.0 from 2018, has just a source archive whose name does not follow
+PEP 625, which uv rejects.
+
+The EDA tool versions that CI uses are pinned in `.github/workflows/ci.yml`.
 
 ## cocotb's pytest plugin
 
