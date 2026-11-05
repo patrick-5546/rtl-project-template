@@ -15,6 +15,7 @@ dev = [
     "ruff>=0.15.20",
     "rumdl>=0.3.2",
     "ty>=0.0.56",
+    "typos>=1.51.1",
 ]
 
 [tool.uv]
@@ -74,3 +75,7 @@ possibly-unresolved-reference = "warn"
 
 [tool.rumdl.MD013]
 line-length = 100
+
+[tool.typos.files]
+# The layouts that the waveform viewers write, and the lockfile's hashes.
+extend-exclude = ["uv.lock", "waves/"]

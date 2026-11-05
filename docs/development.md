@@ -53,13 +53,16 @@ with the list of available tools.
 
 ## Linting and formatting
 
-`make lint` runs every linter and type checker, and `make format` every
-formatter. Each tool also runs alone as a `<lint|format>-<py|sv|md>-<tool>`
-target, grouped per language as `lint-<py|sv|md>` and `format-<py|sv|md>`. Skip
+`make lint` runs every linter and type checker, and the typos spell checker, and
+`make format` every formatter. Each tool also runs alone as a
+`<lint|format>-<lang>-<tool>` target, grouped as `lint-<lang>` and
+`format-<lang>`, where `<lang>` is `py`, `sv`, `md`, or `spell` for spelling. Skip
 any tool in the aggregates with its `ENABLE_<TOOL>=0` flag (e.g.
-`make lint ENABLE_SLANG=0`); its own target stays invokable. Point a target at
+`make lint ENABLE_SLANG=0`); its own target stays invocable. Point a target at
 another build of a tool with its executable variable (e.g.
 `make lint-sv VERILATOR=/opt/verilator/bin/verilator`); `make help` lists them.
+typos skips the viewer layouts and `uv.lock`; allow a project's own words in
+`[tool.typos]` in `pyproject.toml`.
 
 ## Testing the flow
 

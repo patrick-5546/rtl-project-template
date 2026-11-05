@@ -24,11 +24,12 @@ SLANG_TIDY ?= slang-tidy
 
 # Per-tool enable flags for the lint/format aggregates. Set any to 0 to drop
 # that tool from `lint`/`format` (and the per-language `lint-<lang>` /
-# `format-<lang>` groups); the per-tool target itself stays directly invokable.
+# `format-<lang>` groups); the per-tool target itself stays directly invocable.
 ENABLE_RUFF ?= 1
 ENABLE_TY ?= 1
 ENABLE_PYREFLY ?= 1
 ENABLE_RUMDL ?= 1
+ENABLE_TYPOS ?= 1
 ENABLE_VERIBLE ?= 1
 ENABLE_VERILATOR ?= 1
 ENABLE_SLANG ?= 1
@@ -101,9 +102,9 @@ define RUN_TEST_AND_POSTPROCESS
 endef
 
 .PHONY: all clean configs coverage format help lint \
-	lint-py lint-sv lint-md format-py format-sv format-md \
+	lint-py lint-sv lint-md lint-spell format-py format-sv format-md \
 	format-py-ruff lint-py-ruff lint-py-ty lint-py-pyrefly \
-	format-md-rumdl lint-md-rumdl \
+	format-md-rumdl lint-md-rumdl lint-spell-typos \
 	format-sv-verible lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy \
 	open-coverage open-coverage-html open-waves \
 	test test-all test-flow-py coverage-all waves
@@ -136,8 +137,8 @@ help:
 	@echo "  open-coverage-html [SIM=...] [CONFIG=...] Open the coverage HTML report"
 	@echo ""
 	@echo "Quality:"
-	@echo "  lint                            Run all lint/type checks (py, sv, md)"
-	@echo "  lint-<py|sv|md>                 Run lint/type checks for one language"
+	@echo "  lint                            Run all lint/type/spell checks (py, sv, md, spell)"
+	@echo "  lint-<py|sv|md|spell>           Run the checks for one language, or spelling"
 	@echo "  format                          Format Python, Markdown, and SystemVerilog"
 	@echo "  format-<py|sv|md>               Format one language"
 	@echo "  all                             Run lint + test-all"
@@ -147,10 +148,10 @@ help:
 	@echo "Per-tool quality targets (<lint|format>-<lang>-<tool>):"
 	@echo "  lint-py-ruff lint-py-ty lint-py-pyrefly format-py-ruff"
 	@echo "  lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy  format-sv-verible"
-	@echo "  lint-md-rumdl  format-md-rumdl"
+	@echo "  lint-md-rumdl  format-md-rumdl  lint-spell-typos"
 	@echo ""
 	@echo "Tool enable flags (default 1; set 0 to skip a tool in lint/format):"
-	@echo "  ENABLE_RUFF ENABLE_TY ENABLE_PYREFLY ENABLE_RUMDL"
+	@echo "  ENABLE_RUFF ENABLE_TY ENABLE_PYREFLY ENABLE_RUMDL ENABLE_TYPOS"
 	@echo "  ENABLE_VERIBLE ENABLE_VERILATOR ENABLE_SLANG ENABLE_SLANG_TIDY"
 	@echo ""
 	@echo "Tool executables (override as VAR=/path/to/tool):"
@@ -246,6 +247,9 @@ format-md-rumdl:
 lint-md-rumdl:
 	$(UV) run rumdl check .
 
+lint-spell-typos:
+	$(UV) run typos
+
 format-sv-verible:
 	$(VERIBLE_FORMAT) --inplace $(SV_VERIBLE_INPUTS)
 
@@ -265,7 +269,7 @@ lint-sv-slang-tidy:
 	$(SLANG_TIDY) +define+ABV $(SV_SOURCES_ARGS)
 
 # Per-tool ENABLE_<TOOL> flags select which targets the language aggregates run;
-# a disabled tool drops out of `lint`/`format` but its target stays invokable.
+# a disabled tool drops out of `lint`/`format` but its target stays invocable.
 LINT_PY_TARGETS :=
 FORMAT_PY_TARGETS :=
 ifeq ($(ENABLE_RUFF),1)
@@ -284,6 +288,11 @@ FORMAT_MD_TARGETS :=
 ifeq ($(ENABLE_RUMDL),1)
 LINT_MD_TARGETS += lint-md-rumdl
 FORMAT_MD_TARGETS += format-md-rumdl
+endif
+
+LINT_SPELL_TARGETS :=
+ifeq ($(ENABLE_TYPOS),1)
+LINT_SPELL_TARGETS += lint-spell-typos
 endif
 
 LINT_SV_TARGETS :=
@@ -305,12 +314,13 @@ endif
 lint-py: $(LINT_PY_TARGETS)
 lint-sv: $(LINT_SV_TARGETS)
 lint-md: $(LINT_MD_TARGETS)
+lint-spell: $(LINT_SPELL_TARGETS)
 
 format-py: $(FORMAT_PY_TARGETS)
 format-sv: $(FORMAT_SV_TARGETS)
 format-md: $(FORMAT_MD_TARGETS)
 
-lint: lint-py lint-sv lint-md
+lint: lint-py lint-sv lint-md lint-spell
 
 format: format-py format-sv format-md
 

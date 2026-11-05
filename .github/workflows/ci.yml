@@ -92,6 +92,8 @@ jobs:
 
       - run: make lint-md
 
+      - run: make lint-spell
+
   coverage:
     runs-on: ubuntu-latest
     steps:
