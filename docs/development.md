@@ -87,7 +87,8 @@ SHA, have time limits, and fail if `uv.lock` is out of date (`UV_LOCKED`):
 - `lint`: the Python and Markdown checks and the spell check;
 - `lint-sv`: Verible, Verilator and slang;
 - `flow-tests`: `make test-flow-py`;
-- `rtl`: `make coverage DUT=all` with Verilator and LCOV.
+- `rtl`: `make test DUT=all`, again with `WAVES=1`, and `make coverage DUT=all`,
+  each with Verilator, and coverage with LCOV.
 
 The local action `.github/actions/setup-eda-tools` builds Verilator and slang,
 cached per version and runner image, and downloads Verible and LCOV, checked
