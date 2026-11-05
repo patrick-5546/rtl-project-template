@@ -332,6 +332,23 @@ def cmd_list_configs(args: argparse.Namespace) -> None:
         print("\n".join(config for _, config in cases))
 
 
+def cmd_lint_cases(args: argparse.Namespace) -> None:
+    """Print ``<dut> -G<name>=<value>...`` for each configuration that overrides parameters.
+
+    The Verilator and slang lint targets lint the RTL once with its default
+    parameters, then once more per line, with that DUT as the top module.
+    """
+    for dut in discover_duts(TESTS_DIR):
+        for config, parameters in _configs(dut).items():
+            overrides = [f"-G{name}={value}" for name, value in parameters.items()]
+            if any(any(char.isspace() for char in override) for override in overrides):
+                raise SystemExit(
+                    f"Cannot lint {dut}.{config}: a parameter value contains whitespace."
+                )
+            if overrides:
+                print(dut, *overrides)
+
+
 def cmd_validate_config(args: argparse.Namespace) -> None:
     """Check that DUT and CONFIG select the one case that a waves run needs."""
     _single_case(args.dut, args.config)
@@ -374,6 +391,7 @@ def main(argv: list[str] | None = None) -> None:
     validate_config_parser.add_argument("--config")
     validate_config_parser.set_defaults(func=cmd_validate_config)
 
+    sub.add_parser("lint-cases").set_defaults(func=cmd_lint_cases)
     sub.add_parser("list-sims").set_defaults(func=cmd_list_sims)
     sub.add_parser("list-duts").set_defaults(func=cmd_list_duts)
 
