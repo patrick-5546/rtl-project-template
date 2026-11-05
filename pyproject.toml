@@ -1,7 +1,7 @@
 [project]
-name = "fpga-proj-tmpl"
+name = "rtl-project-template"
 version = "0.1.0"
-description = "A FPGA project template using SystemVerilog, cocotb, and Verilator."
+description = "A SystemVerilog RTL project template (cocotb, Verilator/Questa/VCS, lint, coverage, waveforms) for agentic development"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "cocotb>=2.0.1",

@@ -1,4 +1,4 @@
-# FPGA Project Template
+# RTL Project Template
 
 A template for SystemVerilog RTL projects. cocotb tests run through pytest on
 Verilator by default, with Questa and VCS profiles; Verible, Verilator and slang

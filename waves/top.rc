@@ -6,7 +6,7 @@ viewPort 0 11 2560 673 402 368
 
 ; File list:
 ; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
-openDirFile -d / "" "/path/to/fpga_proj_tmpl/build/top/vcs/dump.fsdb"
+openDirFile -d / "" "dump.fsdb"
 
 ; file time scale:
 ; fileTimeScale ### s|ms|us|ns|ps
@@ -46,7 +46,7 @@ curSTATUS ByChange
 
 
 addGroup "G1"
-activeDirFile "" "/path/to/fpga_proj_tmpl/build/vcs/dump.fsdb"
+activeDirFile "" "dump.fsdb"
 addSignal -h 16 /top/clk_i
 addSignal -h 16 -holdScope rst_ni
 addSignal -h 16 -holdScope en_i
