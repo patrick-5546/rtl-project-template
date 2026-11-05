@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -6,6 +7,25 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def phony_targets() -> list[str]:
+    """The targets that the Makefile's ``.PHONY`` declaration lists."""
+    text = (REPO_ROOT / "Makefile").read_text(encoding="utf-8").replace("\\\n", " ")
+    match = re.search(r"^\.PHONY:(.*)$", text, re.MULTILINE)
+    assert match is not None
+    return match.group(1).split()
+
+
+def test_make_variables_are_defined() -> None:
+    result = subprocess.run(
+        ["make", "--dry-run", "--warn-undefined-variables", *phony_targets()],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "undefined variable" not in result.stderr
 
 
 def test_project_root_cannot_be_overridden() -> None:
@@ -25,6 +45,29 @@ def test_project_root_cannot_be_overridden() -> None:
         text=True,
     )
     assert result.stdout == str(REPO_ROOT)
+
+
+@pytest.mark.parametrize(
+    ("contents", "message"),
+    [(None, "does not resolve to a file"), ("# no files\n\n", "lists no files")],
+)
+def test_verible_list_must_name_files(
+    tmp_path: Path,
+    contents: str | None,
+    message: str,
+) -> None:
+    verible_list = tmp_path / "verible.vf"
+    if contents is not None:
+        verible_list.write_text(contents, encoding="utf-8")
+    result = subprocess.run(
+        ["make", "--dry-run", f"SV_VERIBLE_FILE={verible_list}", "lint-sv-verible"],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert message in result.stderr
 
 
 @pytest.mark.parametrize(
