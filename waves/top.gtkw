@@ -2,10 +2,7 @@
 [*] GTKWave Analyzer v3.3.127 (w)1999-2026 BSI
 [*] Sun May  3 03:13:56 2026
 [*]
-[dumpfile] "/home/patrick/code/fpga_proj_tmpl/build/top/verilator/dump.fst"
-[dumpfile_mtime] "Sun May  3 03:13:47 2026"
-[dumpfile_size] 1700
-[savefile] "/home/patrick/code/fpga_proj_tmpl/waves/top.gtkw"
+[dumpfile] "dump.fst"
 [timestart] 0
 [size] 1850 1136
 [pos] -1 -1
