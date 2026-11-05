@@ -126,3 +126,9 @@ def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
     assert info.read_text(encoding="utf-8") == expected
     add_lcov_line_totals(info)
     assert info.read_text(encoding="utf-8") == expected
+
+
+@pytest.mark.parametrize("rebuild", [False, True])
+def test_vcs_keeps_its_coverage_database_with_its_build(tmp_path: Path, rebuild: bool) -> None:
+    outputs = VcsProfile().run_outputs(tmp_path, rebuild=rebuild)
+    assert (tmp_path / "coverage.vdb" in outputs) is rebuild
