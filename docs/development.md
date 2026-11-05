@@ -103,19 +103,33 @@ checksum.
 
 ## Updating dependencies
 
-uv locks only releases that are at least a week old (`exclude-newer` in
-`pyproject.toml`), since most compromised releases are found and pulled within
-days. Upgrade the locked Python packages with `uv lock --upgrade`, or one
-package with `uv lock --upgrade-package <name>`; the next `uv run` installs
-them. To take a newer release, such as a security fix, add the package to
-`pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
+Dependabot (`.github/dependabot.yml`) proposes weekly updates of the locked
+Python packages and of the actions that the workflow and its local action use,
+in one pull request per ecosystem; each major Python update comes on its own.
+Most compromised releases are found and pulled within days, so every update
+takes only releases at least a week old: Dependabot waits a week, and uv locks
+only week-old releases (`exclude-newer` in `pyproject.toml`).
+
+To update by hand, upgrade the locked Python packages with `uv lock --upgrade`,
+or one package with `uv lock --upgrade-package <name>`; the next `uv run`
+installs them. To take a newer release, such as a security fix, add the package
+to `pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
 `false` and run `uv lock`; remove the entry once the release is a week old. A
 minimum version in `pyproject.toml` must be a week old too, or locking fails.
 python-constraint, which cocotb-coverage needs, stays at 1.3.1: its only newer
 release, 1.4.0 from 2018, has just a source archive whose name does not follow
 PEP 625, which uv rejects.
 
-The EDA tool versions that CI uses are pinned in `.github/workflows/ci.yml`.
+Dependabot does not update the EDA tools. The `env` of
+`.github/workflows/ci.yml` pins their versions, and the SHA-256s of the Verible
+and LCOV archives. To move to a new release, change its version there, and for
+Verible or LCOV its checksum, which the release's asset digests list:
+
+```sh
+gh api repos/chipsalliance/verible/releases/tags/<tag> --jq '.assets[] | [.name, .digest] | @tsv'
+```
+
+Then update the [verified environment](tools.md#verified-environment).
 
 ## cocotb's pytest plugin
 
