@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from flow.runner import RunConfig
-from flow.simulators import QuestaProfile, VcsProfile, VerilatorProfile
+from flow.simulators import QuestaProfile, VcsProfile, VerilatorProfile, add_lcov_line_totals
 
 
 def config(
@@ -93,3 +93,36 @@ def test_verilator_html_report_has_no_percentage_gate(tmp_path: Path) -> None:
     command = run.call_args.args[0]
     assert "--fail-under-lines" not in command
     assert "--fail-under-branches" not in command
+
+
+def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    (build_dir / "coverage.dat").touch()
+    written = (
+        "TN:verilator_coverage\n"
+        "SF:top.sv\nDA:12,94\nDA:13,0\nDA:13,7\nDA:14,0\nBRF:0\nBRH:0\nend_of_record\n"
+        "SF:has_totals.sv\nDA:1,1\nLF:1\nLH:1\nend_of_record\n"
+        "SF:no_lines.sv\nBRF:0\nBRH:0\nend_of_record\n"
+    )
+
+    def fake_run(cmd: list[str], *, cwd: Path) -> None:
+        del cwd
+        if "--write-info" in cmd:
+            Path(cmd[cmd.index("--write-info") + 1]).write_text(written, encoding="utf-8")
+
+    profile = VerilatorProfile()
+    with (
+        patch.object(profile, "require_coverage_version"),
+        patch("flow.simulators.run", side_effect=fake_run),
+    ):
+        profile.report_coverage(
+            tmp_path, build_dir, build_dir / "coverage.dat", dut="top", config="width4"
+        )
+    info = build_dir / "coverage.info"
+    expected = written.replace(
+        "BRH:0\nend_of_record\nSF:has", "BRH:0\nLF:3\nLH:2\nend_of_record\nSF:has", 1
+    )
+    assert info.read_text(encoding="utf-8") == expected
+    add_lcov_line_totals(info)
+    assert info.read_text(encoding="utf-8") == expected

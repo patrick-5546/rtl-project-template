@@ -69,6 +69,34 @@ def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
     return dump_module
 
 
+def add_lcov_line_totals(info: Path) -> None:
+    """Add the ``LF``/``LH`` line totals that ``verilator_coverage --write-info`` omits.
+
+    LCOV 2.5 and newer reject a section that has ``DA`` line records but no totals.
+    Sections that already have totals, or have no line records, are left unchanged,
+    so this is a no-op once Verilator writes the totals itself.
+    """
+    lines = info.read_text(encoding="utf-8").splitlines()
+    output: list[str] = []
+    line_hit: dict[str, bool] = {}
+    has_totals = False
+    for line in lines:
+        if line.startswith("SF:"):
+            line_hit = {}
+            has_totals = False
+        elif line.startswith("DA:"):
+            number, _, rest = line.removeprefix("DA:").partition(",")
+            hits = int(rest.split(",", 1)[0])
+            line_hit[number] = line_hit.get(number, False) or hits > 0
+        elif line.startswith(("LF:", "LH:")):
+            has_totals = True
+        elif line == "end_of_record" and line_hit and not has_totals:
+            output.extend([f"LF:{len(line_hit)}", f"LH:{sum(line_hit.values())}"])
+        output.append(line)
+    if output != lines:
+        info.write_text("\n".join(output) + "\n", encoding="utf-8")
+
+
 def write_questa_anchor(build_dir: Path) -> Path:
     """Write a no-op Questa source so cocotb emits a ``vlog`` for the ``-f`` list.
 
@@ -268,6 +296,7 @@ class VerilatorProfile(SimulatorProfile):
             ],
             cwd=project_dir,
         )
+        add_lcov_line_totals(info)
         print(f"Coverage data: {coverage_data}")
         print(f"Annotated report: {annotated}")
         print(f"LCOV data: {info}")
