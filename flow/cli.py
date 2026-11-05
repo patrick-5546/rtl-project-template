@@ -91,7 +91,7 @@ def _read_executed_cases(path: Path) -> set[tuple[str, str | None]]:
     if not path.is_file():
         return set()
     cases: set[tuple[str, str | None]] = set()
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         case_dut, separator, config = line.partition("\t")
         if not separator or not case_dut:
             raise SystemExit(f"Invalid cocotb execution record: {line!r}")

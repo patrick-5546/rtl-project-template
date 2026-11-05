@@ -85,7 +85,9 @@ def test_regression_accepts_complete_config_matrix(tmp_path: Path) -> None:
         check: bool,
     ) -> subprocess.CompletedProcess[list[str]]:
         del command, cwd, check
-        Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text("top\twidth4\ntop\twidth8\n")
+        Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text(
+            "top\twidth4\ntop\twidth8\n", encoding="utf-8"
+        )
         return subprocess.CompletedProcess(args=[], returncode=0)
 
     with (
@@ -111,7 +113,9 @@ def test_regression_rejects_incomplete_all_dut_matrix(tmp_path: Path) -> None:
         check: bool,
     ) -> subprocess.CompletedProcess[list[str]]:
         del command, cwd, check
-        Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text("top\twidth4\nother\t\n")
+        Path(env["COCOTB_EXECUTED_CASES_FILE"]).write_text(
+            "top\twidth4\nother\t\n", encoding="utf-8"
+        )
         return subprocess.CompletedProcess(args=[], returncode=0)
 
     expected = {("top", "width4"), ("top", "width8"), ("other", None)}
