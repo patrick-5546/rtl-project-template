@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -36,6 +37,8 @@ DEFAULT_SOURCES_FILE = "rtl/sources.vf"
 # concrete module (defaulting to ``DEFAULT_DUT``) instead.
 ALL_DUTS = "all"
 CONFIG_MANIFEST = Path("tests") / "cocotb_configs.py"
+# What each build directory's last build was made from, for REBUILD=0.
+BUILD_RECORD = "flow-build.json"
 # The one configuration, with no parameter overrides, of a DUT that has no named
 # configurations in CONFIG_MANIFEST, so every DUT has at least one.
 DEFAULT_CONFIG = "default"
@@ -236,6 +239,24 @@ def echo_runner_commands(runner_log: logging.Logger) -> None:
     handler.setFormatter(_CommandEchoFormatter())
     runner_log.addHandler(handler)
     runner_log.propagate = False
+
+
+def build_changes(record: Path, build: Mapping[str, object]) -> str:
+    """Say how *build* differs from the build that *record* describes, or ``""``.
+
+    ``REBUILD=0`` reuses a build only when its inputs -- simulator, executable,
+    top level, sources, build arguments, defines, parameters and waveform
+    tracing -- are the ones it was made from. RTL edits are not tracked.
+    """
+    try:
+        previous = json.loads(record.read_text(encoding="utf-8"))
+    except OSError, ValueError:
+        return "its inputs were not recorded"
+    current = json.loads(json.dumps(build))
+    changed = sorted(
+        key for key in current.keys() | previous.keys() if previous.get(key) != current.get(key)
+    )
+    return f"its {', '.join(changed)} changed" if changed else ""
 
 
 def require(path: Path, hint: str, *, kind: str = "file") -> None:
@@ -546,6 +567,22 @@ def build_and_test(
     }.get(simulator)
     if executable_override:
         expose_tool_on_path(executable_override)
+    build_record = build_dir / BUILD_RECORD
+    build_inputs = {
+        "simulator": simulator,
+        "executable": os.environ.get(executable_override, "") if executable_override else "",
+        "top level": hdl_toplevel,
+        "sources": [str(source) for source in sources],
+        "build arguments": build_args,
+        "defines": {name: str(value) for name, value in defines.items()},
+        "parameters": {name: str(value) for name, value in parameters.items()},
+        "waveform tracing": waves_enabled,
+    }
+    if not rebuild and (changes := build_changes(build_record, build_inputs)):
+        print(f"REBUILD=0: rebuilding {build_dir}, because {changes}.", flush=True)
+        rebuild = True
+    if rebuild:
+        build_record.unlink(missing_ok=True)
     runner = get_runner(simulator)
     echo_runner_commands(runner.log)
     jobs = build_jobs()
@@ -562,6 +599,8 @@ def build_and_test(
         waves=waves_enabled,
         parameters=parameters,
     )
+    build_dir.mkdir(parents=True, exist_ok=True)
+    build_record.write_text(json.dumps(build_inputs, indent=2) + "\n", encoding="utf-8")
     extra_env = {
         "PYTHONPATH": pythonpath,
         **{f"COCOTB_PARAM_{name}": str(value) for name, value in parameters.items()},
