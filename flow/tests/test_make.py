@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from flow import doctor
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -15,6 +17,41 @@ def phony_targets() -> list[str]:
     match = re.search(r"^\.PHONY:(.*)$", text, re.MULTILINE)
     assert match is not None
     return match.group(1).split()
+
+
+def help_names() -> set[str]:
+    """The names that ``make help``'s entries document, not its headings or descriptions.
+
+    An entry is an indented line: its names, then optionally two spaces and a
+    capitalized description. ``lint-<py|sv>`` stands for ``lint-py`` and ``lint-sv``.
+    """
+    output = subprocess.run(
+        ["make", "--no-print-directory", "help"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+
+    def spell_out(match: re.Match[str]) -> str:
+        prefix, alternatives, suffix = match.groups()
+        return " ".join(f"{prefix}{word}{suffix}" for word in alternatives.split("|"))
+
+    names: set[str] = set()
+    for line in output.splitlines():
+        if line.startswith("  "):
+            entry = re.split(r"\s{2,}(?=[A-Z][a-z])", line.strip(), maxsplit=1)[0]
+            names.update(re.findall(r"[\w-]+", re.sub(r"(\S*?)<([\w|-]+)>(\S*)", spell_out, entry)))
+    return names
+
+
+def test_help_lists_every_target_and_variable() -> None:
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    flags = re.findall(r"^(ENABLE_\w+) \?=", makefile, re.MULTILINE)
+    executables = [
+        tool.variable for group in doctor.GROUPS for tool in group.tools if tool.variable
+    ]
+    assert sorted({*phony_targets(), *flags, *executables} - help_names()) == []
 
 
 def test_make_variables_are_defined() -> None:
