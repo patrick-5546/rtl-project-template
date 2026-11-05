@@ -88,7 +88,9 @@ SHA, have time limits, and fail if `uv.lock` is out of date (`UV_LOCKED`):
 - `lint-sv`: Verible, Verilator and slang;
 - `flow-tests`: `make test-flow-py`;
 - `rtl`: `make test DUT=all`, again with `WAVES=1`, and `make coverage DUT=all`,
-  each with Verilator, and coverage with LCOV.
+  each with Verilator. The coverage job also writes the HTML reports with LCOV,
+  uploads them and the LCOV data as the `coverage-reports` artifact, and
+  summarizes each configuration's coverage on the run's summary page.
 
 The local action `.github/actions/setup-eda-tools` builds Verilator and slang,
 cached per version and runner image, and downloads Verible and LCOV, checked
