@@ -139,10 +139,9 @@ def test_make_target_command_retains_selectors() -> None:
             simulator="verilator",
             dut="top",
             config="width4",
-            viewer="surfer",
             hdl_coverage=True,
         )
-        == "make waves SIM=verilator DUT=top VIEWER=surfer CONFIG=width4 HDL_COVERAGE=1"
+        == "make waves SIM=verilator DUT=top CONFIG=width4 HDL_COVERAGE=1"
     )
 
 

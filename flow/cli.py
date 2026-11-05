@@ -28,7 +28,7 @@ from flow.runner import (
     make_target_command,
 )
 from flow.simulators import SIMULATORS, SimulatorProfile
-from flow.viewers import DEFAULT_VIEWERS, VIEWERS, ViewerProfile
+from flow.viewers import VIEWERS, ViewerProfile
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 TESTS_DIR = PROJECT_DIR / "tests"
@@ -42,31 +42,16 @@ def _sim(name: str) -> SimulatorProfile:
         raise SystemExit(f"Unknown SIM '{name}'. Available: {available}") from None
 
 
-def _viewer(name: str) -> ViewerProfile:
-    try:
-        return VIEWERS[name]
-    except KeyError:
-        available = ", ".join(sorted(VIEWERS))
-        raise SystemExit(f"Unknown VIEWER '{name}'. Available: {available}") from None
-
-
-def _resolve_wave_selection(simulator: str, viewer_name: str | None) -> tuple[str, ViewerProfile]:
+def _viewer(simulator: str) -> ViewerProfile:
+    """Return the waveform viewer for *simulator*'s waves."""
     _sim(simulator)
-    if viewer_name:
-        viewer = _viewer(viewer_name)
-        if simulator != viewer.wave_sim:
-            raise SystemExit(
-                f"VIEWER={viewer.name} requires SIM={viewer.wave_sim}, got SIM={simulator}."
-            )
-        return simulator, viewer
     try:
-        default_viewer = DEFAULT_VIEWERS[simulator]
+        return VIEWERS[simulator]
     except KeyError:
-        supported = ", ".join(sorted(DEFAULT_VIEWERS))
+        supported = ", ".join(sorted(VIEWERS))
         raise SystemExit(
-            f"SIM={simulator} has no default waveform viewer. Available: {supported}."
+            f"SIM={simulator} has no waveform viewer. Simulators with one: {supported}."
         ) from None
-    return simulator, _viewer(default_viewer)
 
 
 def _configs(dut: str) -> dict[str, dict[str, object]]:
@@ -328,7 +313,7 @@ def cmd_open_coverage_html(args: argparse.Namespace) -> None:
 
 def cmd_open_waves(args: argparse.Namespace) -> None:
     _require_dut(args.dut)
-    simulator, viewer = _resolve_wave_selection(args.sim, args.viewer)
+    viewer = _viewer(args.sim)
     config = _resolve_config(args.dut, args.config, require_for_multiple=True)
     artifact = artifact_build_mode(
         waves=True,
@@ -336,7 +321,7 @@ def cmd_open_waves(args: argparse.Namespace) -> None:
     )
     viewer.open_waves(
         PROJECT_DIR,
-        _build_dir(args.dut, simulator, config, artifact),
+        _build_dir(args.dut, args.sim, config, artifact),
         args.dut,
         config,
     )
@@ -344,10 +329,6 @@ def cmd_open_waves(args: argparse.Namespace) -> None:
 
 def cmd_list_sims(args: argparse.Namespace) -> None:
     print("\n".join(sorted(SIMULATORS)))
-
-
-def cmd_list_viewers(args: argparse.Namespace) -> None:
-    print("\n".join(sorted(VIEWERS)))
 
 
 def cmd_list_duts(args: argparse.Namespace) -> None:
@@ -392,7 +373,6 @@ def main(argv: list[str] | None = None) -> None:
 
     open_waves_parser = sub.add_parser("open-waves")
     open_waves_parser.add_argument("--sim", default=DEFAULT_SIM)
-    open_waves_parser.add_argument("--viewer")
     open_waves_parser.add_argument("--dut", default=DEFAULT_DUT)
     open_waves_parser.add_argument("--config")
     open_waves_parser.set_defaults(func=cmd_open_waves)
@@ -408,7 +388,6 @@ def main(argv: list[str] | None = None) -> None:
     validate_config_parser.set_defaults(func=cmd_validate_config)
 
     sub.add_parser("list-sims").set_defaults(func=cmd_list_sims)
-    sub.add_parser("list-viewers").set_defaults(func=cmd_list_viewers)
     sub.add_parser("list-duts").set_defaults(func=cmd_list_duts)
 
     args = parser.parse_args(argv)

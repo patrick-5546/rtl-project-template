@@ -7,8 +7,8 @@ variable; this guide explains how they fit together.
 ## Running tests
 
 The simulation flow is cocotb through pytest. Pass the simulator as `SIM=<sim>`
-to test, coverage, and waveform targets. Each simulator has a default viewer;
-`VIEWER=<viewer>` may select another viewer compatible with `SIM`.
+to test, coverage, and waveform targets; the waveform targets open that
+simulator's viewer.
 
 `make test` runs every named configuration for one DUT.
 List them with `make configs` and select one with `make test CONFIG=<config>`.
@@ -121,16 +121,15 @@ arguments.
 ## Waveforms
 
 `make waves` runs the tests with waveform dumping and opens the simulator's
-default viewer; `make open-waves` reopens the last waveform. Each viewer loads a
+viewer; `make open-waves` reopens the last waveform. Each viewer loads a
 reusable layout from `waves/<DUT>.*` when present, and `make help` lists the
 variables that select another layout:
 
-- GTKWave (`waves/<DUT>.gtkw`) reads Verilator's FST. The wave targets prepare
-  its RTLBrowse window, which links signals back to their source and annotates
-  it with values from the waveform; skip that with `NO_RTLBROWSE=1`.
-- Surfer (`waves/<DUT>.surf.ron`) reads the same FST:
-  `make waves VIEWER=surfer`.
+- Verilator: GTKWave (`waves/<DUT>.gtkw`) reads its FST. The wave targets
+  prepare GTKWave's RTLBrowse window, which links signals back to their source
+  and annotates it with values from the waveform; skip that with
+  `NO_RTLBROWSE=1`.
 - Questa (`waves/<DUT>.do`) opens its native WLF with source-linked debug:
   double-click a signal to find its RTL driver.
-- Verdi (`waves/<DUT>.rc`) opens the FSDB that VCS dumps, with the
+- VCS: Verdi (`waves/<DUT>.rc`) opens the FSDB that VCS dumps, with the
   `simv.daidir` knowledge database for source-linked debug.

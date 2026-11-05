@@ -73,12 +73,11 @@ $(if $(SV_VERIBLE_INPUTS),,$(error SV_VERIBLE_FILE: '$(SV_VERIBLE_FILE)' lists n
 $(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: '$(src)' does not resolve to a file)))
 
 # Tool selection. SIM picks a simulator profile (flow/simulators.py) for the
-# test/coverage targets; VIEWER picks a viewer profile (flow/viewers.py) for the
-# wave targets. Unknown values are rejected by the flow CLI with the list of
-# available tools. Add a simulator or viewer by registering a profile in those
-# modules -- no edits to this Makefile required.
+# test/coverage targets, and the wave targets open that simulator's viewer
+# (flow/viewers.py). An unknown SIM is rejected by the flow CLI with the list of
+# available simulators. Add a simulator or viewer by registering a profile in
+# those modules -- no edits to this Makefile required.
 SIM ?= verilator
-VIEWER ?=
 
 # Top-level module under test. Passed to the flow CLI (which forwards it to the
 # cocotb runner and the waveform viewers: GTKWave stems and the waves/<DUT>.*
@@ -87,7 +86,6 @@ VIEWER ?=
 DUT ?= top
 CONFIG ?=
 CONFIG_ARG = $(if $(strip $(CONFIG)),--config '$(CONFIG)')
-WAVE_VIEWER_ARG = $(if $(strip $(VIEWER)),--viewer $(VIEWER))
 TEST_COMMAND = $(FLOW) test --sim $(SIM) --dut $(DUT) $(CONFIG_ARG) --sources-file '$(SV_SOURCES_FILE)'
 TEST_ALL_COMMAND = $(FLOW) test --sim $(SIM) --dut all --sources-file '$(SV_SOURCES_FILE)'
 
@@ -127,8 +125,8 @@ help:
 	@echo "  test ABV=1 HDL_COVERAGE=1       Instrument coverage without a report"
 	@echo ""
 	@echo "Waveforms:"
-	@echo "  waves [VIEWER=...] [CONFIG=...] Run tests, then open the waveform viewer"
-	@echo "  open-waves [VIEWER=...] [CONFIG=...] Open the existing waveform in the viewer"
+	@echo "  waves [SIM=...] [CONFIG=...]    Run tests, then open the simulator's viewer"
+	@echo "  open-waves [SIM=...] [CONFIG=...] Open the existing waveform in the viewer"
 	@echo ""
 	@echo "Coverage:"
 	@echo "  coverage [SIM=...] [CONFIG=...] Run coverage + report for one configuration"
@@ -159,8 +157,6 @@ help:
 	@echo ""
 	@echo "Tool selection:"
 	@echo "  SIM=<sim>                       Simulator; available: $$($(FLOW) list-sims | tr '\n' ' ')"
-	@echo "  VIEWER=<viewer>                 Viewer override; default is selected from SIM"
-	@echo "                                  Available: $$($(FLOW) list-viewers | tr '\n' ' ')"
 	@echo ""
 	@echo "Common variables (override as VAR=value):"
 	@echo "  DUT=<module>                    Module to build/test/view; available: $$($(FLOW) list-duts | tr '\n' ' ')"
@@ -174,7 +170,6 @@ help:
 	@echo "  WAVES=1 / WAVES=0               Force waveform dump on/off (test: off; waves: on)"
 	@echo "  BUILD_DIR=<path>                Relocate the config/mode-isolated artifact tree"
 	@echo "  GTKWAVE_SAVE=                   GTKWave save layout"
-	@echo "  SURFER_STATE=                   Surfer state (layout) file"
 	@echo "  NO_RTLBROWSE=1                  Skip GTKWave RTLBrowse stem generation"
 	@echo "  QUESTA_DO=                      Questa .do layout"
 	@echo "  VERDI_RC=                       Verdi layout"
@@ -223,10 +218,10 @@ open-coverage-html:
 waves: override export WAVES := 1
 waves:
 	$(FLOW) validate-config --dut $(DUT) $(CONFIG_ARG) --artifact
-	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) open-waves --sim $(SIM) $(WAVE_VIEWER_ARG) --dut $(DUT) $(CONFIG_ARG))
+	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) open-waves --sim $(SIM) --dut $(DUT) $(CONFIG_ARG))
 
 open-waves:
-	$(FLOW) open-waves --sim $(SIM) $(WAVE_VIEWER_ARG) --dut $(DUT) $(CONFIG_ARG)
+	$(FLOW) open-waves --sim $(SIM) --dut $(DUT) $(CONFIG_ARG)
 
 format-py-ruff:
 	$(UV) run ruff format .
