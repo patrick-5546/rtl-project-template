@@ -46,6 +46,8 @@ with the list of available tools.
   `ruff`/`ty`/`pytest`.
 - Do not commit files from `build/`, and do not add new tools unless a change
   needs them.
+- `.editorconfig` gives editors each file type's indentation and line endings,
+  and `.gitattributes` keeps every text file's line endings LF in Git.
 - When behavior changes, update what describes it: these guides, `make help`,
   source headers and docstrings.
 
