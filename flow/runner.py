@@ -379,13 +379,13 @@ def default_build_dir(
     config: str,
     artifact: str = "normal",
 ) -> Path:
-    """Return a config- and instrumentation-isolated simulator build path."""
-    base = project_path_from_env(
-        "BUILD_DIR",
-        project_dir,
-        project_dir / "build" / dut / simulator,
-    )
-    return base / validate_config_name(config) / validate_config_name(artifact)
+    """Return a config- and instrumentation-isolated simulator build path.
+
+    ``$BUILD_DIR`` relocates the ``build/`` root; the layout below it stays the
+    same, so builds of different DUTs and simulators never share a directory.
+    """
+    root = project_path_from_env("BUILD_DIR", project_dir, project_dir / "build")
+    return root / dut / simulator / validate_config_name(config) / validate_config_name(artifact)
 
 
 def default_coverage_dat(build_dir: Path, profile: SimulatorProfile | None) -> Path:

@@ -42,13 +42,13 @@ def test_default_build_dir_isolates_config_and_artifact(tmp_path: Path) -> None:
     )
 
 
-def test_default_build_dir_appends_to_override(
+def test_build_dir_override_relocates_only_the_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("BUILD_DIR", "custom")
     assert default_build_dir(tmp_path, "top", "verilator", "width8", "coverage") == (
-        tmp_path / "custom" / "width8" / "coverage"
+        tmp_path / "custom" / "top" / "verilator" / "width8" / "coverage"
     )
 
 

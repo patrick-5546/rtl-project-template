@@ -1,4 +1,5 @@
 import argparse
+import os
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
@@ -71,6 +72,42 @@ def test_single_case_requires_one(dut: str, message: str) -> None:
 def test_lint_cases_override_each_configs_parameters(capsys: pytest.CaptureFixture[str]) -> None:
     cli.cmd_lint_cases(argparse.Namespace())
     assert capsys.readouterr().out == "top -GWIDTH=4\ntop -GWIDTH=8\n"
+
+
+@pytest.mark.parametrize(
+    ("hdl_coverage", "written", "expected"),
+    [
+        (None, ("waves", "waves-coverage"), "waves-coverage"),
+        (None, ("waves-coverage", "waves"), "waves"),
+        ("0", ("waves", "waves-coverage"), "waves"),
+        (None, (), "waves"),
+    ],
+)
+def test_artifact_dir_opens_the_newest_waveform_unless_pinned(
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    hdl_coverage: str | None,
+    written: tuple[str, ...],
+    expected: str,
+) -> None:
+    monkeypatch.delenv("BUILD_DIR", raising=False)
+    if hdl_coverage is None:
+        monkeypatch.delenv("HDL_COVERAGE", raising=False)
+    else:
+        monkeypatch.setenv("HDL_COVERAGE", hdl_coverage)
+    config_dir = project / "build" / "top" / "verilator" / "width4"
+    for age, mode in enumerate(reversed(written)):
+        wave = config_dir / mode / "dump.fst"
+        wave.parent.mkdir(parents=True)
+        wave.touch()
+        os.utime(wave, (1000 - age, 1000 - age))
+    assert cli._artifact_dir(
+        "verilator",
+        "top",
+        "width4",
+        instrumentation="waves",
+        artifact=lambda build_dir: build_dir / "dump.fst",
+    ) == (config_dir / expected)
 
 
 def test_viewer_rejects_simulator_without_one() -> None:

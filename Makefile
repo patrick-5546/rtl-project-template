@@ -170,7 +170,7 @@ help:
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"
 	@echo "  WAVES=1 / WAVES=0               Force waveform dump on/off (test: off; waves: on)"
-	@echo "  BUILD_DIR=<path>                Relocate the config/mode-isolated artifact tree"
+	@echo "  BUILD_DIR=<path>                Relocate the build/ root (the per-DUT tree below it)"
 	@echo "  GTKWAVE=<path>                  GTKWave executable (e.g. a GTKWave 4 build)"
 	@echo "  GTKWAVE_SAVE=                   GTKWave save layout"
 	@echo "  NO_RTLBROWSE=1                  Skip GTKWave RTLBrowse stem generation"
@@ -192,8 +192,11 @@ test-flow-py:
 configs:
 	$(FLOW) list-configs --dut $(DUT)
 
+# coverage and waves pin the other instrumentation's flag, so that their report or
+# viewer opens the build that this run made, not another mode's older data.
 coverage: override export ABV := 1
 coverage: override export HDL_COVERAGE := 1
+coverage: export WAVES ?= 0
 coverage:
 	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) report-coverage --sim $(SIM) --dut $(DUT) $(CONFIG_ARG))
 
@@ -204,6 +207,7 @@ open-coverage-html:
 	$(FLOW) open-coverage-html --sim $(SIM) --dut $(DUT) $(CONFIG_ARG)
 
 waves: override export WAVES := 1
+waves: export HDL_COVERAGE ?= 0
 waves:
 	$(FLOW) validate-config --dut $(DUT) $(CONFIG_ARG)
 	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) open-waves --sim $(SIM) --dut $(DUT) $(CONFIG_ARG))
