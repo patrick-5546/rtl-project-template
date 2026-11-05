@@ -75,8 +75,9 @@ RTL tests under `tests/`.
 
 ## Updating dependencies
 
-`make update-py-deps` upgrades the locked Python packages (`uv sync --upgrade`).
-The EDA tool versions that CI uses are pinned in `.github/workflows/ci.yml`.
+Upgrade the locked Python packages with `uv lock --upgrade`, or one package with
+`uv lock --upgrade-package <name>`; the next `uv run` installs them. The EDA tool
+versions that CI uses are pinned in `.github/workflows/ci.yml`.
 
 ## cocotb's pytest plugin
 

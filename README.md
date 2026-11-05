@@ -31,10 +31,12 @@ Generated artifacts are ignored by Git and stay under `build/`.
 
 ## Quick start
 
-Install the external tools first; see [Tools](docs/tools.md).
+Install the external tools first; see [Tools](docs/tools.md). Python and the
+locked Python packages need no setup step: every target runs Python through
+`uv run`, which creates or updates `.venv` from `uv.lock` first (`uv sync` does
+that alone, e.g. for an editor).
 
 ```sh
-make sync   # install/update the uv-managed Python environment
 make test   # run the cocotb regression for the default DUT
 make lint   # run all lint and type checks
 make help   # list every target, override variable, simulator and viewer
