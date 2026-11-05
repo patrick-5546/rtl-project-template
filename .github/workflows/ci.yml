@@ -72,7 +72,20 @@ jobs:
       - run: make test-flow-py
 
   rtl:
-    name: RTL coverage
+    name: RTL ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: tests
+            target: test
+            waves: "0"
+          - name: tests with waveforms
+            target: test
+            waves: "1"
+          - name: coverage
+            target: coverage
+            waves: "0"
     runs-on: ubuntu-24.04
     # Building Verilator when it is not cached takes about 10 minutes.
     timeout-minutes: 30
@@ -83,9 +96,13 @@ jobs:
       - uses: ./.github/actions/setup-eda-tools
         with:
           verilator-version: ${{ env.VERILATOR_VERSION }}
-          lcov-version: ${{ env.LCOV_VERSION }}
+          lcov-version: ${{ matrix.target == 'coverage' && env.LCOV_VERSION || '' }}
           lcov-sha256: ${{ env.LCOV_SHA256 }}
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - name: Install the locked Python packages
         run: uv sync
-      - run: make coverage DUT=all
+      - name: Run make ${{ matrix.target }} for every DUT
+        env:
+          TARGET: ${{ matrix.target }}
+          WAVES: ${{ matrix.waves }}
+        run: make "$TARGET" DUT=all WAVES="$WAVES"
