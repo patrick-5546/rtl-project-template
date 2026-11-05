@@ -8,8 +8,8 @@
 // Conventions: each implication assertion has a matching antecedent
 // `cover property` (with the same `disable iff`) so vacuous passes surface as
 // coverage holes. The covergroup is guarded by `ifndef NO_COVERGROUPS (the
-// Makefile defines it for Verilator, which cannot collect covergroups); its
-// Python mirror in tests/coverage_top.py must be kept in sync.
+// flow defines it by default for Verilator; see docs/tools.md); its Python
+// mirror in tests/coverage_top.py must be kept in sync.
 
 // verilog_syntax: parse-as-module-body
 
