@@ -375,7 +375,7 @@ def default_build_dir(
     return base / validate_config_name(artifact)
 
 
-def default_coverage_dat(build_dir: Path, profile: "SimulatorProfile | None") -> Path:
+def default_coverage_dat(build_dir: Path, profile: SimulatorProfile | None) -> Path:
     """Return the profile's canonical coverage artifact under *build_dir*."""
     return profile.coverage_data_path(build_dir) if profile else build_dir / "coverage.dat"
 

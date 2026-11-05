@@ -8,8 +8,9 @@ and the versions this template was verified with.
 Install the external command-line tools for the simulators and viewers you plan
 to use. Python packages are managed by uv, but Verilator, GTKWave, Surfer,
 Verible, slang, LCOV, and markdownlint-cli2 need to be available on `PATH`. The
-local Python version is pinned to `3.13` in `.python-version` because the
-current cocotb release does not support Python 3.14.
+local Python version is pinned to `3.14` in `.python-version`, the newest that
+the locked cocotb release supports; move to Python 3.15 once a cocotb release
+ships wheels for it.
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
