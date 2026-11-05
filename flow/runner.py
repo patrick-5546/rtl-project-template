@@ -407,7 +407,7 @@ def build_and_test(
     test_module: str | list[str],
     *,
     parameters: Mapping[str, object] | None = None,
-    variant: str | None = None,
+    config: str | None = None,
 ) -> None:
     """Build RTL and run the cocotb tests in *test_module* for its DUT.
 
@@ -437,10 +437,10 @@ def build_and_test(
     hdl_toplevel = dut_from_test_module(first_module)
     parameters_provided = parameters is not None
     parameters = dict(parameters or {})
-    if parameters_provided != bool(variant):
-        raise ValueError("parameters and variant must be supplied together")
-    if variant:
-        validate_config_name(variant)
+    if parameters_provided != bool(config):
+        raise ValueError("parameters and config must be supplied together")
+    if config:
+        validate_config_name(config)
     invalid_parameters = [
         name for name in parameters if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", name)
     ]
@@ -457,16 +457,16 @@ def build_and_test(
     selected_config = os.environ.get("CONFIG") or None
     if selected_config:
         validate_config_name(selected_config)
-        if variant is None:
+        if config is None:
             raise ValueError(
                 f"CONFIG={selected_config!r} selected, but {first_module!r} "
-                "did not supply variant and parameters"
+                "did not supply config and parameters"
             )
-        if variant != selected_config:
+        if config != selected_config:
             import pytest
 
             raise pytest.skip.Exception(
-                f"CONFIG={selected_config!r} selected; this case targets {variant!r}"
+                f"CONFIG={selected_config!r} selected; this case targets {config!r}"
             )
     executed_cases_file = os.environ.get(EXECUTED_CASES_FILE_ENV) or None
 
@@ -481,7 +481,7 @@ def build_and_test(
     hdl_coverage = env_flag("HDL_COVERAGE", default=False)
     waves_enabled = env_flag("WAVES", default=False)
     artifact = artifact_build_mode(waves=waves_enabled, hdl_coverage=hdl_coverage)
-    build_dir = default_build_dir(project_dir, hdl_toplevel, simulator, variant, artifact)
+    build_dir = default_build_dir(project_dir, hdl_toplevel, simulator, config, artifact)
     questa_do = default_questa_do(project_dir, hdl_toplevel)
     wave_path = profile.wave_path(build_dir) if profile else build_dir / "dump.vcd"
     cm_hier = optional_path_from_env("CM_HIER", project_dir)
@@ -574,8 +574,8 @@ def build_and_test(
         "PYTHONPATH": pythonpath,
         **{f"COCOTB_PARAM_{name}": str(value) for name, value in parameters.items()},
     }
-    if variant:
-        extra_env["COCOTB_VARIANT"] = variant
+    if config:
+        extra_env["COCOTB_CONFIG"] = config
     # vsim wraps cocotb's stdout (its transcript), so cocotb's TTY check fails
     # and it strips ANSI color that Verilator/VCS keep. On a real terminal (not
     # GUI, and only if the user hasn't pinned color via COCOTB_ANSI_OUTPUT or
@@ -606,4 +606,4 @@ def build_and_test(
     )
     if executed_cases_file:
         with Path(executed_cases_file).open("a", encoding="utf-8") as stream:
-            stream.write(f"{hdl_toplevel}\t{variant or ''}\n")
+            stream.write(f"{hdl_toplevel}\t{config or ''}\n")

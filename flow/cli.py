@@ -199,9 +199,8 @@ def run_regression(
         if missing:
             missing_names = ", ".join(_format_case(case) for case in sorted(missing))
             raise SystemExit(
-                "No matching build_and_test variant was executed for: "
-                f"{missing_names}. Ensure each pytest harness parameterizes every "
-                "configuration in HDL_CONFIGS."
+                f"No build_and_test call ran: {missing_names}. Ensure each pytest "
+                "harness parameterizes every configuration in HDL_CONFIGS."
             )
 
 
