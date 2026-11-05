@@ -31,9 +31,8 @@ DEFAULT_SIM = "verilator"
 DEFAULT_DUT = "top"
 DEFAULT_SOURCES_FILE = "rtl/sources.vf"
 
-# Sentinel ``DUT`` value meaning "every DUT": ``make test DUT=all`` passes it so
-# each collected ``tests/test_*.py`` builds and runs its own module instead of
-# being filtered to a single one. The commands that open one artifact use a
+# Sentinel ``DUT`` value meaning every DUT with a ``tests/test_<module>.py``
+# harness (``make test DUT=all``). The commands that open one artifact use a
 # concrete module (defaulting to ``DEFAULT_DUT``) instead.
 ALL_DUTS = "all"
 CONFIG_MANIFEST = Path("tests") / "cocotb_configs.py"
@@ -121,19 +120,15 @@ def make_target_command(
     action: str,
     *,
     simulator: str,
-    dut: str | None = None,
-    config: str | None = None,
+    dut: str,
+    config: str,
     waves: bool = False,
     hdl_coverage: bool = False,
 ) -> str:
     """Return an executable template Make command for an artifact workflow."""
-    cmd = ["make", action, f"SIM={simulator}"]
-    selected_dut = dut or os.environ.get("DUT")
-    if selected_dut and selected_dut != ALL_DUTS:
-        cmd.append(f"DUT={selected_dut}")
-    selected_config = config or os.environ.get("CONFIG")
-    if selected_config and selected_config != DEFAULT_CONFIG:
-        cmd.append(f"CONFIG={selected_config}")
+    cmd = ["make", action, f"SIM={simulator}", f"DUT={dut}"]
+    if config != DEFAULT_CONFIG:
+        cmd.append(f"CONFIG={config}")
     if waves:
         cmd.append("WAVES=1")
     if hdl_coverage:
@@ -444,13 +439,10 @@ def build_and_test(
     ``test_<module>__<variant>`` -> ``<module>``.
     *config* names the HDL configuration and *parameters* holds its top-level
     parameter overrides; a harness passes each pair that :func:`config_params`
-    yields. Each configuration builds in its own directory.
-    The ``DUT`` environment variable (set by the flow CLI from
-    ``make ... DUT=<module>``) is a *selector*, not an override: when it names a
-    concrete module other than this file's, the test self-skips, so one pytest
-    run can hold test files for several DUTs (``make test DUT=all`` runs them
-    all). The derived module drives the build dir, the
-    GTKWave stems, and the ``waves/<DUT>.*`` layouts.
+    yields. Each configuration builds in its own directory. The flow CLI selects
+    DUTs and configurations by running harnesses by their pytest node IDs, so
+    this function runs whatever pytest calls it with. The derived module drives
+    the build dir, the GTKWave stems, and the ``waves/<DUT>.*`` layouts.
 
     All other configuration (SIM, BUILD_DIR, TEST, ABV, HDL_COVERAGE,
     QUESTA_GUI, etc.) is read from environment variables, matching the
@@ -468,20 +460,6 @@ def build_and_test(
     if invalid_parameters:
         raise ValueError(f"invalid HDL parameter names: {invalid_parameters}")
 
-    selector = env_str("DUT", ALL_DUTS)
-    if selector != ALL_DUTS and selector != hdl_toplevel:
-        import pytest
-
-        raise pytest.skip.Exception(
-            f"DUT={selector!r} selected; this file targets {hdl_toplevel!r}"
-        )
-    selected_config = os.environ.get("CONFIG") or None
-    if selected_config and config != selected_config:
-        import pytest
-
-        raise pytest.skip.Exception(
-            f"CONFIG={selected_config!r} selected; this case targets {config!r}"
-        )
     executed_cases_file = os.environ.get(EXECUTED_CASES_FILE_ENV) or None
 
     # Lazy import: ``flow.simulators`` imports this module, so importing it at

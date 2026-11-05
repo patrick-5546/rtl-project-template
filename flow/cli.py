@@ -32,6 +32,9 @@ from flow.viewers import VIEWERS, ViewerProfile
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 TESTS_DIR = PROJECT_DIR / "tests"
+# pytest's exit status for a usage error, such as a node ID that matches no test
+# (pytest.ExitCode.USAGE_ERROR; the CLI does not import pytest).
+PYTEST_USAGE_ERROR = 4
 
 
 def _sim(name: str) -> SimulatorProfile:
@@ -180,35 +183,43 @@ def run_regression(
 ) -> None:
     """Run the cocotb regression for *simulator* via pytest.
 
-    *simulator*, *dut*, and *sources_file* are forwarded to the pytest subprocess
-    as the ``SIM``/``DUT``/``SV_SOURCES_FILE`` environment variables (the channel
-    into ``build_and_test``); ``ABV``/``TEST``/``REBUILD``/... are inherited from
-    the environment (the Makefile exports command-line ``VAR=value`` overrides).
-    Every case that *dut* and *config* select must run (:func:`_selected_cases`).
+    pytest runs each case that *dut* and *config* select (:func:`_selected_cases`)
+    by its harness's node ID, ``tests/test_<dut>.py::test_<dut>[<config>]``, and
+    every one must reach ``build_and_test``. *simulator* and *sources_file* are
+    forwarded to the pytest subprocess as the ``SIM``/``SV_SOURCES_FILE``
+    environment variables (the channel into ``build_and_test``);
+    ``ABV``/``TEST``/``REBUILD``/... are inherited from the environment (the
+    Makefile exports command-line ``VAR=value`` overrides).
     """
     _sim(simulator)
-    expected = set(_selected_cases(dut, config))
+    cases = _selected_cases(dut, config)
     env = os.environ.copy()
     env["SIM"] = simulator
-    env["DUT"] = dut
     env["SV_SOURCES_FILE"] = sources_file
-    if config:
-        env["CONFIG"] = config
-    else:
-        env.pop("CONFIG", None)
     env.pop(EXECUTED_CASES_FILE_ENV, None)
     if not env.get("NO_COLOR"):
         env.setdefault("PY_COLORS", "1")
         env.setdefault("COCOTB_ANSI_OUTPUT", "1")
-    cmd = [sys.executable, "-m", "pytest", "-s"]
+    node_ids = [
+        f"{TESTS_DIR.relative_to(PROJECT_DIR).as_posix()}/test_{case_dut}.py"
+        f"::test_{case_dut}[{case_config}]"
+        for case_dut, case_config in cases
+    ]
+    cmd = [sys.executable, "-m", "pytest", "-s", *node_ids]
     print("+ " + shlex.join(cmd), flush=True)
     with tempfile.TemporaryDirectory(prefix="cocotb_cases_") as temp_dir:
         executed_cases_file = Path(temp_dir) / "executed"
         env[EXECUTED_CASES_FILE_ENV] = str(executed_cases_file)
         result = subprocess.run(cmd, cwd=PROJECT_DIR, env=env, check=False)
+        if result.returncode == PYTEST_USAGE_ERROR:
+            print(
+                "Each DUT needs a harness, test_<dut> in tests/test_<dut>.py, "
+                "parameterized with config_params (see docs/workflows.md).",
+                file=sys.stderr,
+            )
         if result.returncode != 0:
             raise SystemExit(result.returncode)
-        missing = expected - _read_executed_cases(executed_cases_file)
+        missing = set(cases) - _read_executed_cases(executed_cases_file)
         if missing:
             missing_names = ", ".join(_format_case(case) for case in sorted(missing))
             raise SystemExit(
