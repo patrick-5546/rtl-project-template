@@ -79,13 +79,20 @@ test that raises it, in both suites.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on pushes to `main` and on pull requests:
+`.github/workflows/ci.yml` runs on pushes to `main` and on pull requests; a newer
+push to a pull request cancels its run in progress. Its jobs can only read the
+repository, keep no credentials in their checkouts, pin each action by commit
+SHA, have time limits, and fail if `uv.lock` is out of date (`UV_LOCKED`):
 
-- `lint-sv`: Verible, Verilator and slang, built or downloaded at the pinned
-  versions;
-- `lint-py` and `lint-md`: the Python and Markdown checks;
-- `coverage`: `make coverage DUT=all` with Verilator and LCOV;
-- `flow-tests`: `make test-flow-py`.
+- `lint`: the Python and Markdown checks and the spell check;
+- `lint-sv`: Verible, Verilator and slang;
+- `flow-tests`: `make test-flow-py`;
+- `rtl`: `make coverage DUT=all` with Verilator and LCOV.
+
+The local action `.github/actions/setup-eda-tools` builds Verilator and slang,
+cached per version and runner image, and downloads Verible and LCOV, checked
+against their SHA-256s. The workflow's `env` pins each tool's version and
+checksum.
 
 ## Updating dependencies
 

@@ -5,159 +5,87 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  # A newer push to a pull request supersedes its run in progress; runs on main all finish.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
+  # Fail instead of updating uv.lock, including in the uv runs that make starts.
+  UV_LOCKED: "1"
+  # The EDA tools, pinned; bump a version with its archive's SHA-256 (docs/development.md).
   VERILATOR_VERSION: v5.048
-  VERIBLE_VERSION: v0.0-4053-g89d4d98a
-  LCOV_VERSION: v2.4
   SLANG_VERSION: v10.0
+  VERIBLE_VERSION: v0.0-4053-g89d4d98a
+  VERIBLE_SHA256: 1edc1f29c70d74213ed373e727183802d5a733e23f9ab9c74462f5b18b76f2c0
+  LCOV_VERSION: v2.4
+  LCOV_SHA256: 3457825c6b2fe4ef77c782b82a23875c84a3c955243823f05d8f2dec0d455820
 
 jobs:
-  lint-sv:
-    runs-on: ubuntu-latest
+  lint:
+    name: Lint Python and Markdown, and check spelling
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Cache Verilator
-        id: cache-verilator
-        uses: actions/cache@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          path: /opt/verilator
-          key: verilator-${{ env.VERILATOR_VERSION }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Install the locked Python packages
+        run: uv sync
+      - run: make lint-py lint-md lint-spell
 
-      - name: Build Verilator
-        if: steps.cache-verilator.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update && sudo apt-get install -y ccache help2man libfl-dev
-          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1 /tmp/verilator
-          cd /tmp/verilator
-          autoconf
-          ./configure --prefix=/opt/verilator
-          make -j"$(nproc)"
-          make install
-
-      - name: Add Verilator to PATH
-        run: echo "/opt/verilator/bin" >> "$GITHUB_PATH"
-
-      - name: Install Verible
-        run: |
-          curl -fsSL "https://github.com/chipsalliance/verible/releases/download/${VERIBLE_VERSION}/verible-${VERIBLE_VERSION}-linux-static-x86_64.tar.gz" \
-            | sudo tar -xz -C /usr/local --strip-components=1
-          sudo chmod -R a+rX /usr/local/bin
-
-      - name: Cache slang
-        id: cache-slang
-        uses: actions/cache@v5
+  lint-sv:
+    name: Lint SystemVerilog
+    runs-on: ubuntu-24.04
+    # Building Verilator and slang when they are not cached takes about 15 minutes.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          path: /opt/slang
-          key: slang-${{ env.SLANG_VERSION }}
-
-      - name: Build slang
-        if: steps.cache-slang.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update && sudo apt-get install -y cmake python3
-          git clone https://github.com/MikePopoloski/slang --branch "$SLANG_VERSION" --depth 1 /tmp/slang
-          cd /tmp/slang
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/slang -DSLANG_INCLUDE_TESTS=OFF
-          cmake --build build -j 2
-          cmake --install build
-
-      - name: Add slang to PATH
-        run: echo "/opt/slang/bin" >> "$GITHUB_PATH"
-
-      - uses: astral-sh/setup-uv@v8.1.0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-eda-tools
         with:
-          enable-cache: true
-
-      - run: uv sync
-
+          verilator-version: ${{ env.VERILATOR_VERSION }}
+          slang-version: ${{ env.SLANG_VERSION }}
+          verible-version: ${{ env.VERIBLE_VERSION }}
+          verible-sha256: ${{ env.VERIBLE_SHA256 }}
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Install the locked Python packages
+        run: uv sync
       - run: make lint-sv
 
-  lint-py:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          enable-cache: true
-
-      - run: uv sync
-
-      - run: make lint-py
-
-  lint-md:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          enable-cache: true
-
-      - run: uv sync
-
-      - run: make lint-md
-
-      - run: make lint-spell
-
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: astral-sh/setup-uv@v8.1.0
-        with:
-          enable-cache: true
-
-      - name: Cache Verilator
-        id: cache-verilator
-        uses: actions/cache@v5
-        with:
-          path: /opt/verilator
-          key: verilator-${{ env.VERILATOR_VERSION }}
-
-      - name: Build Verilator
-        if: steps.cache-verilator.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get update && sudo apt-get install -y ccache help2man libfl-dev
-          git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1 /tmp/verilator
-          cd /tmp/verilator
-          autoconf
-          ./configure --prefix=/opt/verilator
-          make -j"$(nproc)"
-          make install
-
-      - name: Install ccache and LCOV
-        run: |
-          sudo apt-get update && sudo apt-get install -y ccache libcapture-tiny-perl libdatetime-perl
-          curl -fsSL "https://github.com/linux-test-project/lcov/releases/download/${LCOV_VERSION}/lcov-${LCOV_VERSION#v}.tar.gz" \
-            | sudo tar -xz -C /opt
-          echo "/opt/lcov-${LCOV_VERSION#v}/bin" >> "$GITHUB_PATH"
-
-      - name: Add Verilator to PATH
-        run: echo "/opt/verilator/bin" >> "$GITHUB_PATH"
-
-      - run: uv sync
-
-      - name: Run coverage
-        run: make coverage DUT=all
-
-      # - name: Upload coverage report
-      #   if: always()
-      #   uses: actions/upload-artifact@v7
-      #   with:
-      #     name: hdl-coverage-report
-      #     path: build/verilator/coverage_html
-
   flow-tests:
-    runs-on: ubuntu-latest
+    name: Flow tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          enable-cache: true
-
-      - run: uv sync
-
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Install the locked Python packages
+        run: uv sync
       - run: make test-flow-py
+
+  rtl:
+    name: RTL coverage
+    runs-on: ubuntu-24.04
+    # Building Verilator when it is not cached takes about 10 minutes.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-eda-tools
+        with:
+          verilator-version: ${{ env.VERILATOR_VERSION }}
+          lcov-version: ${{ env.LCOV_VERSION }}
+          lcov-sha256: ${{ env.LCOV_SHA256 }}
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Install the locked Python packages
+        run: uv sync
+      - run: make coverage DUT=all
