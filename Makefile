@@ -79,15 +79,17 @@ $(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: 
 # those modules -- no edits to this Makefile required.
 SIM ?= verilator
 
-# Top-level module under test. Passed to the flow CLI (which forwards it to the
+# Top-level module under test, or `all` for every module with a
+# tests/test_<module>.py harness. Passed to the flow CLI (which forwards it to the
 # cocotb runner and the waveform viewers: GTKWave stems and the waves/<DUT>.*
 # layouts) so every command targets the same module; override as
-# `make test DUT=<module>`.
+# `make test DUT=<module>`. CONFIG selects one named HDL configuration: test and
+# coverage run every configuration of the selected DUTs without it, and the
+# commands that open one artifact need it when the DUT has several.
 DUT ?= top
 CONFIG ?=
 CONFIG_ARG = $(if $(strip $(CONFIG)),--config '$(CONFIG)')
 TEST_COMMAND = $(FLOW) test --sim $(SIM) --dut $(DUT) $(CONFIG_ARG) --sources-file '$(SV_SOURCES_FILE)'
-TEST_ALL_COMMAND = $(FLOW) test --sim $(SIM) --dut all --sources-file '$(SV_SOURCES_FILE)'
 
 # Artifact workflows still post-process simulator output after a failed test.
 # Preserve the test status so reporting or viewer errors cannot mask a regression.
@@ -105,18 +107,19 @@ endef
 	format-md-rumdl lint-md-rumdl lint-spell-typos \
 	format-sv-verible lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy \
 	open-coverage open-coverage-html open-waves \
-	test test-all test-flow-py coverage-all waves
+	test test-flow-py waves
 
-all: lint test-all
+all: DUT = all
+all: lint test
 
 help:
 	@echo "Usage: make <target> [VAR=value ...]"
 	@echo ""
 	@echo "Test:"
-	@echo "  test [SIM=questa]               Run the cocotb regression for one DUT"
+	@echo "  test [SIM=questa]               Run DUT's cocotb regression, every config"
+	@echo "  test DUT=all                    Run every DUT's regression"
 	@echo "  test CONFIG=<name>              Run one named HDL parameter configuration"
-	@echo "  test-all                        Run and validate every DUT/configuration"
-	@echo "  configs                         List named HDL configurations for DUT"
+	@echo "  configs [DUT=all]               List the HDL configurations of DUT"
 	@echo "  test-flow-py                    Run flow unit tests (not RTL/cocotb tests)"
 	@echo "  test TEST=enable_high_counts    Run one cocotb test by exact name"
 	@echo "  test TEST_FILTER='enable_.*'    Run cocotb tests matching a regex"
@@ -129,8 +132,7 @@ help:
 	@echo "  open-waves [SIM=...] [CONFIG=...] Open the existing waveform in the viewer"
 	@echo ""
 	@echo "Coverage:"
-	@echo "  coverage [SIM=...] [CONFIG=...] Run coverage + report for one configuration"
-	@echo "  coverage-all                    Run one all-case regression, then all reports"
+	@echo "  coverage [DUT=all] [CONFIG=...] Run coverage, then report each configuration"
 	@echo "  open-coverage [SIM=...] [CONFIG=...] Open coverage in the native GUI viewer"
 	@echo "  open-coverage-html [SIM=...] [CONFIG=...] Open the coverage HTML report"
 	@echo ""
@@ -139,7 +141,7 @@ help:
 	@echo "  lint-<py|sv|md|spell>           Run the checks for one language, or spelling"
 	@echo "  format                          Format Python, Markdown, and SystemVerilog"
 	@echo "  format-<py|sv|md>               Format one language"
-	@echo "  all                             Run lint + test-all"
+	@echo "  all                             Run lint + test DUT=all"
 	@echo "  clean                           Remove generated local artifacts"
 	@echo "  help                            Show this message (default target)"
 	@echo ""
@@ -184,11 +186,6 @@ help:
 test:
 	$(TEST_COMMAND)
 
-# Run every DUT's tests in one pytest invocation (each test file builds its own
-# module; see flow/runner.build_and_test). DUT=all disables the per-file filter.
-test-all:
-	$(TEST_ALL_COMMAND)
-
 test-flow-py:
 	$(UV) run pytest flow/tests
 
@@ -198,17 +195,7 @@ configs:
 coverage: override export ABV := 1
 coverage: override export HDL_COVERAGE := 1
 coverage:
-	$(FLOW) validate-config --dut $(DUT) $(CONFIG_ARG) --artifact
 	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) report-coverage --sim $(SIM) --dut $(DUT) $(CONFIG_ARG))
-
-coverage-all: override export ABV := 1
-coverage-all: override export HDL_COVERAGE := 1
-coverage-all:
-	@test_status=0; report_status=0; \
-	$(TEST_ALL_COMMAND) || test_status=$$?; \
-	$(FLOW) report-coverage-all --sim $(SIM) || report_status=$$?; \
-	if [ "$$test_status" -ne 0 ]; then exit "$$test_status"; fi; \
-	exit "$$report_status"
 
 open-coverage:
 	$(FLOW) open-coverage --sim $(SIM) --dut $(DUT) $(CONFIG_ARG)
@@ -218,7 +205,7 @@ open-coverage-html:
 
 waves: override export WAVES := 1
 waves:
-	$(FLOW) validate-config --dut $(DUT) $(CONFIG_ARG) --artifact
+	$(FLOW) validate-config --dut $(DUT) $(CONFIG_ARG)
 	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) open-waves --sim $(SIM) --dut $(DUT) $(CONFIG_ARG))
 
 open-waves:

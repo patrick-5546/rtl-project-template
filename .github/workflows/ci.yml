@@ -134,7 +134,7 @@ jobs:
       - run: uv sync
 
       - name: Run coverage
-        run: make coverage-all
+        run: make coverage DUT=all
 
       # - name: Upload coverage report
       #   if: always()

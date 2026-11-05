@@ -70,15 +70,7 @@ def test_verible_list_must_name_files(
     assert message in result.stderr
 
 
-@pytest.mark.parametrize(
-    ("target", "postprocess"),
-    [("coverage", "report-coverage"), ("waves", "open-waves")],
-)
-def test_artifact_target_postprocesses_failed_test(
-    tmp_path: Path,
-    target: str,
-    postprocess: str,
-) -> None:
+def test_waves_opens_the_viewer_after_a_failed_test(tmp_path: Path) -> None:
     command_log = tmp_path / "commands.txt"
     fake_cli = tmp_path / "fake_cli.py"
     fake_cli.write_text(
@@ -95,7 +87,7 @@ def test_artifact_target_postprocesses_failed_test(
             "--no-print-directory",
             f"FLOW={sys.executable} {fake_cli}",
             "CONFIG=width4",
-            target,
+            "waves",
         ],
         cwd=REPO_ROOT,
         env={**os.environ, "COMMAND_LOG": str(command_log)},
@@ -104,18 +96,14 @@ def test_artifact_target_postprocesses_failed_test(
         text=True,
     )
     assert result.returncode != 0
-    assert command_log.read_text().splitlines() == [
-        "validate-config",
-        "test",
-        postprocess,
-    ]
+    assert command_log.read_text().splitlines() == ["validate-config", "test", "open-waves"]
 
 
 @pytest.mark.parametrize(
     ("test_status", "report_status", "expected_error"),
     [(7, 9, 7), (0, 9, 9), (0, 0, None)],
 )
-def test_coverage_all_status_and_report_attempts(
+def test_coverage_reports_after_a_failed_test_and_keeps_its_status(
     tmp_path: Path,
     test_status: int,
     report_status: int,
@@ -138,7 +126,8 @@ def test_coverage_all_status_and_report_attempts(
             "make",
             "--no-print-directory",
             f"FLOW={sys.executable} {fake_cli}",
-            "coverage-all",
+            "DUT=all",
+            "coverage",
         ],
         cwd=REPO_ROOT,
         env={
@@ -154,4 +143,4 @@ def test_coverage_all_status_and_report_attempts(
     assert (result.returncode != 0) is (expected_error is not None)
     if expected_error is not None:
         assert f"Error {expected_error}" in result.stderr
-    assert command_log.read_text().splitlines() == ["test", "report-coverage-all"]
+    assert command_log.read_text().splitlines() == ["test", "report-coverage"]
