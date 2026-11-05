@@ -36,6 +36,7 @@ locked Python packages need no setup step: every target runs Python through
 that alone, e.g. for an editor).
 
 ```sh
+make doctor # check the installed tools and their versions
 make test   # run the cocotb regression for the default DUT
 make lint   # run all lint and type checks
 make help   # list every target, override variable and simulator
