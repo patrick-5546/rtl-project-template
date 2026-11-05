@@ -16,7 +16,6 @@ SHELL := bash
 
 # Tool executables, overridable as e.g. `make lint VERILATOR=/opt/verilator/bin/verilator`.
 UV ?= uv
-MARKDOWNLINT ?= markdownlint-cli2
 VERILATOR ?= verilator
 VERIBLE_FORMAT ?= verible-verilog-format
 VERIBLE_LINT ?= verible-verilog-lint
@@ -29,7 +28,7 @@ SLANG_TIDY ?= slang-tidy
 ENABLE_RUFF ?= 1
 ENABLE_TY ?= 1
 ENABLE_PYREFLY ?= 1
-ENABLE_MARKDOWNLINT ?= 1
+ENABLE_RUMDL ?= 1
 ENABLE_VERIBLE ?= 1
 ENABLE_VERILATOR ?= 1
 ENABLE_SLANG ?= 1
@@ -104,7 +103,7 @@ endef
 .PHONY: all clean configs coverage format help lint \
 	lint-py lint-sv lint-md format-py format-sv format-md \
 	format-py-ruff lint-py-ruff lint-py-ty lint-py-pyrefly \
-	format-md-markdownlint lint-md-markdownlint \
+	format-md-rumdl lint-md-rumdl \
 	format-sv-verible lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy \
 	open-coverage open-coverage-html open-waves \
 	test test-all test-flow-py coverage-all waves
@@ -148,14 +147,14 @@ help:
 	@echo "Per-tool quality targets (<lint|format>-<lang>-<tool>):"
 	@echo "  lint-py-ruff lint-py-ty lint-py-pyrefly format-py-ruff"
 	@echo "  lint-sv-verible lint-sv-verilator lint-sv-slang lint-sv-slang-tidy  format-sv-verible"
-	@echo "  lint-md-markdownlint  format-md-markdownlint"
+	@echo "  lint-md-rumdl  format-md-rumdl"
 	@echo ""
 	@echo "Tool enable flags (default 1; set 0 to skip a tool in lint/format):"
-	@echo "  ENABLE_RUFF ENABLE_TY ENABLE_PYREFLY ENABLE_MARKDOWNLINT"
+	@echo "  ENABLE_RUFF ENABLE_TY ENABLE_PYREFLY ENABLE_RUMDL"
 	@echo "  ENABLE_VERIBLE ENABLE_VERILATOR ENABLE_SLANG ENABLE_SLANG_TIDY"
 	@echo ""
 	@echo "Tool executables (override as VAR=/path/to/tool):"
-	@echo "  VERILATOR VERIBLE_FORMAT VERIBLE_LINT SLANG SLANG_TIDY MARKDOWNLINT UV"
+	@echo "  VERILATOR VERIBLE_FORMAT VERIBLE_LINT SLANG SLANG_TIDY UV"
 	@echo ""
 	@echo "Tool selection:"
 	@echo "  SIM=<sim>                       Simulator; available: $$($(FLOW) list-sims | tr '\n' ' ')"
@@ -241,11 +240,11 @@ lint-py-ty:
 lint-py-pyrefly:
 	$(UV) run pyrefly check
 
-format-md-markdownlint:
-	$(MARKDOWNLINT) --fix
+format-md-rumdl:
+	$(UV) run rumdl fmt .
 
-lint-md-markdownlint:
-	$(MARKDOWNLINT)
+lint-md-rumdl:
+	$(UV) run rumdl check .
 
 format-sv-verible:
 	$(VERIBLE_FORMAT) --inplace $(SV_VERIBLE_INPUTS)
@@ -282,9 +281,9 @@ endif
 
 LINT_MD_TARGETS :=
 FORMAT_MD_TARGETS :=
-ifeq ($(ENABLE_MARKDOWNLINT),1)
-LINT_MD_TARGETS += lint-md-markdownlint
-FORMAT_MD_TARGETS += format-md-markdownlint
+ifeq ($(ENABLE_RUMDL),1)
+LINT_MD_TARGETS += lint-md-rumdl
+FORMAT_MD_TARGETS += format-md-rumdl
 endif
 
 LINT_SV_TARGETS :=

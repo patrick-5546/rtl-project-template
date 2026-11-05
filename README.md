@@ -24,8 +24,8 @@ Python package, `flow/`, that drives the tools.
 - `waves/`: reusable waveform layouts per viewer, named `<DUT>.*`.
 - `docs/`: the guides below.
 - `Makefile`, `pyproject.toml` (uv-managed Python dependencies and tool
-  settings), `.markdownlint-cli2.yaml`, `.surfer/config.toml`, and `AGENTS.md`
-  (instructions for coding agents).
+  settings), `.surfer/config.toml`, and `AGENTS.md` (instructions for coding
+  agents).
 
 Generated artifacts are ignored by Git and stay under `build/`.
 
