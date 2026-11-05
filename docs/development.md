@@ -18,6 +18,8 @@ per-tool coverage and waveform commands.
 - `flow/viewers.py`: a `ViewerProfile` per simulator's waveform viewer: the
   `wave_sim` whose format it reads and the `open-waves` behavior.
 - `flow/cli.py`: the dispatcher the Makefile calls (`python -m flow.cli`).
+- `flow/doctor.py`: the `make doctor` report of the external tools and their
+  versions.
 - `flow/tests/`: the flow's unit tests, which run without any EDA tool.
 
 Each source file's header and docstrings document how it works.
@@ -31,7 +33,8 @@ in the `SIMULATORS` dict. Each simulator has one waveform viewer: to add or
 replace one, subclass `ViewerProfile` in `flow/viewers.py`, set its `wave_sim`,
 and register it in `VIEWERS`, which is keyed by `wave_sim`. `make help` lists
 the simulators automatically, and an unknown `SIM` is rejected with the list of
-available simulators.
+available simulators. List a new tool's executables in `GROUPS` in
+`flow/doctor.py`, so that `make doctor` reports them.
 
 ## Conventions
 
@@ -129,7 +132,10 @@ Verible or LCOV its checksum, which the release's asset digests list:
 gh api repos/chipsalliance/verible/releases/tags/<tag> --jq '.assets[] | [.name, .digest] | @tsv'
 ```
 
-Then update the [verified environment](tools.md#verified-environment).
+Then update the [verified environment](tools.md#verified-environment);
+`make doctor` reads the pins from the workflow. A cocotb update can raise the
+Verilator version that cocotb needs: `make test-flow-py` then fails until
+`COCOTB_MINIMUM_VERILATOR` in `flow/doctor.py` matches it.
 
 ## cocotb's pytest plugin
 

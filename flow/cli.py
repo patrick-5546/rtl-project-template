@@ -14,6 +14,7 @@ import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
+from flow import doctor
 from flow.runner import (
     ALL_DUTS,
     DEFAULT_DUT,
@@ -382,6 +383,10 @@ def cmd_validate_config(args: argparse.Namespace) -> None:
     _single_case(args.dut, args.config)
 
 
+def cmd_doctor(args: argparse.Namespace) -> None:
+    raise SystemExit(doctor.report())
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="flow", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -420,6 +425,7 @@ def main(argv: list[str] | None = None) -> None:
     validate_config_parser.set_defaults(func=cmd_validate_config)
 
     sub.add_parser("lint-cases").set_defaults(func=cmd_lint_cases)
+    sub.add_parser("doctor").set_defaults(func=cmd_doctor)
     sub.add_parser("list-sims").set_defaults(func=cmd_list_sims)
     sub.add_parser("list-duts").set_defaults(func=cmd_list_duts)
 

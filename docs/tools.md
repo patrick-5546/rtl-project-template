@@ -10,7 +10,15 @@ to use. uv installs Python and the locked Python packages, including the Python
 and Markdown linters, but Verilator, GTKWave, Verible, slang, and LCOV
 need to be available on `PATH`. The local Python version is pinned to `3.14` in
 `.python-version`, the newest that the locked cocotb release supports; move to
-Python 3.15 once a cocotb release ships wheels for it.
+Python 3.15 once a cocotb release ships wheels for it. uv must be 0.9.17 or
+newer, the first release that reads the relative `exclude-newer` in
+`pyproject.toml`.
+
+`make doctor` shows where the flow finds each tool, honoring the executable
+variables that `make help` lists, and the tool's version. A version older than
+the flow or cocotb needs is an error, as is a missing tool that `make test`
+needs; a version that CI pins is "verified", and any other "untested". It checks
+versions only: after installing or updating a tool, run the flow with it.
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
@@ -34,8 +42,8 @@ Devel::StackTrace and TimeDate: on Debian and Ubuntu, `libcapture-tiny-perl`,
 | VCS | Event-based | Vendor-style simulation and coverage |
 
 Verilator is an open-source, cycle-based simulator that is fast,
-script-friendly, and easy to run in CI. Its coverage requires version 5.048 or
-newer.
+script-friendly, and easy to run in CI. cocotb needs version 5.036 or newer, and
+the flow's coverage 5.048 or newer.
 
 Questa is a commercial, event-based simulator with broad SystemVerilog support
 and native interactive debug. The free Altera Starter Edition does not include

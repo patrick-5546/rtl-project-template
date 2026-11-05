@@ -103,7 +103,7 @@ define RUN_TEST_AND_POSTPROCESS
 	exit "$$post_status"
 endef
 
-.PHONY: all clean configs coverage format help lint \
+.PHONY: all clean configs coverage doctor format help lint \
 	lint-py lint-sv lint-md lint-spell lint-gha format-py format-sv format-md \
 	format-py-ruff lint-py-ruff lint-py-ty lint-py-pyrefly \
 	format-md-rumdl lint-md-rumdl lint-spell-typos lint-gha-actionlint lint-gha-zizmor \
@@ -116,6 +116,9 @@ all: lint test
 
 help:
 	@echo "Usage: make <target> [VAR=value ...]"
+	@echo ""
+	@echo "Setup:"
+	@echo "  doctor                          Show where each tool is found, and its version"
 	@echo ""
 	@echo "Test:"
 	@echo "  test [SIM=questa]               Run DUT's cocotb regression, every config"
@@ -157,8 +160,9 @@ help:
 	@echo "  ENABLE_ACTIONLINT ENABLE_ZIZMOR"
 	@echo "  ENABLE_VERIBLE ENABLE_VERILATOR ENABLE_SLANG ENABLE_SLANG_TIDY"
 	@echo ""
-	@echo "Tool executables (override as VAR=/path/to/tool):"
-	@echo "  VERILATOR VERIBLE_FORMAT VERIBLE_LINT SLANG SLANG_TIDY UV"
+	@echo "Tool executables (override as VAR=/path/to/tool; make doctor shows which it finds):"
+	@echo "  UV VERILATOR VERILATOR_COVERAGE GENHTML VERIBLE_FORMAT VERIBLE_LINT SLANG SLANG_TIDY"
+	@echo "  GTKWAVE JSON2STEMS VSIM VCOVER VCS URG VERDI"
 	@echo ""
 	@echo "Tool selection:"
 	@echo "  SIM=<sim>                       Simulator; available: $$($(FLOW) list-sims | tr '\n' ' ')"
@@ -195,6 +199,12 @@ test-flow-py:
 
 configs:
 	$(FLOW) list-configs --dut $(DUT)
+
+# Where the flow finds each external tool, and its version (flow/doctor.py). The
+# report itself runs through uv, so check for uv first.
+doctor:
+	@command -v $(UV) >/dev/null || { echo "$(UV): command not found; install uv (docs/tools.md)." >&2; exit 127; }
+	$(FLOW) doctor
 
 # coverage and waves pin the other instrumentation's flag, so that their report or
 # viewer opens the build that this run made, not another mode's older data.
