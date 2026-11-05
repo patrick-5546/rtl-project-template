@@ -81,7 +81,10 @@ configuration's widths cause still fails `make lint`.
 `make test-flow-py` runs the flow's unit tests in `flow/tests/`. They mock the
 EDA tools, so they run anywhere. Normal pytest discovery stays confined to the
 RTL tests under `tests/`. pytest runs in strict mode, and a warning fails the
-test that raises it, in both suites.
+test that raises it, in both suites. Some of them catch drift: `make help` must
+list every target, `ENABLE_*` flag and executable variable, and the docs must
+match CI's version pins, the minimum versions, the Python version, and their
+own relative links.
 
 ## Continuous integration
 
