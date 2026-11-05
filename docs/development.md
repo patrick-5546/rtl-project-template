@@ -65,7 +65,8 @@ another build of a tool with its executable variable (e.g.
 
 `make test-flow-py` runs the flow's unit tests in `flow/tests/`. They mock the
 EDA tools, so they run anywhere. Normal pytest discovery stays confined to the
-RTL tests under `tests/`.
+RTL tests under `tests/`. pytest runs in strict mode, and a warning fails the
+test that raises it, in both suites.
 
 ## Continuous integration
 

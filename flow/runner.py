@@ -93,7 +93,7 @@ def env_str(name: str, default: str) -> str:
     environment (e.g. ``make ... VERDI=/path/to/verdi``).
     """
     value = os.environ.get(name)
-    return value if value else default
+    return value or default
 
 
 def expose_tool_on_path(name: str) -> None:
@@ -102,7 +102,7 @@ def expose_tool_on_path(name: str) -> None:
     if not value:
         return
     executable = Path(value).expanduser()
-    if executable.parent == Path("."):
+    if executable.parent == Path():
         return
     path_entries = os.environ.get("PATH", "").split(os.pathsep)
     directory = str(executable.parent.resolve())
@@ -609,5 +609,5 @@ def build_and_test(
         pre_cmd=pre_cmd,
     )
     if executed_cases_file:
-        with Path(executed_cases_file).open("a") as stream:
+        with Path(executed_cases_file).open("a", encoding="utf-8") as stream:
             stream.write(f"{hdl_toplevel}\t{variant or ''}\n")

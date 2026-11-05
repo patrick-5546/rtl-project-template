@@ -568,7 +568,7 @@ def _print_total_coverage_summary(dashboard_txt: Path) -> None:
     """Best-effort echo of urg's "Total Coverage Summary" block (grep -A2)."""
     if not dashboard_txt.is_file():
         return
-    lines = dashboard_txt.read_text().splitlines()
+    lines = dashboard_txt.read_text(encoding="utf-8").splitlines()
     for i, line in enumerate(lines):
         if "Total Coverage Summary" in line:
             print("\n".join(lines[i : i + 3]))

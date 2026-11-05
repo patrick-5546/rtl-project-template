@@ -19,10 +19,13 @@ dev = [
 [tool.uv]
 package = false
 
-[tool.pytest.ini_options]
+[tool.pytest]
+minversion = "9.1"
+strict = true
 addopts = ["-ra"]
 testpaths = ["tests"]
 pythonpath = [".", "tests"]
+filterwarnings = ["error"]
 
 [tool.pyrefly]
 preset = "strict"
@@ -32,13 +35,34 @@ search-path = [".", "tests"]
 line-length = 100
 
 [tool.ruff.lint]
-extend-select = ["B", "E501", "I", "SIM", "UP", "ANN", "PYI"]
+extend-select = [
+    "ANN",
+    "B",
+    "C4",
+    "E501",
+    "FURB",
+    "I",
+    "PERF",
+    "PGH",
+    "PIE",
+    "PLW1514",
+    "PT",
+    "PTH",
+    "PYI",
+    "RET",
+    "RUF",
+    "SIM",
+    "UP",
+]
+# Rule codes, which other tools and the docs use, rather than rule names.
+ignore = ["RUF201"]
 preview = true
 
 [tool.ruff.lint.per-file-ignores]
 # cocotb's `dut` handle is dynamically typed; `Any` is the pragmatic annotation
 # (concrete handle types lack the runtime signal attributes), so allow it here.
-"tests/**" = ["ANN401"]
+# cocotb runs every test as a coroutine, including ones that never await.
+"tests/**" = ["ANN401", "RUF029"]
 
 [tool.ty.rules]
 missing-type-argument = "error"
