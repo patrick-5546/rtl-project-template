@@ -2,8 +2,24 @@
 # VAR=value (run `make help` for the common ones). Simulator and waveform-viewer
 # behavior -- the build/test/coverage/wave commands and their defaults -- lives
 # in the Python `flow/` package, which the sim/wave targets below dispatch to.
+
+# Recipes and parse-time `$(shell ...)` calls run with bash, which fails on the
+# first failing command, including inside a pipeline, and on unset variables.
+# No suffix rules, which a task runner never needs. flow/tests/test_make.py
+# checks for undefined make variables: adding --warn-undefined-variables (or
+# --no-builtin-rules) to MAKEFLAGS here would also pass it to the make that
+# builds each Verilator model.
+SHELL := bash
+.SHELLFLAGS := -eu -o pipefail -c
+.SUFFIXES:
+.DEFAULT_GOAL := help
+
+# Tool executables, overridable as e.g. `make lint VERILATOR=/opt/verilator/bin/verilator`.
 UV ?= uv
 MARKDOWNLINT ?= markdownlint-cli2
+VERILATOR ?= verilator
+VERIBLE_FORMAT ?= verible-verilog-format
+VERIBLE_LINT ?= verible-verilog-lint
 SLANG ?= slang
 SLANG_TIDY ?= slang-tidy
 
@@ -45,11 +61,15 @@ $(foreach f,$(SV_SOURCES_FILE),$(if $(wildcard $(f)),,$(error SV_SOURCES_FILE: '
 
 # Verible has no `-f` command-file mode, so read its input list into bare file
 # paths (dropping `#` comments and blank lines), expand environment variables,
-# and validate that each exists. PROJECT_ROOT is passed explicitly because GNU
-# make's parse-time `$(shell ...)` does not inherit `export`ed variables (recipe
-# shells do), so `${PROJECT_ROOT}` in the list would otherwise expand to empty.
+# and validate that the list exists, names at least one file -- Verible passes
+# when given no files -- and that each file exists. PROJECT_ROOT is passed
+# explicitly because GNU make's parse-time `$(shell ...)` does not inherit
+# `export`ed variables (recipe shells do), so `${PROJECT_ROOT}` in the list would
+# otherwise expand to empty.
 read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1) | PROJECT_ROOT='$(PROJECT_ROOT)' envsubst))
+$(if $(wildcard $(SV_VERIBLE_FILE)),,$(error SV_VERIBLE_FILE: '$(SV_VERIBLE_FILE)' does not resolve to a file))
 SV_VERIBLE_INPUTS := $(call read_sources,$(SV_VERIBLE_FILE))
+$(if $(SV_VERIBLE_INPUTS),,$(error SV_VERIBLE_FILE: '$(SV_VERIBLE_FILE)' lists no files))
 $(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: '$(src)' does not resolve to a file)))
 
 # Tool selection. SIM picks a simulator profile (flow/simulators.py) for the
@@ -121,9 +141,9 @@ help:
 	@echo "  lint-<py|sv|md>                 Run lint/type checks for one language"
 	@echo "  format                          Format Python, Markdown, and SystemVerilog"
 	@echo "  format-<py|sv|md>               Format one language"
-	@echo "  all                             Run lint + test (default target)"
+	@echo "  all                             Run lint + test-all"
 	@echo "  clean                           Remove generated local artifacts"
-	@echo "  help                            Show this message"
+	@echo "  help                            Show this message (default target)"
 	@echo ""
 	@echo "Per-tool quality targets (<lint|format>-<lang>-<tool>):"
 	@echo "  lint-py-ruff lint-py-ty lint-py-pyrefly format-py-ruff"
@@ -133,6 +153,9 @@ help:
 	@echo "Tool enable flags (default 1; set 0 to skip a tool in lint/format):"
 	@echo "  ENABLE_RUFF ENABLE_TY ENABLE_PYREFLY ENABLE_MARKDOWNLINT"
 	@echo "  ENABLE_VERIBLE ENABLE_VERILATOR ENABLE_SLANG ENABLE_SLANG_TIDY"
+	@echo ""
+	@echo "Tool executables (override as VAR=/path/to/tool):"
+	@echo "  VERILATOR VERIBLE_FORMAT VERIBLE_LINT SLANG SLANG_TIDY MARKDOWNLINT UV"
 	@echo ""
 	@echo "Tool selection:"
 	@echo "  SIM=<sim>                       Simulator; available: $$($(FLOW) list-sims | tr '\n' ' ')"
@@ -225,16 +248,16 @@ lint-md-markdownlint:
 	$(MARKDOWNLINT)
 
 format-sv-verible:
-	verible-verilog-format --inplace $(SV_VERIBLE_INPUTS)
+	$(VERIBLE_FORMAT) --inplace $(SV_VERIBLE_INPUTS)
 
 lint-sv-verible:
 	@for source in $(SV_VERIBLE_INPUTS); do \
-		verible-verilog-format --verify "$$source" || exit $$?; \
+		$(VERIBLE_FORMAT) --verify "$$source" || exit $$?; \
 	done
-	verible-verilog-lint $(SV_VERIBLE_INPUTS)
+	$(VERIBLE_LINT) $(SV_VERIBLE_INPUTS)
 
 lint-sv-verilator:
-	verilator --lint-only --timing -Wall --sv +define+ABV +define+NO_COVERGROUPS rtl/verilator_waivers.vlt $(SV_SOURCES_ARGS)
+	$(VERILATOR) --lint-only --timing -Wall --sv +define+ABV +define+NO_COVERGROUPS rtl/verilator_waivers.vlt $(SV_SOURCES_ARGS)
 
 lint-sv-slang:
 	$(SLANG) -Werror +define+ABV $(SV_SOURCES_ARGS)
