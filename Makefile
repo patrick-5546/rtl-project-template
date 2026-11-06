@@ -229,7 +229,9 @@ waves:
 open-waves:
 	$(FLOW) open-waves --sim $(SIM) $(DUT_ARG) $(CONFIG_ARG)
 
+# Ruff's formatter leaves import order to its linter, so apply that fix first.
 format-py-ruff:
+	$(UV) run ruff check --select I --fix .
 	$(UV) run ruff format .
 
 lint-py-ruff:
