@@ -485,6 +485,9 @@ def build_and_test(
     from flow.simulators import SIMULATORS
 
     project_dir = PROJECT_DIR
+    # The filelists anchor their paths at ``${PROJECT_ROOT}``, which the
+    # simulators expand. The Makefile sets it; a bare ``pytest`` run does not.
+    os.environ.setdefault("PROJECT_ROOT", str(project_dir))
     test_dir = project_dir / "tests"
     simulator = env_str("SIM", DEFAULT_SIM)
     profile = SIMULATORS.get(simulator)
