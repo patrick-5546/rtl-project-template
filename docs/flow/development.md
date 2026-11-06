@@ -42,7 +42,9 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
   every DUT as a top level, and again for each named HDL configuration that
   overrides them, with that configuration's DUT as the top module: a Verilator
   or slang warning that only one configuration's widths cause still fails
-  `make lint`.
+  `make lint`. Like Verilator and the Questa build, slang and slang-tidy
+  compile all files as one compilation unit, so a declaration outside any
+  module or package in one file is visible in the files after it.
 - slang-tidy prints its findings but does not fail `make lint`: its checks are
   warnings by default, and the configuration passes run it with `--quiet`,
   which drops even an error's exit status
