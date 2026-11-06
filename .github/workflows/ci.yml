@@ -112,22 +112,24 @@ jobs:
           COVERAGE_HTML: ${{ matrix.target == 'coverage' && '1' || '0' }}
         run: make "$TARGET" DUT=all WAVES="$WAVES"
       # Coverage reports are written even when tests fail, so these run after a failure too.
+      # verilator_coverage summarizes each type apart; LCOV would count covergroup bins as
+      # lines and branches.
       - name: Summarize the coverage
         if: ${{ !cancelled() && matrix.target == 'coverage' }}
         run: |
           shopt -s nullglob
-          infos=(build/*/verilator/*/coverage/coverage.info)
+          data=(build/*/verilator/*/coverage/coverage.dat)
           {
             echo "## Coverage"
-            if [ "${#infos[@]}" -eq 0 ]; then
+            if [ "${#data[@]}" -eq 0 ]; then
               echo "No coverage data was written."
             fi
-            for info in "${infos[@]}"; do
-              config_dir=${info%/coverage/coverage.info}
+            for dat in "${data[@]}"; do
+              config_dir=${dat%/coverage/coverage.dat}
               dut=${config_dir#build/}
               echo "### ${dut%%/*}.${config_dir##*/}"
               echo '```text'
-              lcov --summary --rc branch_coverage=1 --rc function_coverage=0 "$info" 2>&1
+              verilator_coverage --report summary "$dat" 2>&1
               echo '```'
             done
           } >> "$GITHUB_STEP_SUMMARY"
