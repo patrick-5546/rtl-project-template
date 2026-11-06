@@ -174,7 +174,7 @@ help:
 	@echo "  SV_SOURCES_FILE='a.vf b.vf'     SystemVerilog filelist(s); space-separated for several"
 	@echo "  TEST= / TEST_FILTER=            Select one test by exact name / by regex"
 	@echo "  REBUILD=0                       Reuse an unchanged Questa/VCS build (not after RTL edits)"
-	@echo "  BUILD_JOBS=<n>                  Parallel build jobs (capped to available CPUs)"
+	@echo "  BUILD_JOBS=<n>                  Parallel Verilator compile jobs (default and cap: CPU count)"
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"
 	@echo "  WAVES=1 / WAVES=0               Force waveform dump on/off (test: off; waves: on)"

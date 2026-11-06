@@ -131,9 +131,15 @@ def test_active_parameter_uses_exported_value(monkeypatch: pytest.MonkeyPatch) -
     assert active_parameter("WIDTH", 8) == 12
 
 
-def test_build_jobs_is_explicit_and_capped(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_jobs_defaults_to_and_is_capped_at_the_cpus(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("flow.runner.os.process_cpu_count", lambda: 6)
+    monkeypatch.delenv("BUILD_JOBS", raising=False)
+    assert build_jobs() == 6
+    monkeypatch.setenv("BUILD_JOBS", "2")
+    assert build_jobs() == 2
     monkeypatch.setenv("BUILD_JOBS", "999")
-    monkeypatch.setattr("flow.runner.os.cpu_count", lambda: 6)
     assert build_jobs() == 6
 
 
