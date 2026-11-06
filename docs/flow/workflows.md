@@ -59,6 +59,15 @@ bare `uv run pytest` runs every harness in every configuration.
 Keep tests deterministic and focused on behavior visible at the module's ports,
 and use current cocotb APIs: `unit="ns"`, not the deprecated `units="ns"`.
 
+With Verilator, a test can reach the top level's ports only. cocotb would build
+with `--public-flat-rw`, which lets tests read and write every signal but stops
+Verilator from optimizing the design, so the flow turns it off: a large design
+then simulates and builds several times faster. To read an internal signal,
+add `/*verilator public_flat_rd*/` to its declaration (`public_flat_rw` to also
+write it), or a line such as `public_flat_rd -module "fifo" -var "count"` to
+`rtl/verilator.vlt`. Other simulators ignore the comment. Waveforms and
+coverage include every signal either way.
+
 To split a module's tests across files, put them in `test_<module>__<variant>.py`
 files that hold only `@cocotb.test()` functions, and have the harness in
 `test_<module>.py` pass their sorted names (e.g. from

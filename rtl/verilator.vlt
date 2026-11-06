@@ -1,7 +1,8 @@
 `verilator_config
 
 // The project's control file for Verilator, which every Verilator build and
-// lint run reads: lint waivers and coverage exclusions for the RTL. See
+// lint run reads: lint waivers, coverage exclusions, and the internal signals
+// that tests access (builds make only the top level's ports accessible). See
 // "Verilator Control Files" in Verilator's manual. (A comment that starts with
 // the word "verilator" would be read as a metacomment.)
 
