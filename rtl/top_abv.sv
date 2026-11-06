@@ -7,8 +7,7 @@
 //
 // Conventions: each implication assertion has a matching antecedent
 // `cover property` (with the same `disable iff`) so vacuous passes surface as
-// coverage holes. Its Python mirror in tests/coverage_top.py must be kept in
-// sync with the covergroup.
+// coverage holes.
 
 // verilog_syntax: parse-as-module-body
 

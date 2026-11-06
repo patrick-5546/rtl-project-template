@@ -122,9 +122,6 @@ installs them. To take a newer release, such as a security fix, add the package
 to `pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
 `false` and run `uv lock`; remove the entry once the release is a week old. A
 minimum version in `pyproject.toml` must be a week old too, or locking fails.
-python-constraint, which cocotb-coverage needs, stays at 1.3.1: its only newer
-release, 1.4.0 from 2018, has just a source archive whose name does not follow
-PEP 625, which uv rejects.
 
 Dependabot does not update the EDA tools. The `env` of
 `.github/workflows/ci.yml` pins their versions, and the SHA-256s of the Verible

@@ -72,12 +72,11 @@ Verdi, so `vcs` and `verdi` must be on `PATH`. Select it with `SIM=vcs`.
 | `cover property` | ✅ (aka user) | ✅ (aka directive) | ✅ |
 | `assert property` | — | ✅ | ✅ |
 | Covergroups (SV) | ✅ | ❌ (needs license) | ✅ |
-| Covergroups (cocotb-coverage) | ✅ | ✅ | ✅ |
 
-The Questa Starter Edition does not collect SystemVerilog covergroup data (that
-requires a paid `svverification` license); the cocotb-coverage mirror covers
-that gap. Verilator compiles its own `verilated_std.sv` for covergroups, and
-`rtl/verilator_waivers.vlt` keeps it out of the coverage reports.
+The Questa Starter Edition does not collect SystemVerilog covergroup data: that
+requires a paid `svverification` license. Verilator compiles its own
+`verilated_std.sv` for covergroups, and `rtl/verilator_waivers.vlt` keeps it
+out of the coverage reports.
 
 ## Waveform viewers
 

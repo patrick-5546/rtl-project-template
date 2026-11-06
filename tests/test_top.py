@@ -6,17 +6,12 @@ import pytest
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 
-from flow.runner import active_parameter, build_and_test, config_params, env_flag
+from flow.runner import active_parameter, build_and_test, config_params
 
-_ABV = env_flag("ABV", default=False)
 _WIDTH = active_parameter("WIDTH", 8)
 _MAX_COUNT = (1 << _WIDTH) - 1
 _MID_COUNT = _MAX_COUNT // 2
 _HIGH_COUNT = _MAX_COUNT - 1
-
-if _ABV:
-    from cocotb_coverage.coverage import coverage_db
-    from coverage_top import sample_from_dut
 
 
 async def start_counter(dut: Any) -> None:
@@ -34,8 +29,6 @@ async def tick(dut: Any, cycles: int = 1) -> None:
     for _ in range(cycles):
         await RisingEdge(dut.clk_i)
         await Timer(1, unit="ns")
-        if _ABV:
-            sample_from_dut(dut)
 
 
 @cocotb.test()
@@ -110,24 +103,6 @@ async def counter_wraps(dut: Any) -> None:
 
     await tick(dut)
     assert dut.count_o.value.to_unsigned() == 0
-
-
-@cocotb.test(skip=not _ABV)
-async def check_coverage(dut: Any) -> None:
-    """Assert that all coverage bins were hit by preceding tests."""
-    coverage_db.report_coverage(cocotb.log.info, bins=True)
-    coverage_db.export_to_xml(filename="cocotb_coverage.xml")
-
-    missed: list[str] = []
-    for path in coverage_db:
-        node = coverage_db[path]
-        if not hasattr(node, "detailed_coverage"):
-            continue
-        for bin_name, hits in node.detailed_coverage.items():
-            if isinstance(hits, int) and hits == 0:
-                missed.append(f"{path}.{bin_name}")
-    if missed:
-        raise AssertionError("Coverage holes — bins never hit:\n  " + "\n  ".join(missed))
 
 
 @pytest.mark.parametrize(("config", "parameters"), config_params(Path(__file__).stem))

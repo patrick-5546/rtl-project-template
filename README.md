@@ -18,8 +18,6 @@ Python package, `flow/`, that drives the tools.
 - `tests/`: the cocotb tests, launched by pytest.
   - `test_top.py`: tests for `top`.
   - `cocotb_configs.py`: named HDL parameter configurations.
-  - `coverage_top.py`: a cocotb-coverage mirror of the covergroup in
-    `rtl/top_abv.sv`.
 - `flow/`: the build, run and view flow that the Makefile calls, with its own
   unit tests in `flow/tests/`.
 - `waves/`: reusable waveform layouts, one per viewer, named `<DUT>.*`.
