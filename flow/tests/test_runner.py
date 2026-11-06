@@ -166,7 +166,6 @@ def test_wave_metadata_is_prepared_before_a_failing_test(
 ) -> None:
     events: list[str] = []
     profile = MagicMock(spec=SimulatorProfile)
-    profile.no_covergroups = True
     profile.supports_coverage = True
     profile.supports_gui = False
     profile.forces_ansi_on_tty = False

@@ -5,7 +5,7 @@ Each profile owns:
 
 * the cocotb runner build/test arguments (:meth:`SimulatorProfile.configure`,
   consumed by :func:`flow.runner.build_and_test`),
-* per-simulator defaults (covergroup support, coverage-artifact path),
+* per-simulator defaults (wave and coverage artifact paths),
 * the coverage report/open behavior (:meth:`SimulatorProfile.report_coverage`,
   :meth:`SimulatorProfile.open_coverage`, :meth:`SimulatorProfile.open_coverage_html`).
 
@@ -131,9 +131,6 @@ class SimulatorProfile:
     wave_filename: str = ""
     supports_coverage: bool = False
     supports_gui: bool = False
-    # Verilator parses but ignores SV covergroups, so they are excluded by
-    # default there; event-based simulators keep them.
-    no_covergroups: bool = False
     # Some simulators (e.g. Questa's ``vsim``) run cocotb's Python embedded
     # behind their own transcript, so cocotb's ``sys.stdout.isatty()`` color
     # check fails and it strips ANSI -- unlike Verilator/VCS, which run a native
@@ -239,25 +236,24 @@ class VerilatorProfile(SimulatorProfile):
     name = "verilator"
     wave_filename = "dump.fst"
     supports_coverage = True
-    no_covergroups = True
-    minimum_coverage_version = "5.048"
+    # Verilator 5.050 added SV covergroups, and 5.052 and 5.054 fixed several of
+    # their bugs; 5.054 is also the version that CI verifies. Every build and
+    # coverage report checks it, so an older Verilator fails up front instead of
+    # dropping covergroups from the coverage.
+    minimum_version = "5.054"
 
-    def require_coverage_version(self, executable: str) -> None:
-        require_tool_version(
-            executable,
-            self.minimum_coverage_version,
-            tool_name="Verilator coverage",
-        )
+    def require_version(self, executable: str) -> None:
+        require_tool_version(executable, self.minimum_version, tool_name="Verilator")
 
     @override
     def configure(self, cfg: RunConfig) -> SimArgs:
+        self.require_version(env_str("VERILATOR", "verilator"))
         args = super().configure(cfg)
         args.build_args.append("--timing")
         args.build_args.append("-Wno-fatal")
         waivers = Path(__file__).resolve().parents[1] / "rtl" / "verilator_waivers.vlt"
         args.build_args.append(str(waivers))
         if cfg.hdl_coverage:
-            self.require_coverage_version(env_str("VERILATOR", "verilator"))
             args.build_args.append("--coverage")
             args.plusargs.append(f"+verilator+coverage+file+{cfg.coverage_dat}")
         if cfg.waves:
@@ -291,7 +287,7 @@ class VerilatorProfile(SimulatorProfile):
         annotated = build_dir / "coverage_annotated"
         info = build_dir / "coverage.info"
         verilator_coverage = env_str("VERILATOR_COVERAGE", "verilator_coverage")
-        self.require_coverage_version(verilator_coverage)
+        self.require_version(verilator_coverage)
         shutil.rmtree(annotated, ignore_errors=True)
         run(
             [

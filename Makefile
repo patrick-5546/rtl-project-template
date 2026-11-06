@@ -279,7 +279,7 @@ define LINT_EACH_CONFIG
 	done
 endef
 
-VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall --sv +define+ABV +define+NO_COVERGROUPS rtl/verilator_waivers.vlt
+VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall --sv +define+ABV rtl/verilator_waivers.vlt
 SLANG_LINT = $(SLANG) -Werror +define+ABV
 
 lint-sv-verilator:

@@ -126,9 +126,10 @@ with `ABV=1`.
 
 ## Coverage
 
-`make coverage` runs the regression with Verilator's line, toggle, FSM, and
-`cover property` coverage, enables `ABV` automatically, and writes LCOV data and
-an annotated report for each selected configuration (`DUT=all` for every DUT);
+`make coverage` runs the regression with Verilator's line, branch, toggle, FSM,
+`cover property` and covergroup coverage, enables `ABV` automatically, prints a
+summary per coverage type, and writes LCOV data and an annotated report for each
+selected configuration (`DUT=all` for every DUT);
 `make open-coverage-html CONFIG=<name>` generates and opens the HTML report, and
 `COVERAGE_HTML=1` makes `make coverage` write it too. The HTML report needs
 LCOV's `genhtml`, so plain `make coverage` does not.
