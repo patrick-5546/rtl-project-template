@@ -53,7 +53,7 @@ it yours, then delete this section:
 2. Replace the example design, `top`, with your own
    ([Workflows](docs/flow/workflows.md) describes each part):
    - the RTL in `rtl/`, listed in `rtl/sources.vf` and, for your own files,
-     `rtl/verible.vf`;
+     `rtl/verible.vf`, with third-party RTL in `rtl/vendor/`;
    - a test file per top module, `tests/test_<module>.py`, with the module's
      named configurations in `tests/cocotb_configs.py`;
    - a specification per module in `docs/design/`, linked from this README;
