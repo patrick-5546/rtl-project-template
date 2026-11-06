@@ -92,11 +92,20 @@ both simulators; VCS collects SV covergroups natively.
 GTKWave reads Verilator's FST output and can view and annotate source with
 values from the waveform through its RTLBrowse window. GTKWave 4, still
 pre-alpha and built from source, works too: point `GTKWAVE` at it (e.g.
-`make waves GTKWAVE=/opt/gtkwave4/bin/gtkwave`), and the flow puts its
-directory first on `PATH` so that it starts its own RTLBrowse. GTKWave 4 has no
-`json2stems`, so the RTLBrowse stems still come from GTKWave 3's (on `PATH`, or
-set `JSON2STEMS`); skip them with `NO_RTLBROWSE=1`. Both versions read the same
-`.gtkw` layouts.
+`make waves CONFIG=width8 GTKWAVE=/opt/gtkwave4/bin/gtkwave`), and the flow puts
+its directory first on `PATH` so that it starts its own RTLBrowse. GTKWave 4 has
+no `json2stems`, so the RTLBrowse stems still come from GTKWave 3's (on `PATH`,
+or set `JSON2STEMS`); skip them with `NO_RTLBROWSE=1`. Both versions read the
+same `.gtkw` layouts.
+
+GTKWave 4 (as of git e40ba79) installs `rtlbrowse` without the library path
+that its other programs get when the prefix is not `/usr`, so RTLBrowse from
+`/opt/gtkwave4` fails with `libfst.so.1: cannot open shared object file`.
+Before installing, add `install_rpath: install_rpath,` to the
+`executable('rtlbrowse', ...)` call in `contrib/rtlbrowse/meson.build`, or run
+the flow with `LD_LIBRARY_PATH=/opt/gtkwave4/lib/x86_64-linux-gnu`. GTKWave 4's
+RTLBrowse uses GTK 4, which prints libEGL and MESA warnings and renders without
+the GPU when it cannot use one, as under WSL; they are harmless.
 
 Verdi is the waveform viewer and coverage browser for the VCS flow.
 
