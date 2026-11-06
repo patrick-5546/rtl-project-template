@@ -282,7 +282,9 @@ define LINT_EACH_CONFIG
 	done
 endef
 
-VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall --sv +define+ABV rtl/verilator.vlt
+# The pass with default parameters names no top module, so each DUT is a top
+# level there, which Verilator's MULTITOP warning would reject.
+VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall -Wno-MULTITOP --sv +define+ABV rtl/verilator.vlt
 SLANG_LINT = $(SLANG) -Werror +define+ABV
 
 lint-sv-verilator:

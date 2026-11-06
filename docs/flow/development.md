@@ -34,10 +34,10 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
 
 - Verible lints and formats only the files in `rtl/verible.vf`, the project's
   own, so it never reformats files from other people.
-- Verilator, slang and slang-tidy lint the RTL with its default parameters, and
-  again for each named HDL configuration that overrides them, with that
-  configuration's DUT as the top module: a warning that only one configuration's
-  widths cause still fails `make lint`.
+- Verilator, slang and slang-tidy lint the RTL with its default parameters, with
+  every DUT as a top level, and again for each named HDL configuration that
+  overrides them, with that configuration's DUT as the top module: a warning
+  that only one configuration's widths cause still fails `make lint`.
 - typos skips the viewer layouts and `uv.lock`; allow a project's own words in
   `[tool.typos]` in `pyproject.toml`.
 - zizmor also runs its online audits when `GH_TOKEN` is set;
