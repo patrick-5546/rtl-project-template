@@ -1,3 +1,4 @@
+import re
 import shlex
 from importlib.resources import files
 from pathlib import Path
@@ -6,13 +7,14 @@ import pytest
 
 from flow import doctor
 from flow.doctor import GROUPS, Tool, check, ci_pins, numbers, report
+from flow.simulators import VerilatorProfile
 
 VERILATOR = Tool(
     "verilator",
     "VERILATOR",
     pin="VERILATOR_VERSION",
-    minimum=doctor.COCOTB_MINIMUM_VERILATOR,
-    minimum_for="cocotb",
+    minimum=VerilatorProfile.minimum_version,
+    minimum_for="the flow",
 )
 VERIBLE = Tool("verible-verilog-format", pin="VERIBLE_VERSION", exact=True)
 GENHTML = Tool("genhtml", pin="LCOV_VERSION")
@@ -74,9 +76,11 @@ def test_every_pin_is_in_the_ci_workflow() -> None:
     assert {tool.pin for group in GROUPS for tool in group.tools if tool.pin} <= pins.keys()
 
 
-def test_verilator_minimum_is_cocotbs() -> None:
+def test_verilator_minimum_covers_cocotbs() -> None:
     makefile = files("cocotb_tools").joinpath("makefiles/simulators/Makefile.verilator")
-    assert f"VLT_MIN := {doctor.COCOTB_MINIMUM_VERILATOR}\n" in makefile.read_text(encoding="utf-8")
+    match = re.search(r"^VLT_MIN := (\S+)$", makefile.read_text(encoding="utf-8"), re.MULTILINE)
+    assert match is not None
+    assert numbers(VerilatorProfile.minimum_version) >= numbers(match.group(1))
 
 
 @pytest.mark.parametrize(
@@ -107,7 +111,7 @@ def test_versions_compare_numerically() -> None:
             VERILATOR,
             "Verilator 5.020 2024-01-01 rev (Debian 5.020-1)",
             0,
-            ("error", "5.020", "cocotb needs 5.036 or newer"),
+            ("error", "5.020", "the flow needs 5.054 or newer"),
         ),
         (
             VERIBLE,

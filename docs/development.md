@@ -137,8 +137,9 @@ gh api repos/chipsalliance/verible/releases/tags/<tag> --jq '.assets[] | [.name,
 
 Then update the [verified environment](tools.md#verified-environment);
 `make doctor` reads the pins from the workflow. A cocotb update can raise the
-Verilator version that cocotb needs: `make test-flow-py` then fails until
-`COCOTB_MINIMUM_VERILATOR` in `flow/doctor.py` matches it.
+Verilator version that cocotb needs: `make test-flow-py` then fails until the
+flow's own minimum, `VerilatorProfile.minimum_version` in `flow/simulators.py`,
+is at least that.
 
 ## cocotb's pytest plugin
 

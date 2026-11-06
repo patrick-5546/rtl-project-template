@@ -39,12 +39,24 @@ def test_verilator_configure_modes(
     coverage: bool,
 ) -> None:
     profile = VerilatorProfile()
-    with patch.object(profile, "require_coverage_version"):
+    with patch.object(profile, "require_version"):
         args = profile.configure(config(tmp_path, waves=waves, coverage=coverage))
     assert "--timing" in args.build_args
     assert ("--trace-fst" in args.build_args) is waves
     assert ("--coverage" in args.build_args) is coverage
     assert bool(args.plusargs) is coverage
+
+
+def test_every_verilator_build_needs_its_minimum_version(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    verilator = tmp_path / "verilator"
+    verilator.write_text("#!/bin/sh\necho 'Verilator 5.052 2026-09-05 rev v5.052'\n", "utf-8")
+    verilator.chmod(0o755)
+    monkeypatch.setenv("VERILATOR", str(verilator))
+    with pytest.raises(SystemExit, match=r"Verilator 5\.054\+ is required"):
+        VerilatorProfile().configure(config(tmp_path))
 
 
 def test_questa_preserves_filelist_macros_and_timescale(tmp_path: Path) -> None:
@@ -113,7 +125,7 @@ def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
 
     profile = VerilatorProfile()
     with (
-        patch.object(profile, "require_coverage_version"),
+        patch.object(profile, "require_version"),
         patch("flow.simulators.run", side_effect=fake_run),
     ):
         profile.report_coverage(
@@ -158,7 +170,7 @@ def test_verilator_report_writes_html_on_request(
 
     profile = VerilatorProfile()
     with (
-        patch.object(profile, "require_coverage_version"),
+        patch.object(profile, "require_version"),
         patch("flow.simulators.run", side_effect=fake_run),
     ):
         profile.report_coverage(

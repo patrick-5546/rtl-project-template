@@ -468,9 +468,9 @@ def build_and_test(
 
     All other configuration (SIM, BUILD_DIR, TEST, ABV, HDL_COVERAGE,
     QUESTA_GUI, etc.) is read from environment variables, matching the
-    Makefile-driven workflow. Per-simulator defaults (covergroup support,
-    coverage-artifact path, build/test arguments) come from the matching
-    profile in :mod:`flow.simulators`.
+    Makefile-driven workflow. Per-simulator defaults (coverage-artifact path,
+    build/test arguments) come from the matching profile in
+    :mod:`flow.simulators`.
     """
     first_module = test_module if isinstance(test_module, str) else test_module[0]
     hdl_toplevel = dut_from_test_module(first_module)
@@ -508,9 +508,6 @@ def build_and_test(
     test_filter = os.environ.get("TEST_FILTER") or None
     rebuild = env_flag("REBUILD", default=True)
     abv = env_flag("ABV", default=False)
-    no_covergroups = env_flag(
-        "NO_COVERGROUPS", default=profile.no_covergroups if profile else False
-    )
     questa_gui = env_flag("QUESTA_GUI", default=False)
     coverage_dat = default_coverage_dat(build_dir, profile)
     sources_files = default_sources_files(project_dir)
@@ -531,8 +528,6 @@ def build_and_test(
     defines: dict[str, object] = {}
     if abv:
         defines["ABV"] = 1
-    if no_covergroups:
-        defines["NO_COVERGROUPS"] = 1
 
     if hdl_coverage:
         coverage_dat.parent.mkdir(parents=True, exist_ok=True)

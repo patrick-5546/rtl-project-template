@@ -16,7 +16,7 @@ newer, the first release that reads the relative `exclude-newer` in
 
 `make doctor` shows where the flow finds each tool, honoring the executable
 variables that `make help` lists, and the tool's version. A version older than
-the flow or cocotb needs is an error, as is a missing tool that `make test`
+the flow needs is an error, as is a missing tool that `make test`
 needs; a version that CI pins is "verified", and any other "untested". It checks
 versions only: after installing or updating a tool, run the flow with it.
 
@@ -42,8 +42,8 @@ Devel::StackTrace and TimeDate: on Debian and Ubuntu, `libcapture-tiny-perl`,
 | VCS | Event-based | Vendor-style simulation and coverage |
 
 Verilator is an open-source, cycle-based simulator that is fast,
-script-friendly, and easy to run in CI. cocotb needs version 5.036 or newer, and
-the flow's coverage 5.048 or newer.
+script-friendly, and easy to run in CI. The flow needs version 5.054 or newer:
+5.050 added SV covergroups, and 5.052 and 5.054 fixed several of their bugs.
 
 Questa is a commercial, event-based simulator with broad SystemVerilog support
 and native interactive debug. The free Altera Starter Edition does not include
@@ -66,20 +66,18 @@ Verdi, so `vcs` and `verdi` must be on `PATH`. Select it with `SIM=vcs`.
 | Metric | Verilator | Questa | VCS |
 | --- | --- | --- | --- |
 | Line / statement | ✅ | ✅ | ✅ |
-| Branch / condition / expression | — | ✅ | ✅ |
+| Branch / condition / expression | ✅ | ✅ | ✅ |
 | Toggle | ✅ | ✅ | ✅ |
 | FSM | ✅ | ✅ | ✅ |
 | `cover property` | ✅ (aka user) | ✅ (aka directive) | ✅ |
 | `assert property` | — | ✅ | ✅ |
-| Covergroups (SV) | ❌ (excluded) | ❌ (needs license) | ✅ |
+| Covergroups (SV) | ✅ | ❌ (needs license) | ✅ |
 | Covergroups (cocotb-coverage) | ✅ | ✅ | ✅ |
 
 The Questa Starter Edition does not collect SystemVerilog covergroup data (that
-requires a paid `svverification` license), and the flow excludes covergroups on
-Verilator by defining `NO_COVERGROUPS`: Verilator 5.050 and newer collect them,
-but their runtime adds Verilator's own `verilated_std.sv` to the coverage report,
-and older versions ignore them. The cocotb-coverage mirror covers this gap on
-both simulators; VCS collects SV covergroups natively.
+requires a paid `svverification` license); the cocotb-coverage mirror covers
+that gap. Verilator compiles its own `verilated_std.sv` for covergroups, and
+`rtl/verilator_waivers.vlt` keeps it out of the coverage reports.
 
 ## Waveform viewers
 

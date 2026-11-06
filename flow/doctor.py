@@ -3,8 +3,8 @@
 The report checks presence and versions only; whether a tool works with the flow
 is what running the flow shows, as the report's last line says. Each tool is
 located as the flow locates it, honoring its executable variable (e.g.
-``VERILATOR``). A version older than the flow or cocotb needs is an error, and
-so is a missing tool that ``make test`` needs; only errors fail the report.
+``VERILATOR``). A version older than the flow needs is an error, and so is a
+missing tool that ``make test`` needs; only errors fail the report.
 A tool that only other targets need is reported missing. The version that CI
 pins in ``.github/workflows/ci.yml`` is "verified" and any other "untested",
 except that a Verible other than CI's is a warning: Verible's formatting, and so
@@ -28,8 +28,6 @@ CI_WORKFLOW = PROJECT_DIR / ".github" / "workflows" / "ci.yml"
 # The first uv that reads the relative ``exclude-newer`` in pyproject.toml; older
 # ones ignore the whole ``[tool.uv]`` table and relock without it.
 UV_MINIMUM = "0.9.17"
-# cocotb's minimum Verilator: VLT_MIN in cocotb_tools/makefiles/simulators/Makefile.verilator.
-COCOTB_MINIMUM_VERILATOR = "5.036"
 # A version as tools print it: 5.054, v0.0-4298-g085eef05, 12.1.627+89a2c9fe9, 2.6-11.g1ad5aed.
 VERSION = re.compile(r"(?<!\S)v?(\d+(?:[.-]\d+)+\S*)")
 VERSION_TIMEOUT_SECONDS = 30
@@ -69,8 +67,8 @@ GROUPS = (
                 "verilator",
                 "VERILATOR",
                 pin="VERILATOR_VERSION",
-                minimum=COCOTB_MINIMUM_VERILATOR,
-                minimum_for="cocotb",
+                minimum=VerilatorProfile.minimum_version,
+                minimum_for="the flow",
             ),
         ),
         required=True,
@@ -93,8 +91,8 @@ GROUPS = (
                 "verilator_coverage",
                 "VERILATOR_COVERAGE",
                 pin="VERILATOR_VERSION",
-                minimum=VerilatorProfile.minimum_coverage_version,
-                minimum_for="coverage",
+                minimum=VerilatorProfile.minimum_version,
+                minimum_for="the flow",
             ),
             Tool("genhtml", "GENHTML", pin="LCOV_VERSION"),
         ),
