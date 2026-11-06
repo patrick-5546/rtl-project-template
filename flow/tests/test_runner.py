@@ -222,7 +222,10 @@ def rebuilds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, **environment: str
     monkeypatch.setenv("REBUILD", "0")
     for name, value in environment.items():
         monkeypatch.setenv(name, value)
-    with patch("flow.runner.get_runner", return_value=simulator):
+    with (
+        patch("flow.runner.get_runner", return_value=simulator),
+        patch("flow.simulators.require_tool_version"),
+    ):
         build_and_test("test_top", config="width4", parameters={"WIDTH": 4})
     return simulator.build.call_args.kwargs["always"]
 
@@ -262,6 +265,9 @@ def test_previous_run_outputs_are_deleted_before_the_build(
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("SIM", "verilator")
     monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
-    with patch("flow.runner.get_runner", return_value=simulator):
+    with (
+        patch("flow.runner.get_runner", return_value=simulator),
+        patch("flow.simulators.require_tool_version"),
+    ):
         build_and_test("test_top", config="width4", parameters={"WIDTH": 4})
     assert seen_at_build == [False, False]
