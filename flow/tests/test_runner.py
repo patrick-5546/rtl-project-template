@@ -250,6 +250,19 @@ def test_rebuild_0_rebuilds_only_when_the_build_inputs_change(
     assert rebuilds(monkeypatch, tmp_path, ABV="1") is False
 
 
+def test_rebuild_0_rebuilds_when_the_record_is_not_an_object(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert rebuilds(monkeypatch, tmp_path) is True
+    record = tmp_path / "build" / "top" / "verilator" / "width4" / "normal" / "flow-build.json"
+    record.write_text("[]\n", encoding="utf-8")
+    capsys.readouterr()
+    assert rebuilds(monkeypatch, tmp_path) is True
+    assert "because its inputs were not recorded" in capsys.readouterr().out
+
+
 def test_previous_run_outputs_are_deleted_before_the_build(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

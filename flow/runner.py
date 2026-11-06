@@ -271,6 +271,8 @@ def build_changes(record: Path, build: Mapping[str, object]) -> str:
         previous = json.loads(record.read_text(encoding="utf-8"))
     except OSError, ValueError:
         return "its inputs were not recorded"
+    if not isinstance(previous, dict):
+        return "its inputs were not recorded"
     current = json.loads(json.dumps(build))
     changed = sorted(
         key for key in current.keys() | previous.keys() if previous.get(key) != current.get(key)
