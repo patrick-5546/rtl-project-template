@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from flow import doctor
+from flow.viewers import JSON2STEMS_GTKWAVE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_DOC = REPO_ROOT / "docs" / "tools.md"
@@ -48,7 +49,10 @@ def test_verified_versions_are_the_ci_pins(pin: str) -> None:
 
 @pytest.mark.parametrize(
     "minimum",
-    sorted({tool.minimum for group in doctor.GROUPS for tool in group.tools if tool.minimum}),
+    sorted(
+        {tool.minimum for group in doctor.GROUPS for tool in group.tools if tool.minimum}
+        | {JSON2STEMS_GTKWAVE}
+    ),
 )
 def test_minimum_versions_are_documented(minimum: str) -> None:
     assert f"{minimum} or newer" in flattened(TOOLS_DOC)

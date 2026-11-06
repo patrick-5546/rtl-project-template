@@ -22,6 +22,7 @@ from pathlib import Path
 
 from flow.runner import PROJECT_DIR
 from flow.simulators import VerilatorProfile
+from flow.viewers import JSON2STEMS_GTKWAVE
 
 CI_WORKFLOW = PROJECT_DIR / ".github" / "workflows" / "ci.yml"
 # The first uv that reads the relative ``exclude-newer`` in pyproject.toml; older
@@ -47,8 +48,6 @@ class Tool:
     exact: bool = False
     minimum: str = ""
     minimum_for: str = ""
-    # The executable variable whose directory the flow puts first on PATH for this tool.
-    beside: str = ""
 
 
 @dataclass(frozen=True)
@@ -102,11 +101,11 @@ GROUPS = (
     ),
     Group(
         "Waveforms",
-        "make waves; rtlbrowse and json2stems for RTLBrowse",
+        f"make waves; RTLBrowse needs json2stems, from GTKWave {JSON2STEMS_GTKWAVE} or newer",
         (
             Tool("gtkwave", "GTKWAVE"),
-            Tool("rtlbrowse", version_args=(), beside="GTKWAVE"),
-            Tool("json2stems", "JSON2STEMS", version_args=(), beside="GTKWAVE"),
+            Tool("rtlbrowse", version_args=()),
+            Tool("json2stems", "JSON2STEMS", version_args=()),
         ),
     ),
     # Commercial tools are only located: their version commands may need a license.
@@ -173,11 +172,7 @@ def numbers(version: str) -> tuple[int, ...]:
 def locate(tool: Tool) -> str | None:
     """*tool*'s executable as the flow would run it, or ``None``."""
     executable = (os.environ.get(tool.variable) if tool.variable else None) or tool.name
-    search_path = os.environ.get("PATH", "")
-    beside = os.environ.get(tool.beside) if tool.beside else None
-    if beside and Path(beside).parent != Path():
-        search_path = os.pathsep.join([str(Path(beside).expanduser().parent), search_path])
-    return shutil.which(executable, path=search_path)
+    return shutil.which(executable)
 
 
 def run_version(executable: str, args: tuple[str, ...]) -> tuple[bool, str]:
