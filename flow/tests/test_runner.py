@@ -180,8 +180,8 @@ def test_wave_metadata_is_prepared_before_a_failing_test(
     profile.coverage_data_path.return_value = tmp_path / "coverage.dat"
     profile.wave_path.return_value = tmp_path / "dump.fst"
 
-    def prepare(*args: object) -> None:
-        del args
+    def prepare(*args: object, **kwargs: object) -> None:
+        del args, kwargs
         events.append("prepare")
 
     profile.prepare_waves.side_effect = prepare

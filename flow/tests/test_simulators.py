@@ -77,10 +77,18 @@ def test_rtlbrowse_run_elaborates_the_design_like_the_build(
     profile = VerilatorProfile()
     with patch.object(profile, "require_version"):
         build_args = profile.configure(config(tmp_path)).build_args
-    profile.prepare_waves(tmp_path, tmp_path, "top", [tmp_path / "sources.vf"])
+    profile.prepare_waves(
+        tmp_path,
+        tmp_path,
+        "top",
+        [tmp_path / "sources.vf"],
+        defines={"ABV": 1},
+        parameters={"WIDTH": 8},
+    )
     for args in (build_args, commands[0]):
         assert args[args.index("--timescale") + 1] == TIMESCALE
         assert str(VERILATOR_CONTROL_FILE) in args
+    assert {"-DABV=1", "-GWIDTH=8"} <= set(commands[0])
 
 
 def test_every_verilator_build_needs_its_minimum_version(

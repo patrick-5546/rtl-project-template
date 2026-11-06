@@ -14,6 +14,7 @@ capabilities it supports, and registering an instance in :data:`SIMULATORS`.
 """
 
 import shutil
+from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
@@ -208,8 +209,15 @@ class SimulatorProfile:
         build_dir: Path,
         hdl_toplevel: str,
         sources_files: list[Path],
+        *,
+        defines: Mapping[str, object],
+        parameters: Mapping[str, object],
     ) -> None:
-        """Generate simulator-specific auxiliary artifacts after a wave run."""
+        """Generate simulator-specific auxiliary artifacts for a wave run.
+
+        *defines* and *parameters* are the build's, so that the artifacts
+        describe the configuration that the build elaborated.
+        """
 
     def coverage_html_index(self, build_dir: Path) -> Path:
         raise NotImplementedError
@@ -420,13 +428,20 @@ class VerilatorProfile(SimulatorProfile):
         build_dir: Path,
         hdl_toplevel: str,
         sources_files: list[Path],
+        *,
+        defines: Mapping[str, object],
+        parameters: Mapping[str, object],
     ) -> None:
         if env_flag("NO_RTLBROWSE", default=False):
             return
         top = hdl_toplevel
         json_dir = build_dir / "rtlbrowse"
         verilator = env_str("VERILATOR", "verilator")
-        defines = ["+define+ABV=1"] if env_flag("ABV", default=False) else []
+        # Written as cocotb writes them for the build, which this run describes.
+        configuration = [
+            *(f"-D{name}={value}" for name, value in defines.items()),
+            *(f"-G{name}={value}" for name, value in parameters.items()),
+        ]
         filelist_args = [arg for sources in sources_files for arg in ("-f", str(sources))]
         json_dir.mkdir(parents=True, exist_ok=True)
         run(
@@ -439,7 +454,7 @@ class VerilatorProfile(SimulatorProfile):
                 top,
                 "--Mdir",
                 str(json_dir),
-                *defines,
+                *configuration,
                 *self.elaboration_args(),
                 *filelist_args,
             ],

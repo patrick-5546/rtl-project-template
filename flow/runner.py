@@ -642,7 +642,14 @@ def build_and_test(
     ):
         extra_env["COCOTB_ANSI_OUTPUT"] = "1"
     if waves_enabled and profile:
-        profile.prepare_waves(project_dir, build_dir, hdl_toplevel, sources_files)
+        profile.prepare_waves(
+            project_dir,
+            build_dir,
+            hdl_toplevel,
+            sources_files,
+            defines=defines,
+            parameters=parameters,
+        )
     runner.test(
         hdl_toplevel=hdl_toplevel,
         hdl_toplevel_lang="verilog",
