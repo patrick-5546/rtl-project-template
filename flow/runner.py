@@ -99,12 +99,17 @@ def env_flag(name: str, *, default: bool) -> bool:
     return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
-def build_jobs() -> int | None:
-    """Return an explicit parallel build count, capped to available CPUs."""
+def build_jobs() -> int:
+    """Return how many C++ files a Verilator build compiles at once.
+
+    ``BUILD_JOBS`` sets it, capped at the CPUs that this process may use, which
+    are also the default (cocotb's own default is 4).
+    """
+    cpus = os.process_cpu_count() or 1
     value = os.environ.get("BUILD_JOBS")
     if not value or not value.strip():
-        return None
-    return max(1, min(int(value), os.cpu_count() or 1))
+        return cpus
+    return max(1, min(int(value), cpus))
 
 
 def env_str(name: str, default: str) -> str:
@@ -602,9 +607,7 @@ def build_and_test(
             output.unlink(missing_ok=True)
     runner = get_runner(simulator)
     echo_runner_commands(runner.log)
-    jobs = build_jobs()
-    if jobs is not None:
-        cocotb_runner.MAX_PARALLEL_BUILD_JOBS = jobs
+    cocotb_runner.MAX_PARALLEL_BUILD_JOBS = build_jobs()
     runner.build(
         sources=sources,
         includes=[],
