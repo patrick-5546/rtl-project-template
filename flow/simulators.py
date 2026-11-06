@@ -81,7 +81,8 @@ def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
 def add_lcov_line_totals(info: Path) -> None:
     """Add the ``LF``/``LH`` line totals that ``verilator_coverage --write-info`` omits.
 
-    LCOV 2.5 and newer reject a section that has ``DA`` line records but no totals.
+    LCOV after 2.6 (its development branch, since lcov#561) rejects a section that has
+    ``DA`` line records but no totals; 2.4 to 2.6 recompute them.
     Sections that already have totals, or have no line records, are left unchanged,
     so this is a no-op once Verilator writes the totals itself.
     """
