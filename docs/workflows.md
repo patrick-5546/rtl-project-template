@@ -119,10 +119,8 @@ a relocated `BUILD_DIR`.
 `rtl/top_abv.sv` holds optional SVA assertions and a covergroup for
 `rtl/top.sv`, `` `include ``d under `` `ifdef ABV `` (see its header for the
 structure). ABV files are bare SVA, not compilation units: follow the pattern in
-`rtl/top_abv.sv` and list them in `rtl/verible.vf` only. A Python covergroup
-mirror in `tests/coverage_top.py` (cocotb-coverage) provides the same functional
-coverage on simulators that do not collect SV covergroups. Enable assertions
-with `ABV=1`.
+`rtl/top_abv.sv` and list them in `rtl/verible.vf` only. Enable assertions with
+`ABV=1`.
 
 ## Coverage
 
@@ -138,14 +136,9 @@ opens a simulator's native GUI coverage viewer where one exists (Questa, and
 VCS via Verdi); Verilator has none, so use `open-coverage-html` for it. Set
 `HTML_VIEWER` to choose the program that opens HTML reports (e.g. `wslview` on
 WSL, which needs wslu). Coverage report commands fail on missing artifacts or
-tool errors, but do not enforce percentage thresholds. See
+tool errors, but on no simulator do they fail on coverage holes; Verilator's
+annotated report marks each unhit point with `%00`. See
 [Tools](tools.md#coverage) for what each simulator collects.
-
-SV covergroups (e.g. in `rtl/top_abv.sv`) and their Python mirrors in
-`tests/coverage_*.py` must stay in sync: when adding, removing, or modifying
-coverpoints or bins in one, update the other to match. cocotb-coverage does not
-support keyword arguments in sampling function calls, so always pass positional
-arguments.
 
 ## Waveforms
 
