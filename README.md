@@ -42,6 +42,24 @@ make lint   # run all lint and type checks
 make help   # list every target, override variable and simulator
 ```
 
+## Start a project from this template
+
+Create a repository from this template (on GitHub, **Use this template**), make
+it yours, then delete this section:
+
+1. Rename the project: `name` and `description` in `pyproject.toml`, then run
+   `uv lock`; and this README's title, overview and layout.
+2. Replace the example design, `top`, with your own
+   ([Workflows](docs/flow/workflows.md) describes each part):
+   - the RTL in `rtl/`, listed in `rtl/sources.vf` and, for your own files,
+     `rtl/verible.vf`;
+   - a test file per top module, `tests/test_<module>.py`, with the module's
+     named configurations in `tests/cocotb_configs.py`;
+   - a specification per module in `docs/design/`, linked from this README;
+   - the waveform layouts in `waves/`, which are optional.
+3. Run `make doctor`, `make lint`, `make test` and `make coverage`, then push:
+   CI runs the same checks.
+
 ## Documentation
 
 The design:
