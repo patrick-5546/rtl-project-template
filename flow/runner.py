@@ -1,3 +1,20 @@
+"""Building the RTL, running its cocotb tests, and the defaults the flow shares.
+
+:func:`build_and_test` is what each DUT's pytest harness calls: it builds the DUT
+in one HDL configuration with cocotb's Python runner, with the arguments that
+the simulator's profile in :mod:`flow.simulators` adds, and then runs the
+harness's cocotb tests. Everything else it reads from the environment, as the
+Makefile and the flow CLI set it (``SIM``, ``ABV``, ``WAVES``, ``HDL_COVERAGE``,
+``TEST``, ``REBUILD``, ...).
+
+The module also holds what :mod:`flow.cli`, :mod:`flow.simulators` and
+:mod:`flow.viewers` share: the defaults, finding DUTs and their configurations
+(:func:`discover_duts`, :func:`hdl_configs`, :func:`config_params`), the build
+directory layout (:func:`default_build_dir`), the ``make`` commands that error
+hints suggest (:func:`make_target_command`), and running tools and checking
+their versions (:func:`run`, :func:`require_tool_version`).
+"""
+
 import json
 import logging
 import os

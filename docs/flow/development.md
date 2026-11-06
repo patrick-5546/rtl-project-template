@@ -13,29 +13,35 @@ adding a simulator or viewer are described in
   needs them.
 - `.editorconfig` gives editors each file type's indentation and line endings,
   and `.gitattributes` keeps every text file's line endings LF in Git.
-- When behavior changes, update what describes it: these guides, `make help`,
-  source headers and docstrings.
+- When behavior changes, update what describes it: a module's specification in
+  `docs/design/`, these guides, `make help`, source headers and docstrings.
 
 ## Linting and formatting
 
-`make lint` runs every linter and type checker, the typos spell checker, and
-the workflow checks, and `make format` every formatter. Each tool also runs alone
-as a `<lint|format>-<lang>-<tool>` target, grouped as `lint-<lang>` and
-`format-<lang>`, where `<lang>` is `py`, `sv`, `md`, `spell` for spelling, or
-`gha` for the GitHub workflow and local action. Skip
-any tool in the aggregates with its `ENABLE_<TOOL>=0` flag (e.g.
-`make lint ENABLE_SLANG=0`); its own target stays invocable. Point a target at
-another build of a tool with its executable variable (e.g.
-`make lint-sv VERILATOR=/opt/verilator/bin/verilator`); `make help` lists them.
-typos skips the viewer layouts and `uv.lock`; allow a project's own words in
-`[tool.typos]` in `pyproject.toml`. actionlint also runs shellcheck on the
-workflow's scripts, and zizmor audits their security, online too when `GH_TOKEN`
-is set; `.github/zizmor.yml` says which audit is off and why.
+`make lint` runs every check and `make format` every formatter, by language:
 
-Verilator, slang and slang-tidy lint the RTL once with its default parameters,
-then once more for each named HDL configuration that overrides parameters, with
-that configuration's DUT as the top module, so a warning that only one
-configuration's widths cause still fails `make lint`.
+- `py`: Ruff, ty and Pyrefly;
+- `sv`: Verible, Verilator, slang and slang-tidy;
+- `md`: rumdl;
+- `spell`: typos;
+- `gha`: actionlint, with shellcheck on the workflow's scripts, and zizmor.
+
+Each language also runs alone as `lint-<lang>` or `format-<lang>`, and each tool
+as `<lint|format>-<lang>-<tool>` (e.g. `make lint-sv-slang`). `ENABLE_<TOOL>=0`
+drops a tool from the aggregates, and an executable variable points a target at
+another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/verilator`);
+`make help` lists both.
+
+- Verible lints and formats only the files in `rtl/verible.vf`, the project's
+  own, so it never reformats files from other people.
+- Verilator, slang and slang-tidy lint the RTL with its default parameters, and
+  again for each named HDL configuration that overrides them, with that
+  configuration's DUT as the top module: a warning that only one configuration's
+  widths cause still fails `make lint`.
+- typos skips the viewer layouts and `uv.lock`; allow a project's own words in
+  `[tool.typos]` in `pyproject.toml`.
+- zizmor also runs its online audits when `GH_TOKEN` is set;
+  `.github/zizmor.yml` says which audit is off and why.
 
 ## Continuous integration
 
