@@ -13,8 +13,8 @@ Python package, `flow/`, that drives the tools.
   - `top_abv.sv`: assertions, cover properties and a covergroup for `top.sv`.
   - `sources.vf`: the compilation filelist (the default `SV_SOURCES_FILE`).
   - `verible.vf`: the files that Verible lints and formats.
-  - `verilator_waivers.vlt`: Verilator configuration: lint waivers, and the
-    coverage exclusion of Verilator's own library.
+  - `verilator.vlt`: Verilator's control file: lint waivers, and the coverage
+    exclusion of Verilator's own library.
 - `tests/`: the cocotb tests, launched by pytest.
   - `test_top.py`: tests for `top`.
   - `cocotb_configs.py`: named HDL parameter configurations.

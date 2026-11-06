@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import override
 
 from flow.runner import (
+    PROJECT_DIR,
     RunConfig,
     SimArgs,
     env_flag,
@@ -25,13 +26,16 @@ from flow.runner import (
     make_target_command,
     open_html,
     optional_path_from_env,
-    project_path_from_env,
     require,
     require_tool_version,
     run,
     verdi_command,
     vsim_exe,
 )
+
+# Verilator's control file for the project's RTL: its builds, the RTLBrowse run
+# and the lint target read it.
+VERILATOR_CONTROL_FILE = PROJECT_DIR / "rtl" / "verilator.vlt"
 
 
 def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
@@ -251,8 +255,7 @@ class VerilatorProfile(SimulatorProfile):
         args = super().configure(cfg)
         args.build_args.append("--timing")
         args.build_args.append("-Wno-fatal")
-        waivers = Path(__file__).resolve().parents[1] / "rtl" / "verilator_waivers.vlt"
-        args.build_args.append(str(waivers))
+        args.build_args.append(str(VERILATOR_CONTROL_FILE))
         if cfg.hdl_coverage:
             args.build_args.append("--coverage")
             args.plusargs.append(f"+verilator+coverage+file+{cfg.coverage_dat}")
@@ -391,12 +394,6 @@ class VerilatorProfile(SimulatorProfile):
         json_dir = build_dir / "rtlbrowse"
         verilator = env_str("VERILATOR", "verilator")
         defines = ["+define+ABV=1"] if env_flag("ABV", default=False) else []
-        waivers = project_path_from_env(
-            "VERILATOR_WAIVERS",
-            project_dir,
-            project_dir / "rtl" / "verilator_waivers.vlt",
-        )
-        waiver_args = [str(waivers)] if waivers.is_file() else []
         filelist_args = [arg for sources in sources_files for arg in ("-f", str(sources))]
         json_dir.mkdir(parents=True, exist_ok=True)
         run(
@@ -412,7 +409,7 @@ class VerilatorProfile(SimulatorProfile):
                 "--Mdir",
                 str(json_dir),
                 *defines,
-                *waiver_args,
+                str(VERILATOR_CONTROL_FILE),
                 *filelist_args,
             ],
             cwd=project_dir,

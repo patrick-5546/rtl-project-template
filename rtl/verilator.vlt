@@ -1,0 +1,10 @@
+`verilator_config
+
+// The project's control file for Verilator, which every Verilator build and
+// lint run reads: lint waivers and coverage exclusions for the RTL. See
+// "Verilator Control Files" in Verilator's manual. (A comment that starts with
+// the word "verilator" would be read as a metacomment.)
+
+// The covergroups make Verilator compile its own verilated_std.sv: keep it out
+// of the coverage reports, which are for the design.
+coverage_off -file "*/verilated_std.sv"
