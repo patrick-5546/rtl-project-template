@@ -26,7 +26,7 @@ versions only: after installing or updating a tool, run the flow with it.
 | slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
 | Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | [Releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
-| GTKWave | Waveform viewer | [Build from source](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
+| GTKWave | Waveform viewer | Distribution package, or [GTKWave 3 source](https://github.com/gtkwave/gtkwave/tree/lts/gtkwave3-gtk3) | [Documentation](https://gtkwave.github.io/gtkwave/) |
 | uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
 
 LCOV's `lcov` and `genhtml` need the Perl modules Capture::Tiny, DateTime,
@@ -90,22 +90,11 @@ both simulators; VCS collects SV covergroups natively.
 | Verdi | VCS | FSDB | Yes | Yes |
 
 GTKWave reads Verilator's FST output and can view and annotate source with
-values from the waveform through its RTLBrowse window. GTKWave 4, still
-pre-alpha and built from source, works too: point `GTKWAVE` at it (e.g.
-`make waves CONFIG=width8 GTKWAVE=/opt/gtkwave4/bin/gtkwave`), and the flow puts
-its directory first on `PATH` so that it starts its own RTLBrowse. GTKWave 4 has
-no `json2stems`, so the RTLBrowse stems still come from GTKWave 3's (on `PATH`,
-or set `JSON2STEMS`); skip them with `NO_RTLBROWSE=1`. Both versions read the
-same `.gtkw` layouts.
-
-GTKWave 4 (as of git e40ba79) installs `rtlbrowse` without the library path
-that its other programs get when the prefix is not `/usr`, so RTLBrowse from
-`/opt/gtkwave4` fails with `libfst.so.1: cannot open shared object file`.
-Before installing, add `install_rpath: install_rpath,` to the
-`executable('rtlbrowse', ...)` call in `contrib/rtlbrowse/meson.build`, or run
-the flow with `LD_LIBRARY_PATH=/opt/gtkwave4/lib/x86_64-linux-gnu`. GTKWave 4's
-RTLBrowse uses GTK 4, which prints libEGL and MESA warnings and renders without
-the GPU when it cannot use one, as under WSL; they are harmless.
+values from the waveform through its RTLBrowse window. RTLBrowse needs
+`json2stems`, which comes with GTKWave 3.3.125 or newer: Ubuntu 26.04's package
+has it, but Ubuntu 24.04's and Debian 13's are older. Without it, skip RTLBrowse
+with `NO_RTLBROWSE=1`. GTKWave 4 has no release yet, only pre-alpha builds from
+source, so the flow targets GTKWave 3.
 
 Verdi is the waveform viewer and coverage browser for the VCS flow.
 
@@ -117,7 +106,7 @@ uv locks the Python packages in `uv.lock`.
 
 | Tool | Verified version |
 | --- | --- |
-| GTKWave | 3.3.126, and 4.0.0-prealpha (git e40ba79) |
+| GTKWave | 3.3.126 |
 | LCOV | 2.6 |
 | Questa | 2025.1 |
 | slang | 12.1 |

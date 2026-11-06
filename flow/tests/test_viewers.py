@@ -1,4 +1,3 @@
-import os
 from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import patch
@@ -84,28 +83,6 @@ def test_gtkwave_stems_leave_out_verilator_builtin_modules(
     ):
         GtkwaveProfile().open_waves(tmp_path, build_dir, "top", "width8")
     assert (build_dir / "rtlbrowse" / "top.stems").read_text(encoding="utf-8") == top
-
-
-def test_gtkwave_override_starts_its_own_rtlbrowse(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    build_dir = tmp_path / "build"
-    build_dir.mkdir()
-    (build_dir / "dump.fst").touch()
-    gtkwave = tmp_path / "gtkwave4" / "bin" / "gtkwave"
-    monkeypatch.setenv("GTKWAVE", str(gtkwave))
-    monkeypatch.setenv("NO_RTLBROWSE", "1")
-    monkeypatch.setenv("PATH", "/usr/bin")
-    paths: list[str] = []
-
-    def record_path(cmd: list[str], *, cwd: Path) -> None:
-        del cmd, cwd
-        paths.append(os.environ["PATH"])
-
-    with patch("flow.viewers.run", side_effect=record_path):
-        GtkwaveProfile().open_waves(tmp_path, build_dir, "top", "width4")
-    assert paths == [f"{gtkwave.parent.resolve()}{os.pathsep}/usr/bin"]
 
 
 def test_gtkwave_explains_a_missing_json2stems(

@@ -125,9 +125,9 @@ def test_versions_compare_numerically() -> None:
         (GENHTML, PERL_ERROR, 2, ("warning", "", f"genhtml --version failed: {PERL_ERROR}")),
         (
             Tool("gtkwave"),
-            "GTKWave Analyzer v4.0.0-prealpha (1a2b3c4) (w)1999-2022 BSI",
+            "GTKWave Analyzer v3.3.126 (w)1999-2025 BSI",
             0,
-            ("ok", "4.0.0-prealpha", ""),
+            ("ok", "3.3.126", ""),
         ),
     ],
 )
@@ -155,17 +155,10 @@ def test_missing_tool_is_an_error_only_when_required(
 def test_tools_are_located_as_the_flow_runs_them(
     bin_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    verilator = fake_tool(tmp_path / "verilator", "verilator", "Verilator 5.054")
-    gtkwave4 = fake_tool(tmp_path / "gtkwave4", "gtkwave", "GTKWave Analyzer v4.0.0-prealpha")
-    rtlbrowse4 = fake_tool(gtkwave4.parent, "rtlbrowse")
-    fake_tool(bin_dir, "rtlbrowse")
-    json2stems3 = fake_tool(bin_dir, "json2stems")
+    fake_tool(bin_dir, "verilator", "Verilator 5.054")
+    verilator = fake_tool(tmp_path / "custom", "verilator", "Verilator 5.054")
     monkeypatch.setenv("VERILATOR", str(verilator))
-    monkeypatch.setenv("GTKWAVE", str(gtkwave4))
-    tools = {tool.name: tool for group in GROUPS for tool in group.tools}
-    assert doctor.locate(tools["verilator"]) == str(verilator)
-    assert doctor.locate(tools["rtlbrowse"]) == str(rtlbrowse4)
-    assert doctor.locate(tools["json2stems"]) == str(json2stems3)
+    assert doctor.locate(VERILATOR) == str(verilator)
 
 
 def test_report_fails_only_on_errors(

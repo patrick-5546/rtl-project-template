@@ -18,7 +18,6 @@ from flow.runner import (
     default_questa_do,
     env_flag,
     env_str,
-    expose_tool_on_path,
     make_target_command,
     project_path_from_env,
     require,
@@ -27,6 +26,10 @@ from flow.runner import (
     vsim_exe,
 )
 from flow.simulators import SIMULATORS
+
+# The first GTKWave release with json2stems, which writes RTLBrowse's stems from
+# Verilator's JSON design tree.
+JSON2STEMS_GTKWAVE = "3.3.125"
 
 
 class ViewerProfile:
@@ -64,8 +67,8 @@ def drop_builtin_modules(stems: Path) -> None:
     """Remove the modules whose file is ``<built-in>`` from the RTLBrowse *stems*.
 
     Verilator's tree lists internal modules, such as ``$unit`` and
-    ``__Vconstpool``, that have no source for RTLBrowse to open. GTKWave 4's
-    RTLBrowse opens the first module at startup, which would be ``$unit``.
+    ``__Vconstpool``, which have no source: RTLBrowse would list them in its
+    hierarchy and fail to open them.
     """
     lines = stems.read_text(encoding="utf-8").splitlines(keepends=True)
 
@@ -77,13 +80,11 @@ def drop_builtin_modules(stems: Path) -> None:
 
 
 class GtkwaveProfile(ViewerProfile):
-    """GTKWave 3, or GTKWave 4 when ``GTKWAVE`` names its executable.
+    """GTKWave, with its RTLBrowse window unless ``NO_RTLBROWSE`` is set.
 
-    GTKWave starts RTLBrowse by name from ``PATH``, so the directory of an
-    overridden ``GTKWAVE`` goes first on ``PATH``, keeping each GTKWave with its
-    own RTLBrowse. GTKWave 4 ships no ``json2stems``; the stems still come from
-    GTKWave 3's (``JSON2STEMS``), in the format that both versions read, without
-    Verilator's internal modules (:func:`drop_builtin_modules`).
+    RTLBrowse reads stems, which GTKWave's ``json2stems`` writes from Verilator's
+    design tree, without Verilator's internal modules
+    (:func:`drop_builtin_modules`).
     """
 
     name = "gtkwave"
@@ -106,7 +107,6 @@ class GtkwaveProfile(ViewerProfile):
             project_dir,
             project_dir / "waves" / f"{dut}.gtkw",
         )
-        expose_tool_on_path("GTKWAVE")
         cmd = [gtkwave, *gtkwave_args]
         if not env_flag("NO_RTLBROWSE", default=False):
             top = dut
@@ -119,9 +119,9 @@ class GtkwaveProfile(ViewerProfile):
             json2stems = env_str("JSON2STEMS", "json2stems")
             if shutil.which(json2stems) is None:
                 raise SystemExit(
-                    f"{json2stems}: command not found. It comes with GTKWave 3 (GTKWave 4 has "
-                    "none): install it, point JSON2STEMS at it, or skip RTLBrowse with "
-                    "NO_RTLBROWSE=1."
+                    f"{json2stems}: command not found. It comes with GTKWave "
+                    f"{JSON2STEMS_GTKWAVE} or newer: install that, point JSON2STEMS at it, "
+                    "or skip RTLBrowse with NO_RTLBROWSE=1."
                 )
             run([json2stems, str(tree_meta), str(tree_json), str(stems)], cwd=build_dir)
             drop_builtin_modules(stems)
