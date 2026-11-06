@@ -163,7 +163,6 @@ def test_coverage_reports_after_a_failed_test_and_keeps_its_status(
             "make",
             "--no-print-directory",
             f"FLOW={sys.executable} {fake_cli}",
-            "DUT=all",
             "coverage",
         ],
         cwd=REPO_ROOT,

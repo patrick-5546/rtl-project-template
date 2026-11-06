@@ -10,14 +10,13 @@ The simulation flow is cocotb through pytest. Pass the simulator as `SIM=<sim>`
 to test, coverage, and waveform targets; the waveform targets open that
 simulator's viewer.
 
-`make test` runs every HDL configuration of one DUT, `top` unless
-`DUT=<module>` selects another. `DUT=all` selects every DUT that has a
-`tests/test_<module>.py` harness, and `CONFIG=<config>` one configuration; list
-them with `make configs` (or `make configs DUT=all`). The run fails unless every
+`make test` runs every DUT that has a `tests/test_<module>.py` harness, in every
+HDL configuration. `DUT=<module>` selects one DUT, and `CONFIG=<config>` one of
+its configurations; list them with `make configs`. The run fails unless every
 selected configuration ran. `coverage` selects the same way, while the commands
 that open one waveform or coverage report (`waves`, `open-waves`,
-`open-coverage`, `open-coverage-html`) need `CONFIG` when the DUT has several
-configurations.
+`open-coverage`, `open-coverage-html`) need `DUT` when there are several DUTs,
+and `CONFIG` when the DUT has several configurations.
 
 Select individual tests by exact name (`TEST=`) or regex (`TEST_FILTER=`). For
 faster debug loops, `REBUILD=0` lets Questa compile incrementally and VCS reuse
@@ -127,7 +126,7 @@ structure). ABV files are bare SVA, not compilation units: follow the pattern in
 `make coverage` runs the regression with Verilator's line, branch, toggle, FSM,
 `cover property` and covergroup coverage, enables `ABV` automatically, prints a
 summary per coverage type, and writes LCOV data and an annotated report for each
-selected configuration (`DUT=all` for every DUT);
+selected configuration;
 `make open-coverage-html CONFIG=<name>` generates and opens the HTML report, and
 `COVERAGE_HTML=1` makes `make coverage` write it too. The HTML report needs
 LCOV's `genhtml`, so plain `make coverage` does not.

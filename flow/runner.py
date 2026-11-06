@@ -22,21 +22,17 @@ if TYPE_CHECKING:
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 
-# Default tool/DUT selections and SV filelist. Each is duplicated only by the
-# matching Makefile selector (``SIM``/``DUT``/``SV_SOURCES_FILE``):
-# these copies are the single source the CLI argparse defaults and the runner
-# share, and the fallback used when the flow runs without the Makefile (e.g. a
-# bare ``uv run pytest``). ``SV_SOURCES_FILE`` may name several filelists
-# separated by whitespace (each handed to the simulator with its own ``-f``);
-# ``DEFAULT_SOURCES_FILE`` is the single fallback when it is unset.
+# Default simulator and SV filelist. Each is duplicated only by the matching
+# Makefile variable (``SIM``/``SV_SOURCES_FILE``): these copies are the single
+# source the CLI argparse defaults and the runner share, and the fallback used
+# when the flow runs without the Makefile (e.g. a bare ``uv run pytest``).
+# ``SV_SOURCES_FILE`` may name several filelists separated by whitespace (each
+# handed to the simulator with its own ``-f``); ``DEFAULT_SOURCES_FILE`` is the
+# single fallback when it is unset. There is no default DUT: without one, the
+# flow CLI selects every DUT that has a ``tests/test_<module>.py`` harness.
 DEFAULT_SIM = "verilator"
-DEFAULT_DUT = "top"
 DEFAULT_SOURCES_FILE = "rtl/sources.vf"
 
-# Sentinel ``DUT`` value meaning every DUT with a ``tests/test_<module>.py``
-# harness (``make test DUT=all``). The commands that open one artifact use a
-# concrete module (defaulting to ``DEFAULT_DUT``) instead.
-ALL_DUTS = "all"
 CONFIG_MANIFEST = Path("tests") / "cocotb_configs.py"
 # What each build directory's last build was made from, for REBUILD=0.
 BUILD_RECORD = "flow-build.json"

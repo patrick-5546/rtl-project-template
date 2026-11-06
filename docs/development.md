@@ -40,7 +40,7 @@ available simulators. List a new tool's executables in `GROUPS` in
 
 - Build and test configuration is read from environment variables. The flow's
   single-source defaults live in `flow/runner.py`: the
-  `SIM`/`DUT`/`SV_SOURCES_FILE` selectors (`DEFAULT_*`) and the
+  `SIM`/`SV_SOURCES_FILE` selectors (`DEFAULT_*`) and the
   `default_*` build-dir/coverage/sources/wave-path helpers shared by `cli.py`,
   `simulators.py`, and `viewers.py`. Per-simulator specifics (build/test args,
   coverage artifact) stay in the matching `SimulatorProfile`. The Makefile
@@ -97,8 +97,8 @@ SHA, have time limits, and fail if `uv.lock` is out of date (`UV_LOCKED`):
   online audits;
 - `lint-sv`: Verible, Verilator and slang;
 - `flow-tests`: `make test-flow-py`;
-- `rtl`: `make test DUT=all`, again with `WAVES=1`, and `make coverage DUT=all`,
-  each with Verilator. The coverage job also writes the HTML reports with LCOV,
+- `rtl`: `make test`, again with `WAVES=1`, and `make coverage`, each with
+  Verilator. The coverage job also writes the HTML reports with LCOV,
   uploads them and the LCOV data as the `coverage-reports` artifact, and
   summarizes each configuration's coverage by type on the run's summary page.
 

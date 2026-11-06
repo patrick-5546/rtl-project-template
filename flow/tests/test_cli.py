@@ -31,24 +31,26 @@ def project(tmp_path: Path) -> Iterator[Path]:
     [
         ("top", None, [("top", "width4"), ("top", "width8")]),
         ("top", "width8", [("top", "width8")]),
-        ("all", None, [("other", "default"), ("top", "width4"), ("top", "width8")]),
+        (None, None, [("other", "default"), ("top", "width4"), ("top", "width8")]),
     ],
 )
 @pytest.mark.usefixtures("project")
-def test_selected_cases(dut: str, config: str | None, expected: list[tuple[str, str]]) -> None:
+def test_selected_cases(
+    dut: str | None, config: str | None, expected: list[tuple[str, str]]
+) -> None:
     assert cli._selected_cases(dut, config) == expected
 
 
 @pytest.mark.parametrize(
     ("dut", "config", "message"),
     [
-        ("all", "width4", "cannot be combined"),
+        (None, "width4", "Set DUT with CONFIG, to one of: other, top"),
         ("top", "width16", "Unknown CONFIG 'width16'"),
         ("nope", None, "Unknown DUT 'nope'"),
     ],
 )
 @pytest.mark.usefixtures("project")
-def test_selected_cases_reject(dut: str, config: str | None, message: str) -> None:
+def test_selected_cases_reject(dut: str | None, config: str | None, message: str) -> None:
     with pytest.raises(SystemExit, match=message):
         cli._selected_cases(dut, config)
 
@@ -58,12 +60,18 @@ def test_single_case_takes_the_only_config() -> None:
     assert cli._single_case("other", None) == ("other", "default")
 
 
+def test_a_project_with_one_dut_needs_no_dut(project: Path) -> None:
+    (project / "tests" / "test_other.py").unlink()
+    assert cli._selected_cases(None, "width8") == [("top", "width8")]
+    assert cli._single_case(None, "width4") == ("top", "width4")
+
+
 @pytest.mark.parametrize(
     ("dut", "message"),
-    [("top", "multiple configurations"), ("all", "Set DUT to one module")],
+    [("top", "multiple configurations"), (None, "Set DUT to one of: other, top")],
 )
 @pytest.mark.usefixtures("project")
-def test_single_case_requires_one(dut: str, message: str) -> None:
+def test_single_case_requires_one(dut: str | None, message: str) -> None:
     with pytest.raises(SystemExit, match=message):
         cli._single_case(dut, None)
 
@@ -139,12 +147,12 @@ def record_cases(cases: str) -> MagicMock:
     ("dut", "config", "ran", "missing"),
     [
         ("top", "width4", "", r"top\.width4"),
-        ("all", None, "top\twidth4\nother\tdefault\n", r"top\.width8"),
+        (None, None, "top\twidth4\nother\tdefault\n", r"top\.width8"),
     ],
 )
 @pytest.mark.usefixtures("project")
 def test_regression_requires_every_selected_case(
-    dut: str, config: str | None, ran: str, missing: str
+    dut: str | None, config: str | None, ran: str, missing: str
 ) -> None:
     with (
         patch.object(cli, "_sim"),
