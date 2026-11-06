@@ -37,6 +37,10 @@ from flow.runner import (
 # and the lint target read it.
 VERILATOR_CONTROL_FILE = PROJECT_DIR / "rtl" / "verilator.vlt"
 
+# The timescale of a module that declares none, on every simulator. The
+# Makefile's SV_TIMESCALE gives the linters the same default.
+TIMESCALE = "1ns/1ps"
+
 
 def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
     """Write a Verdi FSDB dump module into *build_dir* and return its path.
@@ -269,13 +273,19 @@ class VerilatorProfile(SimulatorProfile):
     def require_version(self, executable: str) -> None:
         require_tool_version(executable, self.minimum_version, tool_name="Verilator")
 
+    def elaboration_args(self) -> list[str]:
+        """Options that the build and the RTLBrowse run share, so they see one design.
+
+        A module without a `` `timescale `` gets :data:`TIMESCALE`, as on Questa
+        and VCS, instead of Verilator's 1ps/1ps.
+        """
+        return ["--timing", "--timescale", TIMESCALE, "-Wno-fatal", str(VERILATOR_CONTROL_FILE)]
+
     @override
     def configure(self, cfg: RunConfig) -> SimArgs:
         self.require_version(env_str("VERILATOR", "verilator"))
         args = super().configure(cfg)
-        args.build_args.append("--timing")
-        args.build_args.append("-Wno-fatal")
-        args.build_args.append(str(VERILATOR_CONTROL_FILE))
+        args.build_args.extend(self.elaboration_args())
         # These follow cocotb's own --public-flat-rw, so they override it.
         args.build_args.append("--no-public-flat-rw")
         args.build_args.append(str(write_verilator_ports_vlt(cfg.build_dir, cfg.hdl_toplevel)))
@@ -422,17 +432,15 @@ class VerilatorProfile(SimulatorProfile):
         run(
             [
                 verilator,
-                "-Wno-fatal",
                 "--json-only",
                 "--bbox-sys",
-                "--timing",
                 "--sv",
                 "--top-module",
                 top,
                 "--Mdir",
                 str(json_dir),
                 *defines,
-                str(VERILATOR_CONTROL_FILE),
+                *self.elaboration_args(),
                 *filelist_args,
             ],
             cwd=project_dir,
@@ -450,7 +458,7 @@ class QuestaProfile(SimulatorProfile):
     @override
     def configure(self, cfg: RunConfig) -> SimArgs:
         args = super().configure(cfg)
-        args.build_args.extend(["-mfcu", "-timescale", "1ns/1ps"])
+        args.build_args.extend(["-mfcu", "-timescale", TIMESCALE])
         # cocotb's Questa runner emits one ``vlog`` per source (and none when the
         # source list is empty), so the ``-f`` filelist build arg needs a source
         # to ride along with. The anchor adds no design units; ``vlog`` reads the
@@ -540,7 +548,7 @@ class VcsProfile(SimulatorProfile):
         args = super().configure(cfg)
         # cocotb's VCS runner passes no timescale, so VCS would default to 1 s
         # precision and reject the ns-scale clock; pin it explicitly.
-        args.build_args.append("-timescale=1ns/1ps")
+        args.build_args.append(f"-timescale={TIMESCALE}")
         if cfg.waves:
             cfg.wave_path.parent.mkdir(parents=True, exist_ok=True)
             # -kdb gives both the native $fsdb* tasks and the Verdi source DB;

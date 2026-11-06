@@ -4,7 +4,14 @@ from unittest.mock import patch
 import pytest
 
 from flow.runner import RunConfig
-from flow.simulators import QuestaProfile, VcsProfile, VerilatorProfile, add_lcov_line_totals
+from flow.simulators import (
+    TIMESCALE,
+    VERILATOR_CONTROL_FILE,
+    QuestaProfile,
+    VcsProfile,
+    VerilatorProfile,
+    add_lcov_line_totals,
+)
 
 
 def config(
@@ -54,6 +61,26 @@ def test_verilator_makes_only_the_top_levels_ports_public(tmp_path: Path) -> Non
     ports = tmp_path / "cocotb_ports.vlt"
     assert args.build_args[-2:] == ["--no-public-flat-rw", str(ports)]
     assert 'public_flat_rw -module "top" -port "*"' in ports.read_text(encoding="utf-8")
+
+
+def test_rtlbrowse_run_elaborates_the_design_like_the_build(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commands: list[list[str]] = []
+
+    def record(command: list[str], **_: object) -> None:
+        commands.append(command)
+
+    monkeypatch.setattr("flow.simulators.run", record)
+    monkeypatch.delenv("NO_RTLBROWSE", raising=False)
+    profile = VerilatorProfile()
+    with patch.object(profile, "require_version"):
+        build_args = profile.configure(config(tmp_path)).build_args
+    profile.prepare_waves(tmp_path, tmp_path, "top", [tmp_path / "sources.vf"])
+    for args in (build_args, commands[0]):
+        assert args[args.index("--timescale") + 1] == TIMESCALE
+        assert str(VERILATOR_CONTROL_FILE) in args
 
 
 def test_every_verilator_build_needs_its_minimum_version(
