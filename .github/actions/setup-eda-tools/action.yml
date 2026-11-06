@@ -28,6 +28,9 @@ runs:
   using: composite
   steps:
     # A build links against the image's libraries, so the caches are per OS image.
+    # A job that restores a build skips its build step, so the build must not need
+    # what that step installs. When a build step changes, change its cache key (for
+    # Verilator, the build number), so that no job restores a build made the old way.
     - name: Identify the runner image
       id: image
       shell: bash
@@ -39,7 +42,7 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: /opt/verilator
-        key: verilator-${{ inputs.verilator-version }}-${{ steps.image.outputs.os }}
+        key: verilator-${{ inputs.verilator-version }}-${{ steps.image.outputs.os }}-build2
 
     - name: Build Verilator
       if: inputs.verilator-version != '' && steps.cache-verilator.outputs.cache-hit != 'true'
@@ -48,7 +51,9 @@ runs:
         VERILATOR_VERSION: ${{ inputs.verilator-version }}
       run: |
         sudo apt-get update
-        sudo apt-get install -y ccache help2man libfl-dev
+        # Not ccache: configure records a ccache that it finds in verilated.mk, and
+        # every model build then runs it, also in the jobs that restore this build.
+        sudo apt-get install -y help2man libfl-dev
         git clone https://github.com/verilator/verilator --branch "$VERILATOR_VERSION" --depth 1 "$RUNNER_TEMP/verilator"
         cd "$RUNNER_TEMP/verilator"
         autoconf
