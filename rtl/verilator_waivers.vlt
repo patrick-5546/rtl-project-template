@@ -1,6 +1,0 @@
-`verilator_config
-
-// The covergroups make Verilator compile its own verilated_std.sv: keep it out
-// of the coverage reports, which are for the design. (A comment that starts with
-// the word "verilator" would be read as a metacomment.)
-coverage_off -file "*/verilated_std.sv"

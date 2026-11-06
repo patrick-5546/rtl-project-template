@@ -72,7 +72,7 @@ viewer and its coverage GUI, so `vcs` and `verdi` must be on `PATH`.
 
 The free Questa Starter Edition does not collect SV covergroups: that needs a
 paid `svverification` license. Verilator compiles its own `verilated_std.sv`
-for covergroups, and `rtl/verilator_waivers.vlt` keeps it out of the coverage
+for covergroups, and `rtl/verilator.vlt` keeps it out of the coverage
 reports.
 
 ## Waveform viewers
