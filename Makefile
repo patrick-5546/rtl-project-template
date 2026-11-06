@@ -310,7 +310,7 @@ lint-sv-slang:
 	$(SLANG_LINT) $(SV_SOURCES_ARGS)
 	$(call LINT_EACH_CONFIG,$(SLANG_LINT),--top)
 
-# The configuration passes print only slang-tidy's errors, not every check's PASS.
+# The configuration passes print only slang-tidy's findings, not every check's PASS.
 lint-sv-slang-tidy:
 	$(SLANG_TIDY_LINT) $(SV_SOURCES_ARGS)
 	$(call LINT_EACH_CONFIG,$(SLANG_TIDY_LINT) --quiet,--top)

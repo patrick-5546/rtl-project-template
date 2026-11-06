@@ -40,8 +40,13 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
   `pyproject.toml` excludes it from the Python, Markdown and spelling tools.
 - Verilator, slang and slang-tidy lint the RTL with its default parameters, with
   every DUT as a top level, and again for each named HDL configuration that
-  overrides them, with that configuration's DUT as the top module: a warning
-  that only one configuration's widths cause still fails `make lint`.
+  overrides them, with that configuration's DUT as the top module: a Verilator
+  or slang warning that only one configuration's widths cause still fails
+  `make lint`.
+- slang-tidy prints its findings but does not fail `make lint`: its checks are
+  warnings by default, and the configuration passes run it with `--quiet`,
+  which drops even an error's exit status
+  ([slang#2101](https://github.com/MikePopoloski/slang/issues/2101)).
 - typos skips the viewer layouts and `uv.lock`; allow a project's own words in
   `[tool.typos]` in `pyproject.toml`.
 - zizmor also runs its online audits when `GH_TOKEN` is set;
