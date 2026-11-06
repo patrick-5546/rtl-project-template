@@ -92,27 +92,48 @@ def test_project_root_cannot_be_overridden() -> None:
     assert result.stdout == str(REPO_ROOT)
 
 
-@pytest.mark.parametrize(
-    ("contents", "message"),
-    [(None, "does not resolve to a file"), ("# no files\n\n", "lists no files")],
-)
-def test_verible_list_must_name_files(
-    tmp_path: Path,
-    contents: str | None,
-    message: str,
-) -> None:
-    verible_list = tmp_path / "verible.vf"
-    if contents is not None:
-        verible_list.write_text(contents, encoding="utf-8")
-    result = subprocess.run(
-        ["make", "--dry-run", f"SV_VERIBLE_FILE={verible_list}", "lint-sv-verible"],
-        cwd=REPO_ROOT,
+def verible_dry_run(project: Path) -> subprocess.CompletedProcess[str]:
+    """``make --dry-run lint-sv-verible`` with the Makefile run in Git repository *project*."""
+    return subprocess.run(
+        [
+            "make",
+            "--no-print-directory",
+            "-C",
+            str(project),
+            "-f",
+            str(REPO_ROOT / "Makefile"),
+            "--dry-run",
+            f"SV_SOURCES_FILE={REPO_ROOT / 'rtl' / 'sources.vf'}",
+            "VERIBLE_LINT=verible-lint",
+            "lint-sv-verible",
+        ],
         check=False,
         capture_output=True,
         text=True,
     )
+
+
+def test_verible_checks_the_files_that_git_tracks_or_would_track(tmp_path: Path) -> None:
+    subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+    (tmp_path / ".gitignore").write_text("build/\n", encoding="utf-8")
+    for name in ("rtl/a.sv", "rtl/b.svh", "rtl/gone.sv", "rtl/vendor/ip/ip.v", "build/gen.sv"):
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text("module m;\nendmodule\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "rtl/a.sv", "rtl/gone.sv", "rtl/vendor"], cwd=tmp_path, check=True
+    )
+    (tmp_path / "rtl" / "gone.sv").unlink()
+    result = verible_dry_run(tmp_path)
+    assert result.returncode == 0, result.stderr
+    lint = next(line for line in result.stdout.splitlines() if line.startswith("verible-lint "))
+    assert lint.split()[1:] == ["rtl/a.sv", "rtl/b.svh"]
+
+
+def test_verible_needs_a_file_to_check(tmp_path: Path) -> None:
+    subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+    result = verible_dry_run(tmp_path)
     assert result.returncode != 0
-    assert message in result.stderr
+    assert "Verible found no SystemVerilog file" in result.stderr
 
 
 def test_slang_tools_leave_out_vendor_rtl_also_through_symlinks(tmp_path: Path) -> None:
