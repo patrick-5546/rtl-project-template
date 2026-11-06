@@ -296,9 +296,11 @@ SV_TIMESCALE := 1ns/1ps
 SV_VENDOR_DIR := rtl/vendor
 SV_VENDOR_PATHS := $(sort $(realpath $(SV_VENDOR_DIR) $(wildcard $(SV_VENDOR_DIR)/*/)))
 # The pass with default parameters names no top module, so each DUT is a top
-# level there, which Verilator's MULTITOP warning would reject.
+# level there, which Verilator's MULTITOP warning would reject. slang and
+# slang-tidy compile all files as one compilation unit, as Verilator and Questa
+# (with -mfcu) do, so a $unit declaration in one file is visible in the next.
 VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall -Wno-MULTITOP --timescale $(SV_TIMESCALE) --sv +define+ABV rtl/verilator.vlt
-SLANG_OPTIONS = $(strip +define+ABV --timescale $(SV_TIMESCALE) $(foreach path,$(SV_VENDOR_PATHS),--suppress-warnings $(path)/...))
+SLANG_OPTIONS = $(strip --single-unit +define+ABV --timescale $(SV_TIMESCALE) $(foreach path,$(SV_VENDOR_PATHS),--suppress-warnings $(path)/...))
 SLANG_LINT = $(SLANG) -Werror $(SLANG_OPTIONS)
 SLANG_TIDY_LINT = $(strip $(SLANG_TIDY) $(SLANG_OPTIONS) $(foreach path,$(SV_VENDOR_PATHS),--skip-path $(path)/))
 
