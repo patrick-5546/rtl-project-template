@@ -110,7 +110,7 @@ jobs:
           TARGET: ${{ matrix.target }}
           WAVES: ${{ matrix.waves }}
           COVERAGE_HTML: ${{ matrix.target == 'coverage' && '1' || '0' }}
-        run: make "$TARGET" DUT=all WAVES="$WAVES"
+        run: make "$TARGET" WAVES="$WAVES"
       # Coverage reports are written even when tests fail, so these run after a failure too.
       # verilator_coverage summarizes each type apart; LCOV would count covergroup bins as
       # lines and branches.

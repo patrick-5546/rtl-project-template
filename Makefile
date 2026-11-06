@@ -81,17 +81,19 @@ $(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: 
 # those modules -- no edits to this Makefile required.
 SIM ?= verilator
 
-# Top-level module under test, or `all` for every module with a
-# tests/test_<module>.py harness. Passed to the flow CLI (which forwards it to the
-# cocotb runner and the waveform viewers: GTKWave stems and the waves/<DUT>.*
-# layouts) so every command targets the same module; override as
-# `make test DUT=<module>`. CONFIG selects one named HDL configuration: test and
-# coverage run every configuration of the selected DUTs without it, and the
-# commands that open one artifact need it when the DUT has several.
-DUT ?= top
+# Top-level module under test. Unset, test, coverage and configs select every
+# module with a tests/test_<module>.py harness, and the commands that open one
+# waveform or coverage report use the only one, or ask for DUT. Passed to the
+# flow CLI (which forwards it to the cocotb runner and the waveform viewers:
+# GTKWave stems and the waves/<DUT>.* layouts) so every command targets the same
+# module. CONFIG selects one named HDL configuration of the DUT: test and coverage
+# run every configuration of the selected DUTs without it, and the commands that
+# open one artifact need it when the DUT has several.
+DUT ?=
 CONFIG ?=
+DUT_ARG = $(if $(strip $(DUT)),--dut '$(DUT)')
 CONFIG_ARG = $(if $(strip $(CONFIG)),--config '$(CONFIG)')
-TEST_COMMAND = $(FLOW) test --sim $(SIM) --dut $(DUT) $(CONFIG_ARG) --sources-file '$(SV_SOURCES_FILE)'
+TEST_COMMAND = $(FLOW) test --sim $(SIM) $(DUT_ARG) $(CONFIG_ARG) --sources-file '$(SV_SOURCES_FILE)'
 
 # Artifact workflows still post-process simulator output after a failed test.
 # Preserve the test status so reporting or viewer errors cannot mask a regression.
@@ -111,7 +113,6 @@ endef
 	open-coverage open-coverage-html open-waves \
 	test test-flow-py waves
 
-all: DUT = all
 all: lint test
 
 help:
@@ -121,10 +122,10 @@ help:
 	@echo "  doctor                          Show where each tool is found, and its version"
 	@echo ""
 	@echo "Test:"
-	@echo "  test [SIM=questa]               Run DUT's cocotb regression, every config"
-	@echo "  test DUT=all                    Run every DUT's regression"
+	@echo "  test [SIM=questa]               Run every DUT's cocotb regression, every config"
+	@echo "  test DUT=<module>               Run one DUT's regression"
 	@echo "  test CONFIG=<name>              Run one named HDL parameter configuration"
-	@echo "  configs [DUT=all]               List the HDL configurations of DUT"
+	@echo "  configs [DUT=<module>]          List the HDL configurations of every DUT, or one"
 	@echo "  test-flow-py                    Run flow unit tests (not RTL/cocotb tests)"
 	@echo "  test TEST=enable_high_counts    Run one cocotb test by exact name"
 	@echo "  test TEST_FILTER='enable_.*'    Run cocotb tests matching a regex"
@@ -137,7 +138,7 @@ help:
 	@echo "  open-waves [SIM=...] [CONFIG=...] Open the existing waveform in the viewer"
 	@echo ""
 	@echo "Coverage:"
-	@echo "  coverage [DUT=all] [CONFIG=...] Run coverage, then report each configuration"
+	@echo "  coverage [DUT=...] [CONFIG=...] Run coverage, then report each configuration"
 	@echo "  open-coverage [SIM=...] [CONFIG=...] Open coverage in the native GUI viewer"
 	@echo "  open-coverage-html [SIM=...] [CONFIG=...] Open the coverage HTML report"
 	@echo ""
@@ -146,7 +147,7 @@ help:
 	@echo "  lint-<py|sv|md|spell|gha>       Run one group: a language, spelling or workflows"
 	@echo "  format                          Format Python, Markdown, and SystemVerilog"
 	@echo "  format-<py|sv|md>               Format one language"
-	@echo "  all                             Run lint + test DUT=all"
+	@echo "  all                             Run lint + test"
 	@echo "  clean                           Remove generated local artifacts"
 	@echo "  help                            Show this message (default target)"
 	@echo ""
@@ -168,7 +169,7 @@ help:
 	@echo "  SIM=<sim>                       Simulator; available: $$($(FLOW) list-sims | tr '\n' ' ')"
 	@echo ""
 	@echo "Common variables (override as VAR=value):"
-	@echo "  DUT=<module>                    Module to build/test/view; available: $$($(FLOW) list-duts | tr '\n' ' ')"
+	@echo "  DUT=<module>                    One module (default: every one); available: $$($(FLOW) list-duts | tr '\n' ' ')"
 	@echo "  CONFIG=<name>                   Named HDL configuration; run 'make configs'"
 	@echo "  SV_SOURCES_FILE='a.vf b.vf'     SystemVerilog filelist(s); space-separated for several"
 	@echo "  TEST= / TEST_FILTER=            Select one test by exact name / by regex"
@@ -197,7 +198,7 @@ test-flow-py:
 	$(UV) run pytest flow/tests
 
 configs:
-	$(FLOW) list-configs --dut $(DUT)
+	$(FLOW) list-configs $(DUT_ARG)
 
 # Where the flow finds each external tool, and its version (flow/doctor.py). The
 # report itself runs through uv, so check for uv first.
@@ -211,22 +212,22 @@ coverage: override export ABV := 1
 coverage: override export HDL_COVERAGE := 1
 coverage: export WAVES ?= 0
 coverage:
-	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) report-coverage --sim $(SIM) --dut $(DUT) $(CONFIG_ARG))
+	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) report-coverage --sim $(SIM) $(DUT_ARG) $(CONFIG_ARG))
 
 open-coverage:
-	$(FLOW) open-coverage --sim $(SIM) --dut $(DUT) $(CONFIG_ARG)
+	$(FLOW) open-coverage --sim $(SIM) $(DUT_ARG) $(CONFIG_ARG)
 
 open-coverage-html:
-	$(FLOW) open-coverage-html --sim $(SIM) --dut $(DUT) $(CONFIG_ARG)
+	$(FLOW) open-coverage-html --sim $(SIM) $(DUT_ARG) $(CONFIG_ARG)
 
 waves: override export WAVES := 1
 waves: export HDL_COVERAGE ?= 0
 waves:
-	$(FLOW) validate-config --dut $(DUT) $(CONFIG_ARG)
-	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) open-waves --sim $(SIM) --dut $(DUT) $(CONFIG_ARG))
+	$(FLOW) validate-config $(DUT_ARG) $(CONFIG_ARG)
+	$(call RUN_TEST_AND_POSTPROCESS,$(FLOW) open-waves --sim $(SIM) $(DUT_ARG) $(CONFIG_ARG))
 
 open-waves:
-	$(FLOW) open-waves --sim $(SIM) --dut $(DUT) $(CONFIG_ARG)
+	$(FLOW) open-waves --sim $(SIM) $(DUT_ARG) $(CONFIG_ARG)
 
 format-py-ruff:
 	$(UV) run ruff format .

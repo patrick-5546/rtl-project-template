@@ -36,7 +36,7 @@ that alone, e.g. for an editor).
 
 ```sh
 make doctor # check the installed tools and their versions
-make test   # run the cocotb regression for the default DUT
+make test   # run the cocotb regression of every DUT
 make lint   # run all lint and type checks
 make help   # list every target, override variable and simulator
 ```

@@ -236,8 +236,8 @@ def report(workflow: Path = CI_WORKFLOW) -> int:
             print(line.rstrip())
     print(
         "\nThis checks versions, not whether the tools work with the flow. After installing\n"
-        "or updating one, run the flow with it: make lint, make test DUT=all,\n"
-        "make test DUT=all WAVES=1 and make coverage DUT=all."
+        "or updating one, run the flow with it: make lint, make test,\n"
+        "make test WAVES=1 and make coverage."
     )
     if errors:
         print(f"{errors} error{'s' if errors > 1 else ''}.")

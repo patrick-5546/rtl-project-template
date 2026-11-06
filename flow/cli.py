@@ -16,8 +16,6 @@ from pathlib import Path
 
 from flow import doctor
 from flow.runner import (
-    ALL_DUTS,
-    DEFAULT_DUT,
     DEFAULT_SIM,
     DEFAULT_SOURCES_FILE,
     EXECUTED_CASES_FILE_ENV,
@@ -86,30 +84,29 @@ def _system_exit_status(error: SystemExit) -> int:
     return error.code if isinstance(error.code, int) else 1
 
 
-def _require_dut(dut: str) -> None:
+def _duts(dut: str | None) -> list[str]:
+    """*dut*, checked, or every DUT that has a harness when *dut* is unset."""
     duts = discover_duts(TESTS_DIR)
-    if dut in duts:
-        return
-    available = ", ".join(duts) or "(none)"
-    raise SystemExit(f"Unknown DUT '{dut}'. Available: {available}")
+    if not duts:
+        raise SystemExit("No DUTs found: add a tests/test_<module>.py harness.")
+    if dut is None:
+        return duts
+    if dut not in duts:
+        raise SystemExit(f"Unknown DUT '{dut}'. Available: {', '.join(duts)}")
+    return [dut]
 
 
-def _selected_cases(dut: str, config: str | None) -> list[tuple[str, str]]:
+def _selected_cases(dut: str | None, config: str | None) -> list[tuple[str, str]]:
     """Return the DUT/configuration cases that *dut* and *config* select, sorted.
 
-    *dut* is a module or :data:`ALL_DUTS`, and an unset *config* selects every
-    configuration of each selected DUT. Batch commands (test, report-coverage)
-    run every selected case.
+    An unset *dut* selects every DUT that has a harness, and an unset *config*
+    every configuration of each selected DUT. A configuration belongs to one DUT,
+    so *config* without *dut* needs a project with one DUT. Batch commands (test,
+    report-coverage) run every selected case.
     """
-    if dut == ALL_DUTS:
-        if config:
-            raise SystemExit("CONFIG cannot be combined with DUT=all")
-        duts = discover_duts(TESTS_DIR)
-        if not duts:
-            raise SystemExit("No DUTs found: add a tests/test_<module>.py harness.")
-    else:
-        _require_dut(dut)
-        duts = [dut]
+    duts = _duts(dut)
+    if config is not None and len(duts) > 1:
+        raise SystemExit(f"Set DUT with CONFIG, to one of: {', '.join(duts)}")
     cases: list[tuple[str, str]] = []
     for case_dut in duts:
         configs = _configs(case_dut)
@@ -125,20 +122,20 @@ def _selected_cases(dut: str, config: str | None) -> list[tuple[str, str]]:
     return sorted(cases)
 
 
-def _single_case(dut: str, config: str | None) -> tuple[str, str]:
+def _single_case(dut: str | None, config: str | None) -> tuple[str, str]:
     """Return the one case that a command opening a single artifact needs.
 
-    *dut* must be a module, and *config* may be unset when it has only one
-    configuration.
+    *dut* may be unset when the project has one DUT, and *config* when the DUT
+    has one configuration.
     """
-    if dut == ALL_DUTS:
-        available = ", ".join(discover_duts(TESTS_DIR))
-        raise SystemExit(f"Set DUT to one module, not all. Available: {available}")
-    cases = _selected_cases(dut, config)
+    duts = _duts(dut)
+    if len(duts) > 1:
+        raise SystemExit(f"Set DUT to one of: {', '.join(duts)}")
+    cases = _selected_cases(duts[0], config)
     if len(cases) > 1:
         available = ", ".join(case_config for _, case_config in cases)
         raise SystemExit(
-            f"DUT '{dut}' has multiple configurations; set CONFIG to one of: {available}"
+            f"DUT '{duts[0]}' has multiple configurations; set CONFIG to one of: {available}"
         )
     return cases[0]
 
@@ -218,7 +215,7 @@ def _require_coverage(
 def run_regression(
     simulator: str,
     *,
-    dut: str,
+    dut: str | None,
     sources_file: str,
     config: str | None,
 ) -> None:
@@ -355,7 +352,7 @@ def cmd_list_duts(args: argparse.Namespace) -> None:
 
 def cmd_list_configs(args: argparse.Namespace) -> None:
     cases = _selected_cases(args.dut, None)
-    if args.dut == ALL_DUTS:
+    if args.dut is None:
         print("\n".join(_format_case(case) for case in cases))
     else:
         print("\n".join(config for _, config in cases))
@@ -393,7 +390,7 @@ def main(argv: list[str] | None = None) -> None:
 
     test_parser = sub.add_parser("test")
     test_parser.add_argument("--sim", default=DEFAULT_SIM)
-    test_parser.add_argument("--dut", default=DEFAULT_DUT)
+    test_parser.add_argument("--dut")
     test_parser.add_argument("--sources-file", default=DEFAULT_SOURCES_FILE)
     test_parser.add_argument("--config")
     test_parser.set_defaults(func=cmd_test)
@@ -405,22 +402,22 @@ def main(argv: list[str] | None = None) -> None:
     ):
         p = sub.add_parser(name)
         p.add_argument("--sim", default=DEFAULT_SIM)
-        p.add_argument("--dut", default=DEFAULT_DUT)
+        p.add_argument("--dut")
         p.add_argument("--config")
         p.set_defaults(func=func)
 
     open_waves_parser = sub.add_parser("open-waves")
     open_waves_parser.add_argument("--sim", default=DEFAULT_SIM)
-    open_waves_parser.add_argument("--dut", default=DEFAULT_DUT)
+    open_waves_parser.add_argument("--dut")
     open_waves_parser.add_argument("--config")
     open_waves_parser.set_defaults(func=cmd_open_waves)
 
     list_configs_parser = sub.add_parser("list-configs")
-    list_configs_parser.add_argument("--dut", default=DEFAULT_DUT)
+    list_configs_parser.add_argument("--dut")
     list_configs_parser.set_defaults(func=cmd_list_configs)
 
     validate_config_parser = sub.add_parser("validate-config")
-    validate_config_parser.add_argument("--dut", default=DEFAULT_DUT)
+    validate_config_parser.add_argument("--dut")
     validate_config_parser.add_argument("--config")
     validate_config_parser.set_defaults(func=cmd_validate_config)
 
