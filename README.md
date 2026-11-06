@@ -12,7 +12,6 @@ Python package, `flow/`, that drives the tools.
   - `top.sv`: a parameterized counter, the example design.
   - `top_abv.sv`: assertions, cover properties and a covergroup for `top.sv`.
   - `sources.vf`: the compilation filelist (the default `SV_SOURCES_FILE`).
-  - `verible.vf`: the files that Verible lints and formats.
   - `verilator.vlt`: Verilator's control file: lint waivers, the coverage
     exclusion of Verilator's own library, and internal signals that tests
     access.
@@ -52,8 +51,8 @@ it yours, then delete this section:
    `uv lock`; and this README's title, overview and layout.
 2. Replace the example design, `top`, with your own
    ([Workflows](docs/flow/workflows.md) describes each part):
-   - the RTL in `rtl/`, listed in `rtl/sources.vf` and, for your own files,
-     `rtl/verible.vf`, with third-party RTL in `rtl/vendor/`;
+   - the RTL in `rtl/`, listed in `rtl/sources.vf`, with third-party RTL in
+     `rtl/vendor/`;
    - a test file per top module, `tests/test_<module>.py`, with the module's
      named configurations in `tests/cocotb_configs.py`;
    - a specification per module in `docs/design/`, linked from this README;

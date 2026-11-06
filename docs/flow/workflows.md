@@ -29,16 +29,15 @@ incrementally.
 ## Adding RTL
 
 - Put new RTL in `rtl/` and list it in `rtl/sources.vf`, the filelist that the
-  simulators and the Verilator and slang linters compile. List the project's own
-  files in `rtl/verible.vf` too: Verible lints and formats only the files that it
-  names, so it never reformats files from other people, such as vendor IP. Each
-  list's header describes its entries.
+  simulators and the Verilator and slang linters compile; its header describes
+  its entries. Verible finds the files to lint and format by itself: every
+  SystemVerilog file that Git tracks or would track, outside `rtl/vendor/`.
 - Put third-party RTL, unmodified, in `rtl/vendor/<ip>/`, with its license: copy
   it there, add it as a Git submodule, or make `rtl/vendor/<ip>` a relative
   symlink to a directory elsewhere in your repository. List the files that the
-  design needs in `rtl/sources.vf` only, after your own. The flow compiles them,
-  but their warnings do not fail `make lint`, and `make format` leaves
-  `rtl/vendor/` unchanged.
+  design needs in `rtl/sources.vf`, after your own. The flow compiles them, but
+  their warnings do not fail `make lint`, and `make format` leaves `rtl/vendor/`
+  unchanged.
 - Give each module a specification in `docs/design/<module>.md`, like
   `docs/design/top.md`, and update it with the RTL.
 - Name inputs `_i`, outputs `_o` and active-low reset inputs `_ni`. Prefer
@@ -109,8 +108,8 @@ exports the configuration as `COCOTB_CONFIG` and each parameter as
 
 `rtl/top.sv` `` `include ``s `rtl/top_abv.sv`, its SVA assertions, cover
 properties and covergroup, under `` `ifdef ABV ``: `ABV=1` enables them, and
-`make coverage` always does. Such a file is not a compilation unit: list it in
-`rtl/verible.vf` only, and follow the conventions in its header.
+`make coverage` always does. Such a file is not a compilation unit: leave it out
+of `rtl/sources.vf`, and follow the conventions in its header.
 
 ## Coverage
 

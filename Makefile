@@ -49,11 +49,12 @@ override export PROJECT_ROOT := $(CURDIR)
 # File lists. SV_SOURCES_FILE may name several whitespace-separated filelists;
 # each is handed -- with its own `-f` -- both to the simulators (via the flow
 # package) and to the Verilator/slang lint targets, which read the
-# `+incdir+`/`+define+`/source entries straight from the filelist. SV_VERIBLE_FILE
-# is the standalone Verible input list, parsed below because Verible takes bare
-# file paths rather than a `-f` command file.
+# `+incdir+`/`+define+`/source entries straight from the filelist.
 SV_SOURCES_FILE ?= rtl/sources.vf
-SV_VERIBLE_FILE ?= rtl/verible.vf
+# Third-party RTL goes in SV_VENDOR_DIR/<ip>/. It is compiled as delivered, so
+# no tool lints or formats it: see the Verible inputs below, the slang options
+# with the lint targets, rtl/verilator.vlt and pyproject.toml.
+SV_VENDOR_DIR := rtl/vendor
 
 # Expand the source filelist(s) into the `-f <file>` flags the lint targets pass
 # to Verilator/slang, and validate (here, at parse time) that each filelist
@@ -61,18 +62,15 @@ SV_VERIBLE_FILE ?= rtl/verible.vf
 SV_SOURCES_ARGS := $(foreach f,$(SV_SOURCES_FILE),-f $(f))
 $(foreach f,$(SV_SOURCES_FILE),$(if $(wildcard $(f)),,$(error SV_SOURCES_FILE: '$(f)' does not resolve to a file)))
 
-# Verible has no `-f` command-file mode, so read its input list into bare file
-# paths (dropping `#` comments and blank lines), expand environment variables,
-# and validate that the list exists, names at least one file -- Verible passes
-# when given no files -- and that each file exists. PROJECT_ROOT is passed
-# explicitly because GNU make's parse-time `$(shell ...)` does not inherit
-# `export`ed variables (recipe shells do), so `${PROJECT_ROOT}` in the list would
-# otherwise expand to empty.
-read_sources = $(strip $(shell sed -e 's/[[:space:]]*\#.*//' -e '/^[[:space:]]*$$/d' $(1) | PROJECT_ROOT='$(PROJECT_ROOT)' envsubst))
-$(if $(wildcard $(SV_VERIBLE_FILE)),,$(error SV_VERIBLE_FILE: '$(SV_VERIBLE_FILE)' does not resolve to a file))
-SV_VERIBLE_INPUTS := $(call read_sources,$(SV_VERIBLE_FILE))
-$(if $(SV_VERIBLE_INPUTS),,$(error SV_VERIBLE_FILE: '$(SV_VERIBLE_FILE)' lists no files))
-$(foreach src,$(SV_VERIBLE_INPUTS),$(if $(wildcard $(src)),,$(error verible.vf: '$(src)' does not resolve to a file)))
+# Verible lints and formats the project's own SystemVerilog: every .sv, .svh, .v
+# and .vh file that Git tracks, or would track since no ignore rule matches it,
+# outside SV_VENDOR_DIR. Git lists a symlinked or submodule IP as one entry, not
+# its files. Only the Verible recipes expand it, and fail when it is empty:
+# Verible passes when given no files.
+SV_VERIBLE_FILES = $(sort $(wildcard $(filter-out $(SV_VENDOR_DIR)/%,$(shell \
+	git ls-files --cached --others --exclude-standard -- '*.sv' '*.svh' '*.v' '*.vh'))))
+SV_VERIBLE_INPUTS = $(or $(SV_VERIBLE_FILES),$(error Verible found no SystemVerilog file to \
+	check: it checks the files that Git tracks or would track, outside $(SV_VENDOR_DIR)/))
 
 # Tool selection. SIM picks a simulator profile (flow/simulators.py) for the
 # test/coverage targets, and the wave targets open that simulator's viewer
@@ -287,13 +285,10 @@ endef
 # one module that declares it, as vendor RTL often does, makes the linters
 # reject every module that does not.
 SV_TIMESCALE := 1ns/1ps
-# Third-party RTL, in SV_VENDOR_DIR/<ip>/, is compiled as delivered, so it is
-# not linted: rtl/verilator.vlt waives it for Verilator, and the options below
-# for slang and slang-tidy. slang resolves symlinks, so a symlinked IP's
-# resolved path is passed too. The trailing slash keeps slang-tidy's
-# --skip-path from skipping the parent directory as well
+# slang and slang-tidy leave out SV_VENDOR_DIR. They resolve symlinks, so a
+# symlinked IP's resolved path is passed too. The trailing slash keeps
+# slang-tidy's --skip-path from skipping the parent directory as well
 # (https://github.com/MikePopoloski/slang/issues/2100).
-SV_VENDOR_DIR := rtl/vendor
 SV_VENDOR_PATHS := $(sort $(realpath $(SV_VENDOR_DIR) $(wildcard $(SV_VENDOR_DIR)/*/)))
 # The pass with default parameters names no top module, so each DUT is a top
 # level there, which Verilator's MULTITOP warning would reject. slang and

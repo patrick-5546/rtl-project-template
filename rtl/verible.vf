@@ -1,6 +1,0 @@
-# The files that Verible lints and formats: only the project's own, so that it
-# never reformats files from other people, such as vendor IP. Unlike sources.vf,
-# it lists the files that are only `include`d, such as top_abv.sv. Each line is
-# one file's path, starting with ${PROJECT_ROOT}, the repository root.
-${PROJECT_ROOT}/rtl/top.sv
-${PROJECT_ROOT}/rtl/top_abv.sv
