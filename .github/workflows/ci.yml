@@ -16,7 +16,7 @@ concurrency:
 env:
   # Fail instead of updating uv.lock, including in the uv runs that make starts.
   UV_LOCKED: "1"
-  # The EDA tools, pinned; bump a version with its archive's SHA-256 (docs/development.md).
+  # The EDA tools, pinned; bump a version with its archive's SHA-256 (docs/flow/development.md).
   VERILATOR_VERSION: v5.054
   SLANG_VERSION: v12.1
   VERIBLE_VERSION: v0.0-4298-g085eef05

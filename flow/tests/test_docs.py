@@ -10,8 +10,13 @@ from flow import doctor
 from flow.viewers import JSON2STEMS_GTKWAVE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TOOLS_DOC = REPO_ROOT / "docs" / "tools.md"
-DOCS = [REPO_ROOT / "README.md", REPO_ROOT / "AGENTS.md", *sorted(REPO_ROOT.glob("docs/*.md"))]
+TOOLS_DOC = REPO_ROOT / "docs" / "flow" / "tools.md"
+DOCS = [
+    REPO_ROOT / "README.md",
+    REPO_ROOT / "AGENTS.md",
+    REPO_ROOT / "flow" / "README.md",
+    *sorted(REPO_ROOT.glob("docs/**/*.md")),
+]
 # A Markdown link's target, as in [text](target).
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 
@@ -34,7 +39,7 @@ def anchors(path: Path) -> set[str]:
 
 
 def verified_versions() -> dict[str, str]:
-    """The verified environment in docs/tools.md, by lowercase tool name."""
+    """The verified environment in docs/flow/tools.md, by lowercase tool name."""
     section = TOOLS_DOC.read_text(encoding="utf-8").split("## Verified environment", 1)[1]
     rows = re.findall(r"^\| ([^|]+?) \| ([^|]+?) \|$", section, re.MULTILINE)
     return {tool.lower(): version for tool, version in rows}
@@ -44,7 +49,7 @@ def verified_versions() -> dict[str, str]:
 def test_verified_versions_are_the_ci_pins(pin: str) -> None:
     tool = pin.removesuffix("_VERSION").lower()
     documented = verified_versions().get(tool, "missing").removeprefix("v")
-    assert documented == doctor.ci_pins()[pin], f"docs/tools.md: {tool} {documented}"
+    assert documented == doctor.ci_pins()[pin], f"docs/flow/tools.md: {tool} {documented}"
 
 
 @pytest.mark.parametrize(
