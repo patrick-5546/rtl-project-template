@@ -1,78 +1,76 @@
 # Workflows
 
-How to run the regression, add RTL and tests, and use named configurations,
-assertions, coverage and waveforms. `make help` lists every target and override
-variable; this guide explains how they fit together.
+How to run the tests, add RTL and tests, and use named configurations,
+assertions, coverage and waveforms. `make help` lists every target and variable.
 
 ## Running tests
 
-The simulation flow is cocotb through pytest. Pass the simulator as `SIM=<sim>`
-to test, coverage, and waveform targets; the waveform targets open that
-simulator's viewer.
-
-`make test` runs every DUT that has a `tests/test_<module>.py` harness, in every
-HDL configuration. `DUT=<module>` selects one DUT, and `CONFIG=<config>` one of
-its configurations; list them with `make configs`. The run fails unless every
-selected configuration ran. `coverage` selects the same way, while the commands
-that open one waveform or coverage report (`waves`, `open-waves`,
+`make test` runs the cocotb tests, through pytest, of every DUT that has a
+`tests/test_<module>.py` harness, in each of its HDL configurations. Select one
+DUT with `DUT=<module>`, one of its configurations with `CONFIG=<name>`
+(`make configs` lists them), one cocotb test with `TEST=<name>`, or the tests
+whose names match a regex with `TEST_FILTER=<regex>`. The run fails unless every
+selected configuration ran. `make coverage` selects the same way, while the
+commands that open one waveform or coverage report (`waves`, `open-waves`,
 `open-coverage`, `open-coverage-html`) need `DUT` when there are several DUTs,
-and `CONFIG` when the DUT has several configurations.
+and `CONFIG` when the DUT has several configurations. `SIM=questa` or `SIM=vcs`
+selects another simulator for the test, coverage and waveform targets.
 
-Select individual tests by exact name (`TEST=`) or regex (`TEST_FILTER=`). For
-faster debug loops, `REBUILD=0` lets Questa compile incrementally and VCS reuse
-its last build, as long as the build's inputs -- simulator, defines such as
-`ABV`, parameters, build arguments and waveform tracing -- are the ones that
-build was made from; otherwise the flow rebuilds and says why. It does not track
-RTL edits, so rebuild after them. Verilator always runs its own incremental
-build, so `REBUILD` does not change it.
+`SV_SOURCES_FILE` names the filelists to compile, `rtl/sources.vf` by default;
+give several, space-separated, to compile more RTL (e.g.
+`make test SV_SOURCES_FILE='rtl/sources.vf rtl/extra.vf'`).
 
-Point `SV_SOURCES_FILE` at one or more space-separated `.vf` filelists to compile
-additional RTL (e.g. `make test SV_SOURCES_FILE='rtl/sources.vf rtl/extra.vf'`);
-each filelist is handed to the simulator with its own `-f`.
+Questa and VCS rebuild on every run unless `REBUILD=0`, which reuses the last
+build while its simulator, defines, parameters, build arguments and waveform
+tracing are unchanged, and otherwise rebuilds and says why. It does not check
+the RTL itself, so rebuild after editing it. Verilator always rebuilds
+incrementally.
 
 ## Adding RTL
 
-- New RTL goes in `rtl/` and must be listed in `rtl/sources.vf` (its header
-  documents the entry syntax). Add it to `rtl/verible.vf` too, so Verible lints
-  and formats it: that list is standalone.
+- Put new RTL in `rtl/` and list it in `rtl/sources.vf`, the filelist that the
+  simulators and the Verilator and slang linters compile. List the project's own
+  files in `rtl/verible.vf` too: Verible lints and formats only the files that it
+  names, so it never reformats files from other people, such as vendor IP. Each
+  list's header describes its entries.
 - Give each module a specification in `docs/design/<module>.md`, like
   `docs/design/top.md`, and update it with the RTL.
-- Use `_i` for inputs, `_o` for outputs, and `_ni` for active-low reset inputs.
-- Prefer explicit port directions and `logic` signals, and parameterized widths
-  where they keep a module reusable.
+- Name inputs `_i`, outputs `_o` and active-low reset inputs `_ni`. Prefer
+  explicit port directions, `logic` signals, and parameterized widths where they
+  keep a module reusable.
 
 ## Writing tests
 
-- A module's tests go in `tests/test_<module>.py`, where `<module>` is the RTL
-  top module: the flow derives the top level from the filename, so tests pass no
-  `hdl_toplevel`. The file's pytest entry point, its harness, runs the cocotb
-  tests once per HDL configuration (see `tests/test_top.py`):
+A module's tests go in `tests/test_<module>.py`, where `<module>` is the RTL top
+module that the flow builds for them. The file's pytest function
+`test_<module>`, its harness, builds the module and runs the file's cocotb tests
+once per HDL configuration (see `tests/test_top.py`):
 
-  ```python
-  @pytest.mark.parametrize(("config", "parameters"), config_params(Path(__file__).stem))
-  def test_top(config: str, parameters: dict[str, object]) -> None:
-      build_and_test(test_module=Path(__file__).stem, config=config, parameters=parameters)
-  ```
+```python
+@pytest.mark.parametrize(("config", "parameters"), config_params(Path(__file__).stem))
+def test_top(config: str, parameters: dict[str, object]) -> None:
+    build_and_test(test_module=Path(__file__).stem, config=config, parameters=parameters)
+```
 
-  Name the harness `test_<module>`: the flow runs each selected DUT and
-  configuration by its pytest node ID, `tests/test_<module>.py::test_<module>[<config>]`.
-  A bare `uv run pytest` runs every harness in every configuration.
-- Keep tests deterministic and focused on behavior visible at the module's
-  ports.
-- Use current cocotb APIs: `unit="ns"`, not the deprecated `units="ns"`.
+The flow runs each selected DUT and configuration by its pytest node ID,
+`tests/test_<module>.py::test_<module>[<config>]`, so keep the harness's name. A
+bare `uv run pytest` runs every harness in every configuration.
+
+Keep tests deterministic and focused on behavior visible at the module's ports,
+and use current cocotb APIs: `unit="ns"`, not the deprecated `units="ns"`.
 
 To split a module's tests across files, put them in `test_<module>__<variant>.py`
-files that hold only `@cocotb.test()` functions, with no pytest entry point. A
-`test_<module>.py` aggregator's harness globs them (`glob("test_<module>__*.py")`)
-and passes the sorted stems as `test_module`, so they build once and share a
-single end-of-test summary. Filename variants group cocotb modules; named
-configurations select HDL parameter values and are independent of that naming
-convention.
+files that hold only `@cocotb.test()` functions, and have the harness in
+`test_<module>.py` pass their sorted names (e.g. from
+`glob("test_<module>__*.py")`) as `test_module`: they then build once and share
+one summary. These filename variants only group tests; they have nothing to do
+with the named HDL configurations.
 
 ## Named HDL configurations
 
-An import-safe `tests/cocotb_configs.py` manifest maps each DUT and
-configuration name to its top-level parameter values:
+`tests/cocotb_configs.py` maps each DUT's configuration names to top-level
+parameter values. It must stay import-safe: the flow reads it without a
+simulator.
 
 ```python
 HDL_CONFIGS = {
@@ -83,16 +81,49 @@ HDL_CONFIGS = {
 }
 ```
 
-`config_params` turns a DUT's entry into its harness's parameters, and a DUT
-without one gets a single configuration, `default`, with no overrides. Cocotb
-test constants can read the active elaboration with `active_parameter("WIDTH", 8)`.
-The runner exports the configuration as `COCOTB_CONFIG` and each parameter as
+`config_params` turns a DUT's entry into its harness's parameters; a DUT without
+one has a single configuration, `default`, with no overrides. A test reads the
+value that its build used with `active_parameter("WIDTH", 8)`: the runner
+exports the configuration as `COCOTB_CONFIG` and each parameter as
 `COCOTB_PARAM_<name>`.
+
+## Assertions
+
+`rtl/top.sv` `` `include ``s `rtl/top_abv.sv`, its SVA assertions, cover
+properties and covergroup, under `` `ifdef ABV ``: `ABV=1` enables them, and
+`make coverage` always does. Such a file is not a compilation unit: list it in
+`rtl/verible.vf` only, and follow the conventions in its header.
+
+## Coverage
+
+`make coverage` runs the tests with coverage and assertions enabled, then reports
+each selected configuration's coverage. With Verilator, that is a summary per
+coverage type, LCOV data, and an annotated copy of the sources, which marks each
+unhit point with `%00`; `make open-coverage-html CONFIG=<name>` writes and opens
+LCOV's HTML report for one configuration, and `COVERAGE_HTML=1` makes
+`make coverage` write it for each. With `SIM=questa` or `SIM=vcs`,
+`make coverage` writes the simulator's own reports, and `make open-coverage`
+opens one in the simulator's coverage GUI. `HTML_VIEWER` sets the program that
+opens HTML reports (e.g. `wslview`, from wslu, on WSL).
+
+The reports fail on missing data or tool errors, but no simulator's report fails
+on a coverage hole. [Tools](tools.md#coverage) compares what each simulator
+collects.
+
+## Waveforms
+
+`make waves` runs the tests with waveform dumping, then opens the waveform in the
+simulator's viewer; `make open-waves` opens the last one again. Each viewer
+loads its layout from `waves/<DUT>.*` when it exists (see
+[Tools](tools.md#waveform-viewers); `make help` lists the variables that select
+another). With Verilator, the wave targets also open GTKWave's RTLBrowse window,
+which annotates the source with the waveform's values; `NO_RTLBROWSE=1` skips
+it.
 
 ## Build directories
 
-Configuration and instrumentation modes use separate build directories, where
-`<config>` is `default` for a DUT without named configurations:
+Each DUT, simulator, configuration and instrumentation builds in its own
+directory, so switching between them does not rebuild the others:
 
 ```text
 build/<dut>/<sim>/<config>/normal/
@@ -101,58 +132,14 @@ build/<dut>/<sim>/<config>/coverage/
 build/<dut>/<sim>/<config>/waves-coverage/
 ```
 
-Each configuration and instrumentation thus keeps its own build, so switching
-between them does not rebuild the others. Each directory also
-holds its run's waveform, coverage data and reports; a run deletes those first,
-so one whose build fails leaves no older ones to open or report. The combined
-`WAVES=1 HDL_COVERAGE=1` mode uses `waves-coverage`, so a waveform or coverage
-database exists in two modes: `open-waves`, `open-coverage` and
-`open-coverage-html` use the newer one and say which, unless `HDL_COVERAGE`
-(for a waveform) or `WAVES` (for coverage) selects one.
-`make coverage` and `make waves` always open what their own run made.
+`<config>` is `default` for a DUT without named configurations. Each directory
+also holds its run's waveform, coverage data and reports, which the run deletes
+first, so a build that fails leaves no older ones behind. A waveform or coverage
+database can also come from a `WAVES=1 HDL_COVERAGE=1` run, in
+`waves-coverage/`: `open-waves`, `open-coverage` and `open-coverage-html` then
+use the newer of the two and say which, unless `HDL_COVERAGE` (for a waveform)
+or `WAVES` (for coverage) selects one. `make waves` and `make coverage` always
+open what their own run made.
 
-`BUILD_DIR=<path>` moves the `build/` root, keeping the layout below it. Keep
-generated files there; Git ignores `build/`, and `make clean` removes it but not
-a relocated `BUILD_DIR`.
-
-## Assertion-based verification
-
-`rtl/top_abv.sv` holds optional SVA assertions and a covergroup for
-`rtl/top.sv`, `` `include ``d under `` `ifdef ABV `` (see its header for the
-structure). ABV files are bare SVA, not compilation units: follow the pattern in
-`rtl/top_abv.sv` and list them in `rtl/verible.vf` only. Enable assertions with
-`ABV=1`.
-
-## Coverage
-
-`make coverage` runs the regression with Verilator's line, branch, toggle, FSM,
-`cover property` and covergroup coverage, enables `ABV` automatically, prints a
-summary per coverage type, and writes LCOV data and an annotated report for each
-selected configuration;
-`make open-coverage-html CONFIG=<name>` generates and opens the HTML report, and
-`COVERAGE_HTML=1` makes `make coverage` write it too. The HTML report needs
-LCOV's `genhtml`, so plain `make coverage` does not.
-The same `coverage SIM=<sim>` pattern works for Questa and VCS. `open-coverage`
-opens a simulator's native GUI coverage viewer where one exists (Questa, and
-VCS via Verdi); Verilator has none, so use `open-coverage-html` for it. Set
-`HTML_VIEWER` to choose the program that opens HTML reports (e.g. `wslview` on
-WSL, which needs wslu). Coverage report commands fail on missing artifacts or
-tool errors, but on no simulator do they fail on coverage holes; Verilator's
-annotated report marks each unhit point with `%00`. See
-[Tools](tools.md#coverage) for what each simulator collects.
-
-## Waveforms
-
-`make waves` runs the tests with waveform dumping and opens the simulator's
-viewer; `make open-waves` reopens the last waveform. Each viewer loads a
-reusable layout from `waves/<DUT>.*` when present, and `make help` lists the
-variables that select another layout:
-
-- Verilator: GTKWave (`waves/<DUT>.gtkw`) reads its FST. The wave targets
-  prepare GTKWave's RTLBrowse window, which links signals back to their source
-  and annotates it with values from the waveform; skip that with
-  `NO_RTLBROWSE=1`.
-- Questa (`waves/<DUT>.do`) opens its native WLF with source-linked debug:
-  double-click a signal to find its RTL driver.
-- VCS: Verdi (`waves/<DUT>.rc`) opens the FSDB that VCS dumps, with the
-  `simv.daidir` knowledge database for source-linked debug.
+`BUILD_DIR=<path>` moves the root of this tree. `make clean` removes `build/`,
+but not a moved root.

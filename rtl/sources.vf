@@ -1,3 +1,8 @@
-# SystemVerilog source list. Paths MUST be absolute.
+# The compilation filelist, the default SV_SOURCES_FILE: the simulators, and the
+# Verilator and slang lint targets, read it with -f. Each line is a source file,
+# or an option such as +incdir+<dir> or +define+<name>=<value>. Start each path
+# with ${PROJECT_ROOT}, the repository root, since the simulators run in the
+# build directories. Leave out files that are only `include`d, such as
+# top_abv.sv.
 +incdir+${PROJECT_ROOT}/rtl
 ${PROJECT_ROOT}/rtl/top.sv
