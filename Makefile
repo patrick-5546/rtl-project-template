@@ -171,7 +171,7 @@ help:
 	@echo "  CONFIG=<name>                   Named HDL configuration; run 'make configs'"
 	@echo "  SV_SOURCES_FILE='a.vf b.vf'     SystemVerilog filelist(s); space-separated for several"
 	@echo "  TEST= / TEST_FILTER=            Select one test by exact name / by regex"
-	@echo "  REBUILD=0                       Reuse an unchanged Questa/VCS build (not after RTL edits)"
+	@echo "  REBUILD=0                       Reuse an unchanged Questa/VCS build"
 	@echo "  BUILD_JOBS=<n>                  Parallel Verilator compile jobs (default and cap: CPU count)"
 	@echo "  ABV=1                           Enable SVA assertions and cover properties"
 	@echo "  HDL_COVERAGE=1                  Enable simulator coverage instrumentation"

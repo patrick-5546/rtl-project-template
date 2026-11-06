@@ -21,9 +21,10 @@ give several, space-separated, to compile more RTL (e.g.
 `make test SV_SOURCES_FILE='rtl/sources.vf rtl/extra.vf'`).
 
 Questa and VCS rebuild on every run unless `REBUILD=0`, which reuses the last
-build while its simulator, defines, parameters, build arguments and waveform
-tracing are unchanged, and otherwise rebuilds and says why. It does not check
-the RTL itself, so rebuild after editing it. Verilator always rebuilds
+build while its simulator, defines, parameters, build arguments, waveform
+tracing and input files are unchanged, and otherwise rebuilds and says why.
+The input files are the filelists, the RTL they name, the files that RTL
+includes, and files named in build arguments. Verilator always rebuilds
 incrementally.
 
 ## Adding RTL

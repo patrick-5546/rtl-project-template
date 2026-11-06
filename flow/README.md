@@ -11,6 +11,9 @@ conventions, linting, CI and dependencies in
 
 - `runner.py`: `build_and_test()`, which builds the RTL and runs the cocotb
   tests through cocotb's Python runner, plus the shared defaults and helpers.
+- `build_inputs.py`: the files that a build reads, followed through the
+  filelists and the files they include, so that `REBUILD=0` rebuilds when
+  they change.
 - `simulators.py`: a `SimulatorProfile` per simulator: its wave/coverage
   artifact defaults, cocotb runner build/test arguments, post-run wave
   preparation, and coverage behavior.

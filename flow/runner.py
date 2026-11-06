@@ -32,6 +32,8 @@ from typing import TYPE_CHECKING, override
 import cocotb_tools.runner as cocotb_runner
 from cocotb_tools.runner import get_runner
 
+from flow.build_inputs import filelist_dependencies, files_digest
+
 if TYPE_CHECKING:
     from _pytest.mark.structures import ParameterSet
 
@@ -264,8 +266,8 @@ def build_changes(record: Path, build: Mapping[str, object]) -> str:
     """Say how *build* differs from the build that *record* describes, or ``""``.
 
     ``REBUILD=0`` reuses a build only when its inputs -- simulator, executable,
-    top level, sources, build arguments, defines, parameters and waveform
-    tracing -- are the ones it was made from. RTL edits are not tracked.
+    top level, sources, build arguments, defines, parameters, waveform tracing
+    and input files -- are the ones it was made from.
     """
     try:
         previous = json.loads(record.read_text(encoding="utf-8"))
@@ -586,7 +588,17 @@ def build_and_test(
     }.get(simulator)
     if executable_override:
         expose_tool_on_path(executable_override)
+    # cocotb's REBUILD=0 checks only what it is given: VCS reuses simv when it is
+    # newer than ``sources``, which leaves out the RTL that the filelists name,
+    # and Questa compiles with -incr whatever the defines. So record what each
+    # build was made from, including a digest of its input files -- the RTL that
+    # the filelists reach and the files that build arguments name -- and rebuild
+    # when any of it changes.
     build_record = build_dir / BUILD_RECORD
+    input_files = [
+        *filelist_dependencies(sources_files, project_dir),
+        *(Path(argument) for argument in build_args if Path(argument).is_file()),
+    ]
     build_inputs = {
         "simulator": simulator,
         "executable": os.environ.get(executable_override, "") if executable_override else "",
@@ -596,6 +608,7 @@ def build_and_test(
         "defines": {name: str(value) for name, value in defines.items()},
         "parameters": {name: str(value) for name, value in parameters.items()},
         "waveform tracing": waves_enabled,
+        "input files": files_digest(input_files),
     }
     if not rebuild and (changes := build_changes(build_record, build_inputs)):
         print(f"REBUILD=0: rebuilding {build_dir}, because {changes}.", flush=True)

@@ -263,6 +263,27 @@ def test_rebuild_0_rebuilds_when_the_record_is_not_an_object(
     assert "because its inputs were not recorded" in capsys.readouterr().out
 
 
+def test_rebuild_0_rebuilds_when_an_included_file_changes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    header = tmp_path / "rtl" / "defs.svh"
+    header.parent.mkdir()
+    header.write_text("`define WIDTH 4\n")
+    (tmp_path / "rtl" / "top.sv").write_text('`include "defs.svh"\nmodule top; endmodule\n')
+    sources = tmp_path / "sources.vf"
+    sources.write_text("+incdir+${PROJECT_ROOT}/rtl\n${PROJECT_ROOT}/rtl/top.sv\n")
+    monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
+    monkeypatch.setenv("SV_SOURCES_FILE", str(sources))
+    assert rebuilds(monkeypatch, tmp_path) is True
+    assert rebuilds(monkeypatch, tmp_path) is False
+    header.write_text("`define WIDTH 8\n")
+    capsys.readouterr()
+    assert rebuilds(monkeypatch, tmp_path) is True
+    assert "because its input files changed" in capsys.readouterr().out
+
+
 def test_previous_run_outputs_are_deleted_before_the_build(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
