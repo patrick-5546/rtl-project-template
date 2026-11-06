@@ -252,7 +252,7 @@ def run_regression(
         if result.returncode == PYTEST_USAGE_ERROR:
             print(
                 "Each DUT needs a harness, test_<dut> in tests/test_<dut>.py, "
-                "parameterized with config_params (see docs/workflows.md).",
+                "parameterized with config_params (see docs/flow/workflows.md).",
                 file=sys.stderr,
             )
         if result.returncode != 0:

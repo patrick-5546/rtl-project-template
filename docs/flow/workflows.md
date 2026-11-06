@@ -35,6 +35,8 @@ each filelist is handed to the simulator with its own `-f`.
 - New RTL goes in `rtl/` and must be listed in `rtl/sources.vf` (its header
   documents the entry syntax). Add it to `rtl/verible.vf` too, so Verible lints
   and formats it: that list is standalone.
+- Give each module a specification in `docs/design/<module>.md`, like
+  `docs/design/top.md`, and update it with the RTL.
 - Use `_i` for inputs, `_o` for outputs, and `_ni` for active-low reset inputs.
 - Prefer explicit port directions and `logic` signals, and parameterized widths
   where they keep a module reusable.
