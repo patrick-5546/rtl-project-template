@@ -122,6 +122,26 @@ def write_questa_anchor(build_dir: Path) -> Path:
     return anchor
 
 
+def write_verilator_ports_vlt(build_dir: Path, hdl_toplevel: str) -> Path:
+    """Write a Verilator control file that makes *hdl_toplevel*'s ports VPI-accessible.
+
+    cocotb builds Verilator models with ``--public-flat-rw``, which makes every
+    signal readable and writable through VPI, and so stops Verilator from
+    optimizing most of the design: a large model then simulates many times
+    slower. :meth:`VerilatorProfile.configure` turns that off with
+    ``--no-public-flat-rw`` and passes this file instead, so that tests see the
+    top level's ports only. Waveforms and coverage do not depend on it.
+
+    Only rewritten when its content changes, so that its mtime stays stable.
+    """
+    build_dir.mkdir(parents=True, exist_ok=True)
+    control_file = build_dir / "cocotb_ports.vlt"
+    contents = f'`verilator_config\npublic_flat_rw -module "{hdl_toplevel}" -port "*"\n'
+    if not control_file.is_file() or control_file.read_text() != contents:
+        control_file.write_text(contents)
+    return control_file
+
+
 class SimulatorProfile:
     """Base class for per-simulator build/test/coverage behavior.
 
@@ -256,6 +276,9 @@ class VerilatorProfile(SimulatorProfile):
         args.build_args.append("--timing")
         args.build_args.append("-Wno-fatal")
         args.build_args.append(str(VERILATOR_CONTROL_FILE))
+        # These follow cocotb's own --public-flat-rw, so they override it.
+        args.build_args.append("--no-public-flat-rw")
+        args.build_args.append(str(write_verilator_ports_vlt(cfg.build_dir, cfg.hdl_toplevel)))
         if cfg.hdl_coverage:
             args.build_args.append("--coverage")
             args.plusargs.append(f"+verilator+coverage+file+{cfg.coverage_dat}")

@@ -47,6 +47,15 @@ def test_verilator_configure_modes(
     assert bool(args.plusargs) is coverage
 
 
+def test_verilator_makes_only_the_top_levels_ports_public(tmp_path: Path) -> None:
+    profile = VerilatorProfile()
+    with patch.object(profile, "require_version"):
+        args = profile.configure(config(tmp_path))
+    ports = tmp_path / "cocotb_ports.vlt"
+    assert args.build_args[-2:] == ["--no-public-flat-rw", str(ports)]
+    assert 'public_flat_rw -module "top" -port "*"' in ports.read_text(encoding="utf-8")
+
+
 def test_every_verilator_build_needs_its_minimum_version(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
