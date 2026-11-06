@@ -60,13 +60,30 @@ class ViewerProfile:
         raise NotImplementedError
 
 
+def drop_builtin_modules(stems: Path) -> None:
+    """Remove the modules whose file is ``<built-in>`` from the RTLBrowse *stems*.
+
+    Verilator's tree lists internal modules, such as ``$unit`` and
+    ``__Vconstpool``, that have no source for RTLBrowse to open. GTKWave 4's
+    RTLBrowse opens the first module at startup, which would be ``$unit``.
+    """
+    lines = stems.read_text(encoding="utf-8").splitlines(keepends=True)
+
+    def is_builtin_module(line: str) -> bool:
+        fields = line.split()
+        return fields[:2] == ["++", "module"] and fields[3:5] == ["file", "<built-in>"]
+
+    stems.write_text("".join(line for line in lines if not is_builtin_module(line)), "utf-8")
+
+
 class GtkwaveProfile(ViewerProfile):
     """GTKWave 3, or GTKWave 4 when ``GTKWAVE`` names its executable.
 
     GTKWave starts RTLBrowse by name from ``PATH``, so the directory of an
     overridden ``GTKWAVE`` goes first on ``PATH``, keeping each GTKWave with its
     own RTLBrowse. GTKWave 4 ships no ``json2stems``; the stems still come from
-    GTKWave 3's (``JSON2STEMS``), in the format that both versions read.
+    GTKWave 3's (``JSON2STEMS``), in the format that both versions read, without
+    Verilator's internal modules (:func:`drop_builtin_modules`).
     """
 
     name = "gtkwave"
@@ -107,6 +124,7 @@ class GtkwaveProfile(ViewerProfile):
                     "NO_RTLBROWSE=1."
                 )
             run([json2stems, str(tree_meta), str(tree_json), str(stems)], cwd=build_dir)
+            drop_builtin_modules(stems)
             print(f"GTKWave stems: {stems}")
             cmd += ["-t", str(stems)]
         cmd.append(str(wave))
