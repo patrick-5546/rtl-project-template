@@ -37,9 +37,11 @@ filterwarnings = ["error"]
 [tool.pyrefly]
 preset = "strict"
 search-path = [".", "tests"]
+project-excludes = ["rtl/vendor/**"]
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["rtl/vendor"]
 
 [tool.ruff.lint]
 extend-select = [
@@ -71,13 +73,20 @@ preview = true
 # cocotb runs every test as a coroutine, including ones that never await.
 "tests/**" = ["ANN401", "RUF029"]
 
+[tool.ty.src]
+exclude = ["rtl/vendor"]
+
 [tool.ty.rules]
 missing-type-argument = "error"
 possibly-unresolved-reference = "warn"
+
+[tool.rumdl]
+exclude = ["rtl/vendor"]
 
 [tool.rumdl.MD013]
 line-length = 100
 
 [tool.typos.files]
-# The layouts that the waveform viewers write, and the lockfile's hashes.
-extend-exclude = ["uv.lock", "waves/"]
+# The layouts that the waveform viewers write, the lockfile's hashes, and
+# third-party RTL.
+extend-exclude = ["uv.lock", "waves/", "rtl/vendor/"]

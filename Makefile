@@ -287,11 +287,20 @@ endef
 # one module that declares it, as vendor RTL often does, makes the linters
 # reject every module that does not.
 SV_TIMESCALE := 1ns/1ps
+# Third-party RTL, in SV_VENDOR_DIR/<ip>/, is compiled as delivered, so it is
+# not linted: rtl/verilator.vlt waives it for Verilator, and the options below
+# for slang and slang-tidy. slang resolves symlinks, so a symlinked IP's
+# resolved path is passed too. The trailing slash keeps slang-tidy's
+# --skip-path from skipping the parent directory as well
+# (https://github.com/MikePopoloski/slang/issues/2100).
+SV_VENDOR_DIR := rtl/vendor
+SV_VENDOR_PATHS := $(sort $(realpath $(SV_VENDOR_DIR) $(wildcard $(SV_VENDOR_DIR)/*/)))
 # The pass with default parameters names no top module, so each DUT is a top
 # level there, which Verilator's MULTITOP warning would reject.
 VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall -Wno-MULTITOP --timescale $(SV_TIMESCALE) --sv +define+ABV rtl/verilator.vlt
-SLANG_LINT = $(SLANG) -Werror +define+ABV --timescale $(SV_TIMESCALE)
-SLANG_TIDY_LINT = $(SLANG_TIDY) +define+ABV --timescale $(SV_TIMESCALE)
+SLANG_OPTIONS = $(strip +define+ABV --timescale $(SV_TIMESCALE) $(foreach path,$(SV_VENDOR_PATHS),--suppress-warnings $(path)/...))
+SLANG_LINT = $(SLANG) -Werror $(SLANG_OPTIONS)
+SLANG_TIDY_LINT = $(strip $(SLANG_TIDY) $(SLANG_OPTIONS) $(foreach path,$(SV_VENDOR_PATHS),--skip-path $(path)/))
 
 lint-sv-verilator:
 	$(VERILATOR_LINT) $(SV_SOURCES_ARGS)

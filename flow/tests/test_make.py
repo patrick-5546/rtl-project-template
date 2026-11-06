@@ -115,6 +115,30 @@ def test_verible_list_must_name_files(
     assert message in result.stderr
 
 
+def test_slang_tools_leave_out_vendor_rtl_also_through_symlinks(tmp_path: Path) -> None:
+    vendor = tmp_path / "vendor"
+    (vendor / "copied").mkdir(parents=True)
+    linked = tmp_path / "elsewhere" / "linked"
+    linked.mkdir(parents=True)
+    (vendor / "linked").symlink_to(Path("..") / "elsewhere" / "linked")
+    result = subprocess.run(
+        ["make", "--dry-run", f"SV_VENDOR_DIR={vendor}", "lint-sv-slang", "lint-sv-slang-tidy"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    tokens = result.stdout.split()
+
+    def values(option: str) -> set[str]:
+        return {tokens[i + 1] for i, token in enumerate(tokens[:-1]) if token == option}
+
+    paths = [path.resolve() for path in (vendor, vendor / "copied", linked)]
+    assert values("--suppress-warnings") == {f"{path}/..." for path in paths}
+    # Without the trailing slash, slang-tidy would skip the parent directory too.
+    assert values("--skip-path") == {f"{path}/" for path in paths}
+
+
 def test_waves_opens_the_viewer_after_a_failed_test(tmp_path: Path) -> None:
     command_log = tmp_path / "commands.txt"
     fake_cli = tmp_path / "fake_cli.py"

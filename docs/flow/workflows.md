@@ -33,6 +33,12 @@ incrementally.
   files in `rtl/verible.vf` too: Verible lints and formats only the files that it
   names, so it never reformats files from other people, such as vendor IP. Each
   list's header describes its entries.
+- Put third-party RTL, unmodified, in `rtl/vendor/<ip>/`, with its license: copy
+  it there, add it as a Git submodule, or make `rtl/vendor/<ip>` a relative
+  symlink to a directory elsewhere in your repository. List the files that the
+  design needs in `rtl/sources.vf` only, after your own. The flow compiles them,
+  but their warnings do not fail `make lint`, and `make format` leaves
+  `rtl/vendor/` unchanged.
 - Give each module a specification in `docs/design/<module>.md`, like
   `docs/design/top.md`, and update it with the RTL.
 - Name inputs `_i`, outputs `_o` and active-low reset inputs `_ni`. Prefer

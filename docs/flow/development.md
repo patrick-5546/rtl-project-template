@@ -34,6 +34,10 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
 
 - Verible lints and formats only the files in `rtl/verible.vf`, the project's
   own, so it never reformats files from other people.
+- Nothing lints or formats `rtl/vendor/`, where third-party RTL goes:
+  `rtl/verilator.vlt` waives it for Verilator, the Makefile's options skip it
+  for slang and slang-tidy, also through a symlinked IP directory, and
+  `pyproject.toml` excludes it from the Python, Markdown and spelling tools.
 - Verilator, slang and slang-tidy lint the RTL with its default parameters, with
   every DUT as a top level, and again for each named HDL configuration that
   overrides them, with that configuration's DUT as the top module: a warning
