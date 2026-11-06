@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from flow.runner import (
+    PROJECT_DIR,
     SimArgs,
     active_parameter,
     artifact_build_mode,
@@ -271,3 +272,30 @@ def test_previous_run_outputs_are_deleted_before_the_build(
     ):
         build_and_test("test_top", config="width4", parameters={"WIDTH": 4})
     assert seen_at_build == [False, False]
+
+
+def test_a_run_without_the_makefile_sets_project_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    roots: list[str | None] = []
+    simulator = MagicMock()
+    simulator.log = logging.getLogger("flow-test-project-root")
+
+    def record_root(**kwargs: object) -> None:
+        del kwargs
+        roots.append(os.environ.get("PROJECT_ROOT"))
+
+    simulator.build.side_effect = record_root
+    for name in ("ABV", "WAVES", "HDL_COVERAGE", "REBUILD", "COCOTB_EXECUTED_CASES_FILE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("PROJECT_ROOT", "")
+    monkeypatch.delenv("PROJECT_ROOT")
+    monkeypatch.setenv("SIM", "verilator")
+    monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
+    with (
+        patch("flow.runner.get_runner", return_value=simulator),
+        patch("flow.simulators.require_tool_version"),
+    ):
+        build_and_test("test_top", config="width4", parameters={"WIDTH": 4})
+    assert roots == [str(PROJECT_DIR)]
