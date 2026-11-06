@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from flow import doctor
+from flow.simulators import TIMESCALE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -63,6 +64,13 @@ def test_make_variables_are_defined() -> None:
         text=True,
     )
     assert "undefined variable" not in result.stderr
+
+
+def test_linters_default_to_the_simulators_timescale() -> None:
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    match = re.search(r"^SV_TIMESCALE := (\S+)$", makefile, re.MULTILINE)
+    assert match is not None
+    assert match.group(1) == TIMESCALE
 
 
 def test_project_root_cannot_be_overridden() -> None:

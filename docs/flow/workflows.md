@@ -38,6 +38,9 @@ incrementally.
 - Name inputs `_i`, outputs `_o` and active-low reset inputs `_ni`. Prefer
   explicit port directions, `logic` signals, and parameterized widths where they
   keep a module reusable.
+- A module needs no `` `timescale ``: the flow builds and lints one without it at
+  `1ns/1ps`, on every simulator. But a file's `` `timescale `` also applies to
+  the files after it in `rtl/sources.vf`, so list those that declare one last.
 
 ## Writing tests
 

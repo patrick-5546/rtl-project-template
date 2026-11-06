@@ -282,10 +282,16 @@ define LINT_EACH_CONFIG
 	done
 endef
 
+# Modules without a `timescale get the simulators' 1ns/1ps (TIMESCALE in
+# flow/simulators.py; a flow test keeps the two equal). Without that default,
+# one module that declares it, as vendor RTL often does, makes the linters
+# reject every module that does not.
+SV_TIMESCALE := 1ns/1ps
 # The pass with default parameters names no top module, so each DUT is a top
 # level there, which Verilator's MULTITOP warning would reject.
-VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall -Wno-MULTITOP --sv +define+ABV rtl/verilator.vlt
-SLANG_LINT = $(SLANG) -Werror +define+ABV
+VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall -Wno-MULTITOP --timescale $(SV_TIMESCALE) --sv +define+ABV rtl/verilator.vlt
+SLANG_LINT = $(SLANG) -Werror +define+ABV --timescale $(SV_TIMESCALE)
+SLANG_TIDY_LINT = $(SLANG_TIDY) +define+ABV --timescale $(SV_TIMESCALE)
 
 lint-sv-verilator:
 	$(VERILATOR_LINT) $(SV_SOURCES_ARGS)
@@ -297,8 +303,8 @@ lint-sv-slang:
 
 # The configuration passes print only slang-tidy's errors, not every check's PASS.
 lint-sv-slang-tidy:
-	$(SLANG_TIDY) +define+ABV $(SV_SOURCES_ARGS)
-	$(call LINT_EACH_CONFIG,$(SLANG_TIDY) --quiet +define+ABV,--top)
+	$(SLANG_TIDY_LINT) $(SV_SOURCES_ARGS)
+	$(call LINT_EACH_CONFIG,$(SLANG_TIDY_LINT) --quiet,--top)
 
 # Per-tool ENABLE_<TOOL> flags select which targets the language aggregates run;
 # a disabled tool drops out of `lint`/`format` but its target stays invocable.
