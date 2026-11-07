@@ -108,3 +108,6 @@ Then update the [verified environment](tools.md#verified-environment);
 Verilator version that cocotb needs: `make test-flow-py` then fails until the
 flow's own minimum, `VerilatorProfile.minimum_version` in `flow/simulators.py`,
 is at least that.
+
+Workarounds for upstream bugs are commented where they live, with their issue
+and when to remove them; `git grep issues/` lists them.
