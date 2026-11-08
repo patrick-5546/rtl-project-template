@@ -85,9 +85,12 @@ reports.
 
 ## Verified environment
 
-This template was verified with these tool versions, on Ubuntu 26.04 and in CI
-on Ubuntu 24.04. CI pins the open-source ones in `.github/workflows/ci.yml`, and
-uv locks the Python packages in `uv.lock`.
+The open-source tools were verified with these versions on Ubuntu 26.04 and in
+CI on Ubuntu 24.04: CI pins them in `.github/workflows/ci.yml`, and uv locks the
+Python packages in `uv.lock`. Questa, VCS and Verdi were verified with these
+versions elsewhere, before later changes to their profiles, and not since: CI
+cannot run them, and the flow's unit tests check only the commands that it gives
+them.
 
 | Tool | Verified version |
 | --- | --- |
