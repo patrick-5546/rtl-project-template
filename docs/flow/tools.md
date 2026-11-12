@@ -5,17 +5,30 @@ and the versions this template was verified with.
 
 ## Installation
 
-uv installs Python and the locked Python packages, including the Python and
-Markdown linters, when a target first runs. Install the other tools that you
-plan to use and put them on `PATH`:
+[mise](https://mise.jdx.dev) installs uv, Verible and LCOV at the versions that
+`mise.toml` pins, from the downloads that `mise.lock` records with their
+checksums, as CI does. With mise
+[activated](https://mise.jdx.dev/getting-started.html#activate-mise) in your
+shell, run in the checkout:
+
+```sh
+mise trust   # let mise read the checkout's mise.toml
+mise install # install the tools that mise.lock pins
+```
+
+mise then puts them on `PATH` in the checkout; without activating mise, run a
+target as `mise exec -- make test`. uv installs Python and the locked Python
+packages, including the Python and Markdown linters, when a target first runs.
+Install the other tools that you plan to use, and without mise these three too,
+and put them on `PATH`:
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
-| uv | Python package manager | [Standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
+| uv | Python package manager | `mise install`, or the [standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
 | Verilator | Simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [User guide](https://verilator.org/guide/latest/) |
 | slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
-| Verible | SystemVerilog formatting and linting | [Releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
-| LCOV | Coverage HTML report generation | [Releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
+| Verible | SystemVerilog formatting and linting | `mise install`, or [releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
+| LCOV | Coverage HTML report generation | `mise install`, or [releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
 | GTKWave | Waveform viewer | Distribution package, or [GTKWave 3 source](https://github.com/gtkwave/gtkwave/tree/lts/gtkwave3-gtk3) | [Documentation](https://gtkwave.github.io/gtkwave/) |
 
 - uv must be 0.9.17 or newer, the first release that reads the relative
@@ -23,8 +36,9 @@ plan to use and put them on `PATH`:
   `3.14` in `.python-version`, the newest that the locked cocotb release
   supports; move to Python 3.15 once a cocotb release ships wheels for it.
 - LCOV's `lcov` and `genhtml` need the Perl modules Capture::Tiny, DateTime,
-  Devel::StackTrace and TimeDate: on Debian and Ubuntu, `libcapture-tiny-perl`,
-  `libdatetime-perl`, `libdevel-stacktrace-perl` and `libtimedate-perl`.
+  Devel::StackTrace and TimeDate, which mise does not install: on Debian and
+  Ubuntu, `libcapture-tiny-perl`, `libdatetime-perl`,
+  `libdevel-stacktrace-perl` and `libtimedate-perl`.
 - GTKWave's RTLBrowse window needs `json2stems`, which comes with GTKWave
   3.3.125 or newer: Ubuntu 26.04's package has it, but Ubuntu 24.04's and
   Debian 13's are older. Without it, skip RTLBrowse with `NO_RTLBROWSE=1`.
@@ -33,9 +47,10 @@ plan to use and put them on `PATH`:
 
 `make doctor` shows where the flow finds each tool, honoring the executable
 variables that `make help` lists, and the tool's version. A version older than
-the flow needs is an error, as is a missing tool that `make test` needs; a
-version that CI pins is "verified", and any other "untested". It checks versions
-only: after installing or updating a tool, run the flow with it.
+the flow needs is an error, as is a missing tool that `make test` needs; the
+version that CI uses, which `mise.toml` or `.github/workflows/ci.yml` pins, is
+"verified", and any other "untested". It checks versions only: after installing
+or updating a tool, run the flow with it.
 
 ## Simulators
 
@@ -86,8 +101,9 @@ reports.
 ## Verified environment
 
 The open-source tools were verified with these versions on Ubuntu 26.04 and in
-CI on Ubuntu 24.04: CI pins them in `.github/workflows/ci.yml`, and uv locks the
-Python packages in `uv.lock`. Questa, VCS and Verdi were verified with these
+CI on Ubuntu 24.04: `mise.toml` pins the tools that mise installs, the `env` of
+`.github/workflows/ci.yml` pins mise and the tools that CI builds, and uv locks
+the Python packages in `uv.lock`. Questa, VCS and Verdi were verified with these
 versions elsewhere, before later changes to their profiles, and not since: CI
 cannot run them, and the flow's unit tests check only the commands that it gives
 them.
@@ -96,6 +112,7 @@ them.
 | --- | --- |
 | GTKWave | 3.3.126 |
 | LCOV | 2.6 |
+| mise | 2026.11.1 |
 | Questa | 2025.1 |
 | slang | 12.1 |
 | uv | 0.13.7 |

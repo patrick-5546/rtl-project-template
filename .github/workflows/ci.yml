@@ -16,13 +16,11 @@ concurrency:
 env:
   # Fail instead of updating uv.lock, including in the uv runs that make starts.
   UV_LOCKED: "1"
-  # The EDA tools, pinned; bump a version with its archive's SHA-256 (docs/flow/development.md).
+  # The versions of the EDA tools that CI builds, and of mise, which installs the tools
+  # that mise.lock pins; docs/flow/development.md says how to bump them.
   VERILATOR_VERSION: v5.054
   SLANG_VERSION: v12.1
-  VERIBLE_VERSION: v0.0-4298-g085eef05
-  VERIBLE_SHA256: ca83778c7c2b73272277bd670d1851c8caf973fd3283688aeb0d36d4b3598a90
-  LCOV_VERSION: v2.6
-  LCOV_SHA256: 67a45db99b8ef0260c3fac9a2e3749fd8fa350a15e235dd3c29b356d97755c75
+  MISE_VERSION: 2026.11.1
 
 jobs:
   lint:
@@ -33,7 +31,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      # Installs the tools that mise.lock pins, uv among them, and puts them on PATH.
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          version: ${{ env.MISE_VERSION }}
       - name: Install the locked Python packages
         run: uv sync
       - name: Lint
@@ -55,9 +56,9 @@ jobs:
         with:
           verilator-version: ${{ env.VERILATOR_VERSION }}
           slang-version: ${{ env.SLANG_VERSION }}
-          verible-version: ${{ env.VERIBLE_VERSION }}
-          verible-sha256: ${{ env.VERIBLE_SHA256 }}
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          version: ${{ env.MISE_VERSION }}
       - name: Install the locked Python packages
         run: uv sync
       - run: make lint-sv
@@ -70,7 +71,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          version: ${{ env.MISE_VERSION }}
       - name: Install the locked Python packages
         run: uv sync
       - run: make test-flow-py
@@ -100,9 +103,14 @@ jobs:
       - uses: ./.github/actions/setup-eda-tools
         with:
           verilator-version: ${{ env.VERILATOR_VERSION }}
-          lcov-version: ${{ matrix.target == 'coverage' && env.LCOV_VERSION || '' }}
-          lcov-sha256: ${{ env.LCOV_SHA256 }}
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Install the Perl modules that LCOV loads
+        if: matrix.target == 'coverage'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcapture-tiny-perl libdatetime-perl libdevel-stacktrace-perl libtimedate-perl
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          version: ${{ env.MISE_VERSION }}
       - name: Install the locked Python packages
         run: uv sync
       - name: Run make ${{ matrix.target }} for every DUT

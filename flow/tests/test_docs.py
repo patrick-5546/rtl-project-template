@@ -45,11 +45,19 @@ def verified_versions() -> dict[str, str]:
     return {tool.lower(): version for tool, version in rows}
 
 
-@pytest.mark.parametrize("pin", sorted(doctor.ci_pins()))
-def test_verified_versions_are_the_ci_pins(pin: str) -> None:
-    tool = pin.removesuffix("_VERSION").lower()
+def pinned_versions() -> dict[str, str]:
+    """The versions that CI and mise.toml pin, by lowercase tool name: the CI pin
+    ``VERILATOR_VERSION`` is ``verilator``, and the mise tool
+    ``github:chipsalliance/verible`` is ``verible``."""
+    ci = {pin.removesuffix("_VERSION").lower(): v for pin, v in doctor.ci_pins().items()}
+    mise = {re.split(r"[:/]", key)[-1].lower(): v for key, v in doctor.mise_pins().items()}
+    return ci | mise
+
+
+@pytest.mark.parametrize("tool", sorted(pinned_versions()))
+def test_verified_versions_are_the_pins(tool: str) -> None:
     documented = verified_versions().get(tool, "missing").removeprefix("v")
-    assert documented == doctor.ci_pins()[pin], f"docs/flow/tools.md: {tool} {documented}"
+    assert documented == pinned_versions()[tool], f"docs/flow/tools.md: {tool} {documented}"
 
 
 @pytest.mark.parametrize(

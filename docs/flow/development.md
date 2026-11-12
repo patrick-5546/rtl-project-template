@@ -62,7 +62,8 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
 `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests; a newer
 push to a pull request cancels its run in progress. Its jobs can only read the
 repository, keep no credentials in their checkouts, pin each action by commit
-SHA, have time limits, and fail if `uv.lock` is out of date (`UV_LOCKED`):
+SHA, have time limits, and fail if `uv.lock` or `mise.lock` is out of date
+(`UV_LOCKED`, and mise's `--locked`):
 
 - `lint`: the Python, Markdown, spelling and workflow checks, with zizmor's
   online audits;
@@ -73,10 +74,10 @@ SHA, have time limits, and fail if `uv.lock` is out of date (`UV_LOCKED`):
   uploads them and the LCOV data as the `coverage-reports` artifact, and
   summarizes each configuration's coverage by type on the run's summary page.
 
-The local action `.github/actions/setup-eda-tools` builds Verilator and slang,
-cached per version and runner image, and downloads Verible and LCOV, checked
-against their SHA-256s. The workflow's `env` pins each tool's version and
-checksum.
+Each job installs the tools that `mise.lock` pins, uv among them, with
+`jdx/mise-action`, which caches them. The local action
+`.github/actions/setup-eda-tools` builds Verilator and slang, cached per version
+and runner image. The workflow's `env` pins their versions and mise's.
 
 ## Updating dependencies
 
@@ -94,20 +95,29 @@ to `pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
 `false` and run `uv lock`; remove the entry once the release is a week old. A
 minimum version in `pyproject.toml` must be a week old too, or locking fails.
 
-Dependabot does not update the EDA tools. The `env` of
-`.github/workflows/ci.yml` pins their versions, and the SHA-256s of the Verible
-and LCOV archives. To move to a new release, change its version there, and for
-Verible or LCOV its checksum, which the release's asset digests list:
+Dependabot does not update the tools that mise installs. `mise.toml` pins uv,
+Verible and LCOV, and `mise.lock` the URL and checksum of each one's download for
+every platform in `lockfile_platforms`. `mise outdated --bump --no-global` lists
+their newer releases, and `mise upgrade --bump <tool>`, such as
+`mise upgrade --bump uv`, installs a tool's newest release and updates both
+files. Like uv, mise takes only releases at least a week old
+(`minimum_release_age` in `mise.toml`). After editing `mise.toml` by hand, run
+`mise lock`. Verilator, slang and GTKWave are not in `mise.toml`: conda-forge's
+Verilator builds models with a compiler that only its own environment has,
+slang's release has no `slang-tidy`, and conda-forge's GTKWave predates
+`json2stems`.
 
-```sh
-gh api repos/chipsalliance/verible/releases/tags/<tag> --jq '.assets[] | [.name, .digest] | @tsv'
-```
+Nor does Dependabot update mise or the EDA tools that CI builds, which the `env`
+of `.github/workflows/ci.yml` pins: to move one to a new release, change its
+version there. `min_version` in `mise.toml`, the oldest mise that can use it,
+must not be newer than CI's mise.
 
-Then update the [verified environment](tools.md#verified-environment);
-`make doctor` reads the pins from the workflow. A cocotb update can raise the
-Verilator version that cocotb needs: `make test-flow-py` then fails until the
-flow's own minimum, `VerilatorProfile.minimum_version` in `flow/simulators.py`,
-is at least that.
+After updating a tool, update the
+[verified environment](tools.md#verified-environment) to match its pin;
+`make doctor` reads the pins from the workflow and `mise.toml`. A cocotb update
+can raise the Verilator version that cocotb needs: `make test-flow-py` then
+fails until the flow's own minimum, `VerilatorProfile.minimum_version` in
+`flow/simulators.py`, is at least that.
 
 Workarounds for upstream bugs are commented where they live, with their issue
 and when to remove them; `git grep issues/` lists them.

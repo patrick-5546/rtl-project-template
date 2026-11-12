@@ -1,0 +1,23 @@
+# The tools that mise (https://mise.jdx.dev) installs for the flow; see
+# docs/flow/tools.md. `mise install` installs the versions and builds that
+# mise.lock pins and checks their checksums, and CI does the same.
+#
+# Verilator, slang and GTKWave are not here: mise has no build of them that the
+# flow can use. docs/flow/development.md says how to update the tools.
+min_version = "2026.11.1"
+
+[settings]
+# Take only releases at least a week old, as uv's exclude-newer and Dependabot's
+# cooldown do: most compromised releases are found and pulled within days.
+minimum_release_age = "7d"
+# The platforms that mise.lock has downloads for. To set up another kind of
+# machine, add its platform and run `mise lock`.
+lockfile_platforms = ["linux-arm64", "linux-x64"]
+
+[tools]
+uv = "0.13.7"
+"github:chipsalliance/verible" = "0.0-4298-g085eef05"
+# LCOV's release is its source tree, whose bin/ runs as it is: the pattern skips
+# the release's RPMs, and only genhtml, which the flow runs, and lcov go on PATH,
+# not the tree's helper scripts.
+"github:linux-test-project/lcov" = { version = "2.6", asset_pattern = "lcov-*.tar.gz", filter_bins = ["genhtml", "lcov"] }

@@ -87,6 +87,6 @@ exclude = ["rtl/vendor"]
 line-length = 100
 
 [tool.typos.files]
-# The layouts that the waveform viewers write, the lockfile's hashes, and
+# The layouts that the waveform viewers write, the lockfiles' hashes, and
 # third-party RTL.
-extend-exclude = ["uv.lock", "waves/", "rtl/vendor/"]
+extend-exclude = ["mise.lock", "uv.lock", "waves/", "rtl/vendor/"]

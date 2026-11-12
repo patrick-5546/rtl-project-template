@@ -1,8 +1,8 @@
 name: Set up EDA tools
 description: >-
-  Build or download the pinned EDA tools that a job needs and put them on PATH. Builds are
-  cached by version and runner image, and downloads are checked against pinned SHA-256s. An
-  empty version skips a tool.
+  Build the pinned Verilator and slang that a job needs and put them on PATH: mise, which
+  installs the other tools, has no build of them that the flow can use. Builds are cached by
+  version and runner image. An empty version skips a tool.
 
 inputs:
   verilator-version:
@@ -10,18 +10,6 @@ inputs:
     default: ""
   slang-version:
     description: slang Git tag to build, such as v12.1.
-    default: ""
-  verible-version:
-    description: Verible release tag to download.
-    default: ""
-  verible-sha256:
-    description: SHA-256 of that release's linux-static-x86_64 archive.
-    default: ""
-  lcov-version:
-    description: LCOV release tag to download, such as v2.6.
-    default: ""
-  lcov-sha256:
-    description: SHA-256 of that release's lcov-<version>.tar.gz archive.
     default: ""
 
 runs:
@@ -92,36 +80,3 @@ runs:
       if: inputs.slang-version != ''
       shell: bash
       run: echo "/opt/slang/bin" >> "$GITHUB_PATH"
-
-    - name: Install Verible
-      if: inputs.verible-version != ''
-      shell: bash
-      env:
-        VERIBLE_VERSION: ${{ inputs.verible-version }}
-        VERIBLE_SHA256: ${{ inputs.verible-sha256 }}
-      run: |
-        archive="$RUNNER_TEMP/verible.tar.gz"
-        curl -fsSL -o "$archive" \
-          "https://github.com/chipsalliance/verible/releases/download/${VERIBLE_VERSION}/verible-${VERIBLE_VERSION}-linux-static-x86_64.tar.gz"
-        echo "${VERIBLE_SHA256:?verible-sha256 is required}  $archive" | sha256sum --check --strict
-        mkdir -p /opt/verible
-        tar -xzf "$archive" -C /opt/verible --strip-components=1
-        echo "/opt/verible/bin" >> "$GITHUB_PATH"
-
-    - name: Install LCOV
-      if: inputs.lcov-version != ''
-      shell: bash
-      env:
-        LCOV_VERSION: ${{ inputs.lcov-version }}
-        LCOV_SHA256: ${{ inputs.lcov-sha256 }}
-      run: |
-        sudo apt-get update
-        # The Perl modules that lcov and genhtml load.
-        sudo apt-get install -y libcapture-tiny-perl libdatetime-perl libdevel-stacktrace-perl libtimedate-perl
-        archive="$RUNNER_TEMP/lcov.tar.gz"
-        curl -fsSL -o "$archive" \
-          "https://github.com/linux-test-project/lcov/releases/download/${LCOV_VERSION}/lcov-${LCOV_VERSION#v}.tar.gz"
-        echo "${LCOV_SHA256:?lcov-sha256 is required}  $archive" | sha256sum --check --strict
-        mkdir -p /opt/lcov
-        tar -xzf "$archive" -C /opt/lcov --strip-components=1
-        echo "/opt/lcov/bin" >> "$GITHUB_PATH"
