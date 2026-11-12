@@ -11,10 +11,10 @@ Install the tools that you plan to use and put them on `PATH`:
 | --- | --- | --- | --- |
 | mise | Installs uv, Verible and LCOV | [Getting started](https://mise.jdx.dev/getting-started.html) | [Documentation](https://mise.jdx.dev/) |
 | uv | Python package manager | mise | [Documentation](https://docs.astral.sh/uv/) |
-| Verilator | Simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [User guide](https://verilator.org/guide/latest/) |
+| Verilator | Simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [Documentation](https://verilator.org/guide/latest/) |
 | slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
 | Verible | SystemVerilog formatting and linting | mise | [Documentation](https://chipsalliance.github.io/verible/) |
-| LCOV | Coverage HTML report generation | mise | [Man pages](https://github.com/linux-test-project/lcov/tree/master/docs/man) |
+| LCOV | Coverage HTML report generation | mise | [Documentation](https://github.com/linux-test-project/lcov/tree/master/docs/man) |
 | GTKWave | Waveform viewer | [Build instructions](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
 
 With mise [activated](https://mise.jdx.dev/getting-started.html#activate-mise)
