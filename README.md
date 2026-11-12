@@ -31,11 +31,7 @@ Generated artifacts are ignored by Git and stay under `build/`.
 
 ## Quick start
 
-Install the external tools first; see [Tools](docs/flow/tools.md), where
-`mise install` installs uv, Verible and LCOV. Python and the locked Python
-packages need no setup step: every target runs Python through `uv run`, which
-creates or updates `.venv` from `uv.lock` first (`uv sync` does that alone, e.g.
-for an editor).
+Install the external tools first; see [Tools](docs/flow/tools.md).
 
 ```sh
 make doctor # check the installed tools and their versions

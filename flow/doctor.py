@@ -7,10 +7,9 @@ located as the flow locates it, honoring its executable variable (e.g.
 missing tool that ``make test`` needs; only errors fail the report.
 A tool that only other targets need is reported missing, with a reminder to run
 ``mise install`` when mise installs it. The version that CI uses is "verified"
-and any other "untested": ``.github/workflows/ci.yml`` pins the tools that CI
-builds, and ``mise.toml`` the tools that mise installs, locally and in CI. A
-Verible other than CI's is a warning instead: Verible's formatting, and so
-``make lint-sv``, can differ between versions.
+and any other "untested": ``mise.toml`` and ``.github/workflows/ci.yml`` pin
+them. A Verible other than CI's is a warning instead: Verible's formatting, and
+so ``make lint-sv``, can differ between versions.
 """
 
 import os

@@ -5,31 +5,31 @@ and the versions this template was verified with.
 
 ## Installation
 
-[mise](https://mise.jdx.dev) installs uv, Verible and LCOV at the versions that
-`mise.toml` pins, from the downloads that `mise.lock` records with their
-checksums, as CI does. With mise
-[activated](https://mise.jdx.dev/getting-started.html#activate-mise) in your
-shell, run in the checkout:
-
-```sh
-mise trust   # let mise read the checkout's mise.toml
-mise install # install the tools that mise.lock pins
-```
-
-mise then puts them on `PATH` in the checkout; without activating mise, run a
-target as `mise exec -- make test`. uv installs Python and the locked Python
-packages, including the Python and Markdown linters, when a target first runs.
-Install the other tools that you plan to use, and without mise these three too,
-and put them on `PATH`:
+Install the tools that you plan to use and put them on `PATH`:
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
-| uv | Python package manager | `mise install`, or the [standalone installer](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) | [Documentation](https://docs.astral.sh/uv/) |
+| mise | Installs uv, Verible and LCOV | [Getting started](https://mise.jdx.dev/getting-started.html) | [Documentation](https://mise.jdx.dev/) |
+| uv | Python package manager | mise | [Documentation](https://docs.astral.sh/uv/) |
 | Verilator | Simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [User guide](https://verilator.org/guide/latest/) |
 | slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
-| Verible | SystemVerilog formatting and linting | `mise install`, or [releases](https://github.com/chipsalliance/verible/releases) | [Documentation](https://chipsalliance.github.io/verible/) |
-| LCOV | Coverage HTML report generation | `mise install`, or [releases](https://github.com/linux-test-project/lcov/releases) | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
+| Verible | SystemVerilog formatting and linting | mise | [Documentation](https://chipsalliance.github.io/verible/) |
+| LCOV | Coverage HTML report generation | mise | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
 | GTKWave | Waveform viewer | Distribution package, or [GTKWave 3 source](https://github.com/gtkwave/gtkwave/tree/lts/gtkwave3-gtk3) | [Documentation](https://gtkwave.github.io/gtkwave/) |
+
+With mise [activated](https://mise.jdx.dev/getting-started.html#activate-mise)
+in your shell, run these in the checkout to install its tools at the versions
+that CI uses:
+
+```sh
+mise trust
+mise install
+```
+
+They are then on `PATH` anywhere in the checkout; without activating mise, run
+a target through it, as in `mise exec -- make test`. uv installs Python and the
+locked Python packages, including the Python and Markdown linters, when a target
+first runs; `uv sync` does that alone, e.g. for an editor.
 
 - uv must be 0.9.17 or newer, the first release that reads the relative
   `exclude-newer` in `pyproject.toml`. The local Python version is pinned to
@@ -45,10 +45,10 @@ and put them on `PATH`:
   GTKWave 4 has no release yet, only pre-alpha builds from source, so the flow
   targets GTKWave 3.
 
-`make doctor` shows where the flow finds each tool, honoring the executable
-variables that `make help` lists, and the tool's version. A version older than
-the flow needs is an error, as is a missing tool that `make test` needs; the
-version that CI uses, which `mise.toml` or `.github/workflows/ci.yml` pins, is
+The flow runs each tool that it finds on `PATH`, or that its executable variable
+names (`make help` lists them), however it was installed. `make doctor` shows
+which it finds and its version. A version older than the flow needs is an error,
+as is a missing tool that `make test` needs; the version that CI uses is
 "verified", and any other "untested". It checks versions only: after installing
 or updating a tool, run the flow with it.
 
@@ -101,12 +101,11 @@ reports.
 ## Verified environment
 
 The open-source tools were verified with these versions on Ubuntu 26.04 and in
-CI on Ubuntu 24.04: `mise.toml` pins the tools that mise installs, the `env` of
-`.github/workflows/ci.yml` pins mise and the tools that CI builds, and uv locks
-the Python packages in `uv.lock`. Questa, VCS and Verdi were verified with these
-versions elsewhere, before later changes to their profiles, and not since: CI
-cannot run them, and the flow's unit tests check only the commands that it gives
-them.
+CI on Ubuntu 24.04: `mise.toml` and the `env` of `.github/workflows/ci.yml` pin
+them, and `uv.lock` the Python packages. Questa, VCS and Verdi were verified
+with these versions elsewhere, before later changes to their profiles, and not
+since: CI cannot run them, and the flow's unit tests check only the commands
+that it gives them.
 
 | Tool | Verified version |
 | --- | --- |

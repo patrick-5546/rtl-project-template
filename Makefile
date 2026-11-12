@@ -201,7 +201,7 @@ configs:
 # Where the flow finds each external tool, and its version (flow/doctor.py). The
 # report itself runs through uv, so check for uv first.
 doctor:
-	@command -v $(UV) >/dev/null || { echo "$(UV): command not found; run mise install, or install uv (docs/flow/tools.md)." >&2; exit 127; }
+	@command -v $(UV) >/dev/null || { echo "$(UV): command not found; run mise install (docs/flow/tools.md)." >&2; exit 127; }
 	$(FLOW) doctor
 
 # coverage and waves pin the other instrumentation's flag, so that their report or

@@ -52,8 +52,8 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
   warnings by default, and the configuration passes run it with `--quiet`,
   which drops even an error's exit status
   ([slang#2101](https://github.com/MikePopoloski/slang/issues/2101)).
-- typos skips the viewer layouts and `uv.lock`; allow a project's own words in
-  `[tool.typos]` in `pyproject.toml`.
+- typos skips the viewer layouts and the lockfiles; allow a project's own words
+  in `[tool.typos]` in `pyproject.toml`.
 - zizmor also runs its online audits when `GH_TOKEN` is set;
   `.github/zizmor.yml` says which audit is off and why.
 
@@ -77,7 +77,7 @@ SHA, have time limits, and fail if `uv.lock` or `mise.lock` is out of date
 Each job installs the tools that `mise.lock` pins, uv among them, with
 `jdx/mise-action`, which caches them. The local action
 `.github/actions/setup-eda-tools` builds Verilator and slang, cached per version
-and runner image. The workflow's `env` pins their versions and mise's.
+and runner image.
 
 ## Updating dependencies
 
@@ -85,8 +85,9 @@ Dependabot (`.github/dependabot.yml`) proposes weekly updates of the locked
 Python packages and of the actions that the workflow and its local action use,
 in one pull request per ecosystem; each major Python update comes on its own.
 Most compromised releases are found and pulled within days, so every update
-takes only releases at least a week old: Dependabot waits a week, and uv locks
-only week-old releases (`exclude-newer` in `pyproject.toml`).
+takes only releases at least a week old: Dependabot waits a week, uv locks only
+week-old releases (`exclude-newer` in `pyproject.toml`), and mise upgrades only
+to them (`minimum_release_age` in `mise.toml`).
 
 To update by hand, upgrade the locked Python packages with `uv lock --upgrade`,
 or one package with `uv lock --upgrade-package <name>`; the next `uv run`
@@ -95,22 +96,12 @@ to `pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
 `false` and run `uv lock`; remove the entry once the release is a week old. A
 minimum version in `pyproject.toml` must be a week old too, or locking fails.
 
-Dependabot does not update the tools that mise installs. `mise.toml` pins uv,
-Verible and LCOV, and `mise.lock` the URL and checksum of each one's download for
-every platform in `lockfile_platforms`. `mise outdated --bump --no-global` lists
-their newer releases, and `mise upgrade --bump <tool>`, such as
-`mise upgrade --bump uv`, installs a tool's newest release and updates both
-files. Like uv, mise takes only releases at least a week old
-(`minimum_release_age` in `mise.toml`). After editing `mise.toml` by hand, run
-`mise lock`. Verilator, slang and GTKWave are not in `mise.toml`: conda-forge's
-Verilator builds models with a compiler that only its own environment has,
-slang's release has no `slang-tidy`, and conda-forge's GTKWave predates
-`json2stems`.
-
-Nor does Dependabot update mise or the EDA tools that CI builds, which the `env`
-of `.github/workflows/ci.yml` pins: to move one to a new release, change its
-version there. `min_version` in `mise.toml`, the oldest mise that can use it,
-must not be newer than CI's mise.
+Dependabot does not update the other tools. `mise.toml` and `mise.lock` pin uv,
+Verible and LCOV: `mise outdated --bump --no-global` lists their newer releases,
+and `mise upgrade --bump --no-global` upgrades them in both files, or only the
+tools that you name. After editing `mise.toml` by hand, run `mise lock`. The
+`env` of `.github/workflows/ci.yml` pins mise and the EDA tools that CI builds,
+Verilator and slang: to move one to a new release, change its version there.
 
 After updating a tool, update the
 [verified environment](tools.md#verified-environment) to match its pin;

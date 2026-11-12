@@ -16,8 +16,7 @@ concurrency:
 env:
   # Fail instead of updating uv.lock, including in the uv runs that make starts.
   UV_LOCKED: "1"
-  # The versions of the EDA tools that CI builds, and of mise, which installs the tools
-  # that mise.lock pins; docs/flow/development.md says how to bump them.
+  # Pinned versions of mise and of the EDA tools that CI builds (docs/flow/development.md).
   VERILATOR_VERSION: v5.054
   SLANG_VERSION: v12.1
   MISE_VERSION: 2026.11.1
@@ -31,7 +30,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # Installs the tools that mise.lock pins, uv among them, and puts them on PATH.
+      # Installs the tools that mise.lock pins, uv among them.
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with:
           version: ${{ env.MISE_VERSION }}

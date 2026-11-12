@@ -1,8 +1,7 @@
 name: Set up EDA tools
 description: >-
-  Build the pinned Verilator and slang that a job needs and put them on PATH: mise, which
-  installs the other tools, has no build of them that the flow can use. Builds are cached by
-  version and runner image. An empty version skips a tool.
+  Build the pinned Verilator and slang that a job needs and put them on PATH. Builds are
+  cached by version and runner image. An empty version skips a tool.
 
 inputs:
   verilator-version:
