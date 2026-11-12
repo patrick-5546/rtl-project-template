@@ -15,7 +15,7 @@ Install the tools that you plan to use and put them on `PATH`:
 | slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
 | Verible | SystemVerilog formatting and linting | mise | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | mise | [Man pages](https://github.com/linux-test-project/lcov/tree/master/man) |
-| GTKWave | Waveform viewer | Distribution package, or [GTKWave 3 source](https://github.com/gtkwave/gtkwave/tree/lts/gtkwave3-gtk3) | [Documentation](https://gtkwave.github.io/gtkwave/) |
+| GTKWave | Waveform viewer | [Build instructions](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
 
 With mise [activated](https://mise.jdx.dev/getting-started.html#activate-mise)
 in your shell, run these in the checkout to install its tools at the versions
