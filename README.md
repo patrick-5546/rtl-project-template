@@ -24,16 +24,14 @@ Python package, `flow/`, that drives the tools.
 - `docs/`: the documentation below: `design/` holds the design's
   specifications, and `flow/` the flow's guides.
 - `Makefile`, `pyproject.toml` (uv-managed Python dependencies and tool
-  settings), and `AGENTS.md` (instructions for coding agents).
+  settings), `mise.toml` and `mise.lock` (the tools that mise installs), and
+  `AGENTS.md` (instructions for coding agents).
 
 Generated artifacts are ignored by Git and stay under `build/`.
 
 ## Quick start
 
-Install the external tools first; see [Tools](docs/flow/tools.md). Python and the
-locked Python packages need no setup step: every target runs Python through
-`uv run`, which creates or updates `.venv` from `uv.lock` first (`uv sync` does
-that alone, e.g. for an editor).
+Install the external tools first; see [Tools](docs/flow/tools.md).
 
 ```sh
 make doctor # check the installed tools and their versions

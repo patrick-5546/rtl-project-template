@@ -5,10 +5,11 @@ is what running the flow shows, as the report's last line says. Each tool is
 located as the flow locates it, honoring its executable variable (e.g.
 ``VERILATOR``). A version older than the flow needs is an error, and so is a
 missing tool that ``make test`` needs; only errors fail the report.
-A tool that only other targets need is reported missing. The version that CI
-pins in ``.github/workflows/ci.yml`` is "verified" and any other "untested",
-except that a Verible other than CI's is a warning: Verible's formatting, and so
-``make lint-sv``, can differ between versions.
+A tool that only other targets need is reported missing, with a reminder to run
+``mise install`` when mise installs it. The version that CI uses is "verified"
+and any other "untested": ``mise.toml`` and ``.github/workflows/ci.yml`` pin
+them. A Verible other than CI's is a warning instead: Verible's formatting, and
+so ``make lint-sv``, can differ between versions.
 """
 
 import os
@@ -16,6 +17,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,6 +27,7 @@ from flow.simulators import VerilatorProfile
 from flow.viewers import JSON2STEMS_GTKWAVE
 
 CI_WORKFLOW = PROJECT_DIR / ".github" / "workflows" / "ci.yml"
+MISE_CONFIG = PROJECT_DIR / "mise.toml"
 # The first uv that reads the relative ``exclude-newer`` in pyproject.toml; older
 # ones ignore the whole ``[tool.uv]`` table and relock without it.
 UV_MINIMUM = "0.9.17"
@@ -42,6 +45,8 @@ class Tool:
     version_args: tuple[str, ...] = ("--version",)
     # The CI workflow's environment variable that pins the tool's version.
     pin: str = ""
+    # The tool's key in mise.toml, which pins the version that mise installs.
+    mise: str = ""
     # Verify only an identical version string, since equal numbers are not enough.
     exact: bool = False
     minimum: str = ""
@@ -61,7 +66,7 @@ GROUPS = (
         "Tests",
         "make test",
         (
-            Tool("uv", "UV", minimum=UV_MINIMUM, minimum_for="pyproject.toml"),
+            Tool("uv", "UV", mise="uv", minimum=UV_MINIMUM, minimum_for="pyproject.toml"),
             Tool("make"),
             Tool(
                 "verilator",
@@ -77,8 +82,18 @@ GROUPS = (
         "Lint",
         "make lint-sv",
         (
-            Tool("verible-verilog-format", "VERIBLE_FORMAT", pin="VERIBLE_VERSION", exact=True),
-            Tool("verible-verilog-lint", "VERIBLE_LINT", pin="VERIBLE_VERSION", exact=True),
+            Tool(
+                "verible-verilog-format",
+                "VERIBLE_FORMAT",
+                mise="github:chipsalliance/verible",
+                exact=True,
+            ),
+            Tool(
+                "verible-verilog-lint",
+                "VERIBLE_LINT",
+                mise="github:chipsalliance/verible",
+                exact=True,
+            ),
             Tool("slang", "SLANG", pin="SLANG_VERSION"),
             Tool("slang-tidy", "SLANG_TIDY", pin="SLANG_VERSION"),
         ),
@@ -94,7 +109,7 @@ GROUPS = (
                 minimum=VerilatorProfile.minimum_version,
                 minimum_for="the flow",
             ),
-            Tool("genhtml", "GENHTML", pin="LCOV_VERSION"),
+            Tool("genhtml", "GENHTML", mise="github:linux-test-project/lcov"),
         ),
     ),
     Group(
@@ -152,6 +167,23 @@ def ci_pins(workflow: Path = CI_WORKFLOW) -> dict[str, str]:
     return pins
 
 
+def mise_pins(config: Path = MISE_CONFIG) -> dict[str, str]:
+    """The versions in *config*'s ``[tools]``, by tool key, without a leading ``v``.
+
+    A tool's version is a string, or the ``version`` of a table of its options. Only
+    versions count, not requests such as ``latest``.
+    """
+    if not config.is_file():
+        return {}
+    tools = tomllib.loads(config.read_text(encoding="utf-8")).get("tools", {})
+    pins: dict[str, str] = {}
+    for key, value in tools.items():
+        version = value.get("version") if isinstance(value, dict) else value
+        if isinstance(version, str) and re.match(r"v?\d", version):
+            pins[key] = version.removeprefix("v")
+    return pins
+
+
 def version_token(output: str) -> str:
     """The first version in *output*, without a leading ``v``, or ``""``."""
     match = VERSION.search(output)
@@ -194,7 +226,10 @@ def check(tool: Tool, pins: Mapping[str, str], *, required: bool) -> Check:
     path = locate(tool)
     if path is None:
         override = os.environ.get(tool.variable) if tool.variable else None
-        detail = f"not found: {tool.variable}={override}" if override else "not found"
+        if override:
+            detail = f"not found: {tool.variable}={override}"
+        else:
+            detail = "not found; run `mise install`" if tool.mise else "not found"
         return Check("error" if required else "missing", tool.name, detail=detail)
     if not tool.version_args:
         return Check("ok", tool.name, path=path)
@@ -210,7 +245,8 @@ def check(tool: Tool, pins: Mapping[str, str], *, required: bool) -> Check:
     if tool.minimum and numbers(version) < numbers(tool.minimum):
         detail = f"{tool.minimum_for} needs {tool.minimum} or newer"
         return Check("error", tool.name, version, path, detail)
-    pin = pins.get(tool.pin) if tool.pin else None
+    key = tool.pin or tool.mise
+    pin = pins.get(key) if key else None
     if not pin:
         return Check("ok", tool.name, version, path)
     same = (version == pin) if tool.exact else (numbers(version) == numbers(pin))
@@ -221,9 +257,9 @@ def check(tool: Tool, pins: Mapping[str, str], *, required: bool) -> Check:
     return Check("untested", tool.name, version, path, f"CI verifies {pin}")
 
 
-def report(workflow: Path = CI_WORKFLOW) -> int:
+def report(workflow: Path = CI_WORKFLOW, mise_config: Path = MISE_CONFIG) -> int:
     """Print the check of every tool, by group; return 1 when any is an error, else 0."""
-    pins = ci_pins(workflow)
+    pins = ci_pins(workflow) | mise_pins(mise_config)
     errors = 0
     for group in GROUPS:
         print(f"{group.title} ({group.purpose}):")

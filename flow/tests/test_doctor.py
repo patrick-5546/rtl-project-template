@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from flow import doctor
-from flow.doctor import GROUPS, Tool, check, ci_pins, numbers, report
+from flow.doctor import GROUPS, Tool, check, ci_pins, mise_pins, numbers, report
 from flow.simulators import VerilatorProfile
 
 VERILATOR = Tool(
@@ -16,12 +16,12 @@ VERILATOR = Tool(
     minimum=VerilatorProfile.minimum_version,
     minimum_for="the flow",
 )
-VERIBLE = Tool("verible-verilog-format", pin="VERIBLE_VERSION", exact=True)
-GENHTML = Tool("genhtml", pin="LCOV_VERSION")
+VERIBLE = Tool("verible-verilog-format", mise="github:chipsalliance/verible", exact=True)
+GENHTML = Tool("genhtml", "GENHTML", mise="github:linux-test-project/lcov")
 PINS = {
     "VERILATOR_VERSION": "5.054",
-    "VERIBLE_VERSION": "0.0-4298-g085eef05",
-    "LCOV_VERSION": "2.6",
+    "github:chipsalliance/verible": "0.0-4298-g085eef05",
+    "github:linux-test-project/lcov": "2.6",
 }
 # What genhtml prints without its Perl modules: a version in it is not genhtml's.
 PERL_ERROR = "Can't locate DateTime.pm in @INC (@INC entries checked: /usr/lib/perl/5.40.1)"
@@ -57,23 +57,39 @@ def test_ci_pins_reads_literal_versions(tmp_path: Path) -> None:
         "env:\n"
         '  UV_LOCKED: "1"\n'
         "  VERILATOR_VERSION: v5.054\n"
-        '  VERIBLE_VERSION: "v0.0-4298-g085eef05"\n'
+        '  SLANG_VERSION: "v12.1"\n'
         "jobs:\n"
         "  rtl:\n"
         "    env:\n"
         "      VERILATOR_VERSION: ${{ env.VERILATOR_VERSION }}\n",
         encoding="utf-8",
     )
-    assert ci_pins(workflow) == {
-        "VERILATOR_VERSION": "5.054",
-        "VERIBLE_VERSION": "0.0-4298-g085eef05",
-    }
+    assert ci_pins(workflow) == {"VERILATOR_VERSION": "5.054", "SLANG_VERSION": "12.1"}
     assert ci_pins(tmp_path / "missing.yml") == {}
 
 
-def test_every_pin_is_in_the_ci_workflow() -> None:
-    pins = ci_pins()
-    assert {tool.pin for group in GROUPS for tool in group.tools if tool.pin} <= pins.keys()
+def test_mise_pins_reads_versions(tmp_path: Path) -> None:
+    config = tmp_path / "mise.toml"
+    config.write_text(
+        "[tools]\n"
+        'uv = "0.13.7"\n'
+        '"github:chipsalliance/verible" = "v0.0-4298-g085eef05"\n'
+        '"github:linux-test-project/lcov" = { version = "2.6", filter_bins = ["genhtml"] }\n'
+        'node = "lts"\n',
+        encoding="utf-8",
+    )
+    assert mise_pins(config) == {
+        "uv": "0.13.7",
+        "github:chipsalliance/verible": "0.0-4298-g085eef05",
+        "github:linux-test-project/lcov": "2.6",
+    }
+    assert mise_pins(tmp_path / "missing.toml") == {}
+
+
+def test_every_pin_is_pinned() -> None:
+    tools = [tool for group in GROUPS for tool in group.tools]
+    assert {tool.pin for tool in tools if tool.pin} <= ci_pins().keys()
+    assert {tool.mise for tool in tools if tool.mise} <= mise_pins().keys()
 
 
 def test_verilator_minimum_covers_cocotbs() -> None:
@@ -154,6 +170,16 @@ def test_missing_tool_is_an_error_only_when_required(
         "error",
         f"not found: VERILATOR={bin_dir / 'custom' / 'verilator'}",
     )
+
+
+def test_missing_tool_that_mise_installs_suggests_mise_install(
+    bin_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = check(GENHTML, PINS, required=False)
+    assert (result.status, result.detail) == ("missing", "not found; run `mise install`")
+    monkeypatch.setenv("GENHTML", str(bin_dir / "custom" / "genhtml"))
+    result = check(GENHTML, PINS, required=False)
+    assert result.detail == f"not found: GENHTML={bin_dir / 'custom' / 'genhtml'}"
 
 
 def test_tools_are_located_as_the_flow_runs_them(

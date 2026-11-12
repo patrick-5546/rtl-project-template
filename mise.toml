@@ -1,0 +1,18 @@
+# The tools that mise installs for the flow, locally and in CI: see
+# docs/flow/tools.md, and docs/flow/development.md to update them. Verilator,
+# slang and GTKWave are not here: mise has no build of them that the flow can use.
+min_version = "2026.11.1"
+
+[settings]
+# Upgrade only to releases at least a week old, as uv.lock and Dependabot do.
+minimum_release_age = "7d"
+# The platforms that mise.lock has downloads for. To set up another kind of
+# machine, add its platform and run `mise lock`.
+lockfile_platforms = ["linux-arm64", "linux-x64"]
+
+[tools]
+uv = "0.13.7"
+"github:chipsalliance/verible" = "0.0-4298-g085eef05"
+# The source tarball, which runs as it is, not the release's RPMs; only genhtml
+# and lcov, not its helper scripts, go on PATH.
+"github:linux-test-project/lcov" = { version = "2.6", asset_pattern = "lcov-*.tar.gz", filter_bins = ["genhtml", "lcov"] }

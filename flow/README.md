@@ -54,8 +54,8 @@ tools, so they run anywhere. Normal pytest discovery stays confined to the RTL
 tests in the repository's `tests/`. pytest runs in strict mode, and a warning
 fails the test that raises it, in both suites. Some of them catch drift:
 `make help` must list every target, `ENABLE_*` flag and executable variable,
-and the docs must match CI's version pins, the minimum versions, the Python
-version, and their own relative links.
+and the docs must match the version pins in CI and `mise.toml`, the minimum
+versions, the Python version, and their own relative links.
 
 ## cocotb's pytest plugin
 
