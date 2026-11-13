@@ -85,8 +85,10 @@ def add_lcov_line_totals(info: Path) -> None:
     section without them, but LCOV's development branch rejects one that has ``DA``
     line records and no totals (https://github.com/linux-test-project/lcov/pull/561,
     not yet released). Sections that already have totals, or have no line records,
-    are left unchanged, so this is a no-op once Verilator writes the totals itself
-    (https://github.com/verilator/verilator/issues/9065); then remove it.
+    are left unchanged, so this is a no-op with a Verilator that writes the totals
+    itself (https://github.com/verilator/verilator/issues/9065, fixed after 5.054 by
+    https://github.com/verilator/verilator/pull/9153). Remove it once
+    ``VerilatorProfile.minimum_version`` is a release with that fix.
     """
     lines = info.read_text(encoding="utf-8").splitlines()
     output: list[str] = []
