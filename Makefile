@@ -137,6 +137,7 @@ help:
 	@echo ""
 	@echo "Coverage:"
 	@echo "  coverage [DUT=...] [CONFIG=...] Run coverage, then report each configuration"
+	@echo "  coverage ABV=0                  Run coverage without SVA assertions and cover properties"
 	@echo "  open-coverage [SIM=...] [CONFIG=...] Open coverage in the native GUI viewer"
 	@echo "  open-coverage-html [SIM=...] [CONFIG=...] Open the coverage HTML report"
 	@echo ""
@@ -206,7 +207,9 @@ doctor:
 
 # coverage and waves pin the other instrumentation's flag, so that their report or
 # viewer opens the build that this run made, not another mode's older data.
-coverage: override export ABV := 1
+# coverage includes the assertions, cover properties and covergroups that ABV
+# encloses, unless given ABV=0.
+coverage: export ABV ?= 1
 coverage: override export HDL_COVERAGE := 1
 coverage: export WAVES ?= 0
 coverage:

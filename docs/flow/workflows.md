@@ -109,8 +109,9 @@ exports the configuration as `COCOTB_CONFIG` and each parameter as
 
 `rtl/top.sv` `` `include ``s `rtl/top_abv.sv`, its SVA assertions, cover
 properties and covergroup, under `` `ifdef ABV ``: `ABV=1` enables them, and
-`make coverage` always does. Such a file is not a compilation unit: leave it out
-of `rtl/sources.vf`, and follow the conventions in its header.
+`make coverage` does unless given `ABV=0`. Such a file is not a compilation
+unit: leave it out of `rtl/sources.vf`, and follow the conventions in its
+header.
 
 ## Coverage
 

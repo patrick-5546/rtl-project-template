@@ -233,3 +233,37 @@ def test_coverage_reports_after_a_failed_test_and_keeps_its_status(
     if expected_error is not None:
         assert f"Error {expected_error}" in result.stderr
     assert command_log.read_text().splitlines() == ["test", "report-coverage"]
+
+
+@pytest.mark.parametrize(("abv", "expected"), [(None, "1"), ("0", "0")])
+def test_coverage_includes_assertions_unless_given_abv_0(
+    tmp_path: Path, abv: str | None, expected: str
+) -> None:
+    command_log = tmp_path / "commands.txt"
+    fake_cli = tmp_path / "fake_cli.py"
+    fake_cli.write_text(
+        "from pathlib import Path\n"
+        "import os\n"
+        "import sys\n"
+        "with Path(os.environ['COMMAND_LOG']).open('a') as stream:\n"
+        "    stream.write(f\"{sys.argv[1]} ABV={os.environ.get('ABV')}\\n\")\n"
+    )
+    environment = {name: value for name, value in os.environ.items() if name != "ABV"}
+    subprocess.run(
+        [
+            "make",
+            "--no-print-directory",
+            f"FLOW={sys.executable} {fake_cli}",
+            *([f"ABV={abv}"] if abv is not None else []),
+            "coverage",
+        ],
+        cwd=REPO_ROOT,
+        env={**environment, "COMMAND_LOG": str(command_log)},
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert command_log.read_text().splitlines() == [
+        f"test ABV={expected}",
+        f"report-coverage ABV={expected}",
+    ]
