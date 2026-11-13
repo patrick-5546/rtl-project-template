@@ -6,8 +6,9 @@
 // "Verilator Control Files" in Verilator's manual. (A comment that starts with
 // the word "verilator" would be read as a metacomment.)
 
-// The covergroups make Verilator compile its own verilated_std.sv: keep it out
-// of the coverage reports, which are for the design.
+// Covergroups, and uses of the std package such as its process and semaphore
+// classes, make Verilator compile its own verilated_std.sv: keep it out of the
+// coverage reports, which are for the design.
 coverage_off -file "*/verilated_std.sv"
 
 // Third-party RTL is compiled as delivered, so it is not linted.
