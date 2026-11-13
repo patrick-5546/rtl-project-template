@@ -47,6 +47,11 @@ incrementally.
 - A module needs no `` `timescale ``: the flow builds and lints one without it at
   `1ns/1ps`, on every simulator. But a file's `` `timescale `` also applies to
   the files after it in `rtl/sources.vf`, so list those that declare one last.
+- Verilator builds and lints with `--timing`, so delays take effect as on Questa
+  and VCS. Verilator generates code to schedule each one, though, so a file with
+  a delay on every gate, such as a gate-level netlist or a cell library, can
+  make Verilator builds many times slower and larger. To ignore that file's
+  delays, add `timing_off -file "*/<file>"` to `rtl/verilator.vlt`.
 
 ## Writing tests
 

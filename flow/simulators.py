@@ -287,8 +287,9 @@ class VerilatorProfile(SimulatorProfile):
     def elaboration_args(self) -> list[str]:
         """Options that the build and the RTLBrowse run share, so they see one design.
 
-        A module without a `` `timescale `` gets :data:`TIMESCALE`, as on Questa
-        and VCS, instead of Verilator's 1ps/1ps.
+        As on Questa and VCS, delays and other timing controls take effect
+        (``--timing``), and a module without a `` `timescale `` gets
+        :data:`TIMESCALE` instead of Verilator's 1ps/1ps.
         """
         return ["--timing", "--timescale", TIMESCALE, "-Wno-fatal", str(VERILATOR_CONTROL_FILE)]
 
