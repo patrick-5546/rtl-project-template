@@ -3,6 +3,12 @@
 # behavior -- the build/test/coverage/wave commands and their defaults -- lives
 # in the Python `flow/` package, which the sim/wave targets below dispatch to.
 
+# GNU Make 3.81, which macOS ships as /usr/bin/make, cannot parse this Makefile
+# and would ignore .SHELLFLAGS, so stop before it reaches either.
+ifneq ($(filter 3.%,$(MAKE_VERSION)),)
+$(error GNU Make 4.0 or newer is needed, not $(MAKE_VERSION): see docs/flow/tools.md)
+endif
+
 # Recipes and parse-time `$(shell ...)` calls run with bash, which fails on the
 # first failing command, including inside a pipeline, and on unset variables.
 # No suffix rules, which a task runner never needs. flow/tests/test_make.py

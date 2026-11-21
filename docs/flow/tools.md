@@ -9,7 +9,8 @@ Install the tools that you plan to use and put them on `PATH`:
 
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
-| mise | Installs uv, Verible and LCOV | [Getting started](https://mise.jdx.dev/getting-started.html) | [Documentation](https://mise.jdx.dev/) |
+| GNU Make | Runs the flow's targets | mise | [Documentation](https://www.gnu.org/software/make/manual/) |
+| mise | Installs GNU Make, uv, Verible and LCOV | [Getting started](https://mise.jdx.dev/getting-started.html) | [Documentation](https://mise.jdx.dev/) |
 | uv | Python package manager | mise | [Documentation](https://docs.astral.sh/uv/) |
 | Verilator | Simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [Documentation](https://verilator.org/guide/latest/) |
 | slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
@@ -31,6 +32,8 @@ a target through it, as in `mise exec -- make test`. uv installs Python and the
 locked Python packages, including the Python and Markdown linters, when a target
 first runs; `uv sync` does that alone, e.g. for an editor.
 
+- GNU Make must be 4.0 or newer: the Makefile rejects the 3.81 that macOS
+  ships as `/usr/bin/make`.
 - uv must be 0.9.17 or newer, the first release that reads the relative
   `exclude-newer` in `pyproject.toml`. The local Python version is pinned to
   `3.14` in `.python-version`, the newest that the locked cocotb release
@@ -111,6 +114,7 @@ that it gives them.
 | --- | --- |
 | GTKWave | 3.3.126 |
 | LCOV | 2.6 |
+| Make | 4.4.1 |
 | mise | 2026.11.1 |
 | Questa | 2025.1 |
 | slang | 12.2 |

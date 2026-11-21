@@ -31,6 +31,8 @@ MISE_CONFIG = PROJECT_DIR / "mise.toml"
 # The first uv that reads the relative ``exclude-newer`` in pyproject.toml; older
 # ones ignore the whole ``[tool.uv]`` table and relock without it.
 UV_MINIMUM = "0.9.17"
+# The Makefile rejects an older GNU Make, such as the 3.81 that macOS ships.
+MAKE_MINIMUM = "4.0"
 # A version as tools print it: 5.054, v0.0-4298-g085eef05, 12.1.627+89a2c9fe9, 2.6-11.g1ad5aed.
 VERSION = re.compile(r"(?<!\S)v?(\d+(?:[.-]\d+)+\S*)")
 VERSION_TIMEOUT_SECONDS = 30
@@ -67,7 +69,7 @@ GROUPS = (
         "make test",
         (
             Tool("uv", "UV", mise="uv", minimum=UV_MINIMUM, minimum_for="pyproject.toml"),
-            Tool("make"),
+            Tool("make", mise="make", minimum=MAKE_MINIMUM, minimum_for="the Makefile"),
             Tool(
                 "verilator",
                 "VERILATOR",

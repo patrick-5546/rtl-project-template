@@ -95,12 +95,13 @@ to `pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
 `false` and run `uv lock`; remove the entry once the release is a week old. A
 minimum version in `pyproject.toml` must be a week old too, or locking fails.
 
-Dependabot does not update the other tools. `mise.toml` and `mise.lock` pin uv,
-Verible and LCOV: `mise outdated --bump --no-global` lists their newer releases,
-and `mise upgrade --bump --no-global` upgrades them in both files, or only the
-tools that you name. After editing `mise.toml` by hand, run `mise lock`. The
-`env` of `.github/workflows/ci.yml` pins mise and the EDA tools that CI builds,
-Verilator and slang: to move one to a new release, change its version there.
+Dependabot does not update the other tools. `mise.toml` and `mise.lock` pin GNU
+Make, uv, Verible and LCOV: `mise outdated --bump --no-global` lists their newer
+releases, and `mise upgrade --bump --no-global` upgrades them in both files, or
+only the tools that you name. After editing `mise.toml` by hand, run
+`mise lock`. The `env` of `.github/workflows/ci.yml` pins mise and the EDA
+tools that CI builds, Verilator and slang: to move one to a new release, change
+its version there.
 
 After updating a tool, update the
 [verified environment](tools.md#verified-environment) to match its pin;

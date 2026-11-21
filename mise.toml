@@ -16,3 +16,5 @@ uv = "0.13.7"
 # The source tarball, which runs as it is, not the release's RPMs; only genhtml
 # and lcov, not its helper scripts, go on PATH.
 "github:linux-test-project/lcov" = { version = "2.6", asset_pattern = "lcov-*.tar.gz", filter_bins = ["genhtml", "lcov"] }
+# GNU Make, since macOS's own is too old for the Makefile.
+make = "4.4.1"
