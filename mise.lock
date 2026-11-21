@@ -19,6 +19,11 @@ checksum_source = "mise-versions"
 url = "https://github.com/chipsalliance/verible/releases/download/v0.0-4298-g085eef05/verible-v0.0-4298-g085eef05-linux-static-x86_64.tar.gz"
 url_api = "https://api.github.com/repos/chipsalliance/verible/releases/assets/688699353"
 
+[tools."github:chipsalliance/verible"."platforms.macos-arm64"]
+checksum = "sha256:260ff58d63188e175d2f63be2823a65dcea21383ee4a83f370fd3e1b05f0e977"
+url = "https://github.com/chipsalliance/verible/releases/download/v0.0-4298-g085eef05/verible-v0.0-4298-g085eef05-macOS.tar.gz"
+url_api = "https://api.github.com/repos/chipsalliance/verible/releases/assets/688699280"
+
 [[tools."github:linux-test-project/lcov"]]
 version = "2.6"
 backend = "github:linux-test-project/lcov"
@@ -39,6 +44,11 @@ checksum_source = "mise-versions"
 url = "https://github.com/linux-test-project/lcov/releases/download/v2.6/lcov-2.6.tar.gz"
 url_api = "https://api.github.com/repos/linux-test-project/lcov/releases/assets/608215237"
 
+[tools."github:linux-test-project/lcov"."platforms.macos-arm64"]
+checksum = "sha256:67a45db99b8ef0260c3fac9a2e3749fd8fa350a15e235dd3c29b356d97755c75"
+url = "https://github.com/linux-test-project/lcov/releases/download/v2.6/lcov-2.6.tar.gz"
+url_api = "https://api.github.com/repos/linux-test-project/lcov/releases/assets/608215237"
+
 [[tools.uv]]
 version = "0.13.7"
 backend = "aqua:astral-sh/uv"
@@ -54,4 +64,10 @@ provenance = "github-attestations"
 checksum = "sha256:c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83"
 url = "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-x86_64-unknown-linux-gnu.tar.gz"
 url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/704009823"
+provenance = "github-attestations"
+
+[tools.uv."platforms.macos-arm64"]
+checksum = "sha256:81b811b57e4624df7ed3aac148e0359100d9962f3d9dce00aec533dc2e086731"
+url = "https://github.com/astral-sh/uv/releases/download/0.13.7/uv-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/astral-sh/uv/releases/assets/704009442"
 provenance = "github-attestations"

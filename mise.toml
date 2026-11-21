@@ -8,7 +8,7 @@ min_version = "2026.11.1"
 minimum_release_age = "7d"
 # The platforms that mise.lock has downloads for. To set up another kind of
 # machine, add its platform and run `mise lock`.
-lockfile_platforms = ["linux-arm64", "linux-x64"]
+lockfile_platforms = ["linux-arm64", "linux-x64", "macos-arm64"]
 
 [tools]
 uv = "0.13.7"
