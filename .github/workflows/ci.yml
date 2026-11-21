@@ -18,7 +18,7 @@ env:
   UV_LOCKED: "1"
   # Pinned versions of mise and of the EDA tools that CI builds (docs/flow/development.md).
   VERILATOR_VERSION: v5.054
-  SLANG_VERSION: v12.1
+  SLANG_VERSION: v12.2
   MISE_VERSION: 2026.11.1
 
 jobs:

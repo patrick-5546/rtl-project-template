@@ -48,10 +48,9 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
   `make lint`. Like Verilator and the Questa build, slang and slang-tidy
   compile all files as one compilation unit, so a declaration outside any
   module or package in one file is visible in the files after it.
-- slang-tidy prints its findings but does not fail `make lint`: its checks are
-  warnings by default, and the configuration passes run it with `--quiet`,
-  which drops even an error's exit status
-  ([slang#2101](https://github.com/MikePopoloski/slang/issues/2101)).
+- slang-tidy warnings do not fail `make lint`, but checks configured as errors
+  do. The named configuration passes use `--quiet` to hide passing checks
+  without hiding findings or changing the exit status.
 - typos skips the viewer layouts and the lockfiles; allow a project's own words
   in `[tool.typos]` in `pyproject.toml`.
 - zizmor also runs its online audits when `GH_TOKEN` is set;

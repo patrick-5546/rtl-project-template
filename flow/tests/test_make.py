@@ -156,8 +156,7 @@ def test_slang_tools_leave_out_vendor_rtl_also_through_symlinks(tmp_path: Path) 
 
     paths = [path.resolve() for path in (vendor, vendor / "copied", linked)]
     assert values("--suppress-warnings") == {f"{path}/..." for path in paths}
-    # Without the trailing slash, slang-tidy would skip the parent directory too.
-    assert values("--skip-path") == {f"{path}/" for path in paths}
+    assert values("--skip-path") == {str(path) for path in paths}
 
 
 def test_waves_opens_the_viewer_after_a_failed_test(tmp_path: Path) -> None:

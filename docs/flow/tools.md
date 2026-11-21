@@ -113,7 +113,7 @@ that it gives them.
 | LCOV | 2.6 |
 | mise | 2026.11.1 |
 | Questa | 2025.1 |
-| slang | 12.1 |
+| slang | 12.2 |
 | uv | 0.13.7 |
 | VCS | W-2024.09-SP2-7 |
 | Verdi | W-2024.09-SP2-7 |
