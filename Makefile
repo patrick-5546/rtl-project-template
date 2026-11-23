@@ -168,7 +168,7 @@ help:
 	@echo ""
 	@echo "Tool executables (override as VAR=/path/to/tool; make doctor shows which it finds):"
 	@echo "  UV VERILATOR VERILATOR_COVERAGE GENHTML VERIBLE_FORMAT VERIBLE_LINT SLANG SLANG_TIDY"
-	@echo "  GTKWAVE JSON2STEMS VSIM VCOVER VCS URG VERDI"
+	@echo "  GTKWAVE VSIM VCOVER VCS URG VERDI"
 	@echo ""
 	@echo "Tool selection:"
 	@echo "  SIM=<sim>                       Simulator; available: $$($(FLOW) list-sims | tr '\n' ' ')"

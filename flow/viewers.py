@@ -10,7 +10,6 @@ keyed by ``wave_sim``.
 """
 
 import shlex
-import shutil
 from pathlib import Path
 from typing import override
 
@@ -26,10 +25,7 @@ from flow.runner import (
     vsim_exe,
 )
 from flow.simulators import SIMULATORS
-
-# The first GTKWave release with json2stems, which writes RTLBrowse's stems from
-# Verilator's JSON design tree.
-JSON2STEMS_GTKWAVE = "3.3.125"
+from flow.stems import write_stems
 
 
 class ViewerProfile:
@@ -63,28 +59,11 @@ class ViewerProfile:
         raise NotImplementedError
 
 
-def drop_builtin_modules(stems: Path) -> None:
-    """Remove the modules whose file is ``<built-in>`` from the RTLBrowse *stems*.
-
-    Verilator's tree lists internal modules, such as ``$unit`` and
-    ``__Vconstpool``, which have no source: RTLBrowse would list them in its
-    hierarchy and fail to open them.
-    """
-    lines = stems.read_text(encoding="utf-8").splitlines(keepends=True)
-
-    def is_builtin_module(line: str) -> bool:
-        fields = line.split()
-        return fields[:2] == ["++", "module"] and fields[3:5] == ["file", "<built-in>"]
-
-    stems.write_text("".join(line for line in lines if not is_builtin_module(line)), "utf-8")
-
-
 class GtkwaveProfile(ViewerProfile):
     """GTKWave, with its RTLBrowse window unless ``NO_RTLBROWSE`` is set.
 
-    RTLBrowse reads stems, which GTKWave's ``json2stems`` writes from Verilator's
-    design tree, without Verilator's internal modules
-    (:func:`drop_builtin_modules`).
+    RTLBrowse reads stems, which :func:`flow.stems.write_stems` writes from
+    Verilator's design tree.
     """
 
     name = "gtkwave"
@@ -116,15 +95,7 @@ class GtkwaveProfile(ViewerProfile):
             stems = json_dir / f"{top}.stems"
             require(tree_json, self.waves_hint(dut, config))
             require(tree_meta, self.waves_hint(dut, config))
-            json2stems = env_str("JSON2STEMS", "json2stems")
-            if shutil.which(json2stems) is None:
-                raise SystemExit(
-                    f"{json2stems}: command not found. It comes with GTKWave "
-                    f"{JSON2STEMS_GTKWAVE} or newer: install that, point JSON2STEMS at it, "
-                    "or skip RTLBrowse with NO_RTLBROWSE=1."
-                )
-            run([json2stems, str(tree_meta), str(tree_json), str(stems)], cwd=build_dir)
-            drop_builtin_modules(stems)
+            write_stems(tree_meta, tree_json, stems)
             print(f"GTKWave stems: {stems}")
             cmd += ["-t", str(stems)]
         cmd.append(str(wave))

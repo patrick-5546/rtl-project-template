@@ -1,34 +1,10 @@
-from collections.abc import Callable
+import json
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from flow.viewers import GtkwaveProfile, VerdiProfile
-
-
-def rtlbrowse_build(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A waves build directory with the Verilator tree that json2stems reads."""
-    monkeypatch.delenv("NO_RTLBROWSE", raising=False)
-    monkeypatch.delenv("JSON2STEMS", raising=False)
-    build_dir = tmp_path / "build"
-    json_dir = build_dir / "rtlbrowse"
-    json_dir.mkdir(parents=True)
-    (build_dir / "dump.fst").touch()
-    (json_dir / "Vtop.tree.json").touch()
-    (json_dir / "Vtop.tree.meta.json").touch()
-    return build_dir
-
-
-def json2stems_writing(stems: str) -> Callable[..., None]:
-    """A stand-in for ``run`` whose json2stems writes *stems*, its last argument."""
-
-    def fake_run(cmd: list[str], *, cwd: Path) -> None:
-        del cwd
-        if cmd[-1].endswith(".stems"):
-            Path(cmd[-1]).write_text(stems, encoding="utf-8")
-
-    return fake_run
 
 
 def test_gtkwave_command_without_rtlbrowse(
@@ -47,45 +23,7 @@ def test_gtkwave_command_without_rtlbrowse(
     assert "-t" not in command
 
 
-def test_gtkwave_rtlbrowse_top_is_derived_from_dut(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    build_dir = rtlbrowse_build(tmp_path, monkeypatch)
-    json_dir = build_dir / "rtlbrowse"
-    monkeypatch.setenv("GTKWAVE_STEMS_TOP", "wrong")
-    with (
-        patch("flow.viewers.shutil.which", return_value="/usr/bin/json2stems"),
-        patch("flow.viewers.run", side_effect=json2stems_writing("")) as run,
-    ):
-        GtkwaveProfile().open_waves(tmp_path, build_dir, "top", "width4")
-    assert run.call_args_list[0].args[0][1:4] == [
-        str(json_dir / "Vtop.tree.meta.json"),
-        str(json_dir / "Vtop.tree.json"),
-        str(json_dir / "top.stems"),
-    ]
-
-
-def test_gtkwave_stems_leave_out_verilator_builtin_modules(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    build_dir = rtlbrowse_build(tmp_path, monkeypatch)
-    top = "++ module top file /project/rtl/top.sv lines 9 - 9\n"
-    stems = (
-        "++ module $unit file <built-in> lines 0 - 0\n"
-        f"{top}"
-        "++ module __Vconstpool file <built-in> lines 0 - 0\n"
-    )
-    with (
-        patch("flow.viewers.shutil.which", return_value="/usr/bin/json2stems"),
-        patch("flow.viewers.run", side_effect=json2stems_writing(stems)),
-    ):
-        GtkwaveProfile().open_waves(tmp_path, build_dir, "top", "width8")
-    assert (build_dir / "rtlbrowse" / "top.stems").read_text(encoding="utf-8") == top
-
-
-def test_gtkwave_explains_a_missing_json2stems(
+def test_gtkwave_opens_rtlbrowse_with_the_stems_of_the_duts_tree(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -93,15 +31,20 @@ def test_gtkwave_explains_a_missing_json2stems(
     json_dir = build_dir / "rtlbrowse"
     json_dir.mkdir(parents=True)
     (build_dir / "dump.fst").touch()
-    (json_dir / "Vtop.tree.json").touch()
-    (json_dir / "Vtop.tree.meta.json").touch()
-    monkeypatch.setenv("JSON2STEMS", str(tmp_path / "no-json2stems"))
-    with (
-        patch("flow.viewers.run") as run,
-        pytest.raises(SystemExit, match="NO_RTLBROWSE=1"),
-    ):
+    files = {"g": {"filename": "rtl/top.sv", "realpath": "/project/rtl/top.sv"}}
+    (json_dir / "Vtop.tree.meta.json").write_text(json.dumps({"files": files}), encoding="utf-8")
+    top = {"type": "MODULE", "name": "top", "addr": "(F)", "loc": "g,6:8,6:11"}
+    (json_dir / "Vtop.tree.json").write_text(json.dumps({"modulesp": [top]}), encoding="utf-8")
+    monkeypatch.delenv("NO_RTLBROWSE", raising=False)
+    monkeypatch.setenv("GTKWAVE_STEMS_TOP", "wrong")
+    with patch("flow.viewers.run") as run:
         GtkwaveProfile().open_waves(tmp_path, build_dir, "top", "width4")
-    run.assert_not_called()
+    stems = json_dir / "top.stems"
+    command = run.call_args.args[0]
+    assert command[command.index("-t") + 1] == str(stems)
+    assert stems.read_text(encoding="utf-8") == (
+        "++ module top file /project/rtl/top.sv lines 6 - 6\n"
+    )
 
 
 def test_verdi_debug_database_is_canonical(

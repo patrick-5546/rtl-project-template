@@ -19,6 +19,8 @@ conventions, linting, CI and dependencies in
   preparation, and coverage behavior.
 - `viewers.py`: a `ViewerProfile` per simulator's waveform viewer: the
   `wave_sim` whose format it reads and the `open-waves` behavior.
+- `stems.py`: the stems that GTKWave's RTLBrowse reads, written from
+  Verilator's design tree; a port of GTKWave 3's `json2stems`.
 - `cli.py`: the dispatcher the Makefile calls (`python -m flow.cli`).
 - `doctor.py`: the `make doctor` report of the external tools and their
   versions.

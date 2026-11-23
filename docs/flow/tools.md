@@ -42,10 +42,7 @@ first runs; `uv sync` does that alone, e.g. for an editor.
   Devel::StackTrace and TimeDate, which mise does not install: on Debian and
   Ubuntu, `libcapture-tiny-perl`, `libdatetime-perl`,
   `libdevel-stacktrace-perl` and `libtimedate-perl`.
-- GTKWave's RTLBrowse window needs `json2stems`, which comes with GTKWave
-  3.3.125 or newer: Ubuntu 26.04's package has it, but Ubuntu 24.04's and
-  Debian 13's are older. Without it, skip RTLBrowse with `NO_RTLBROWSE=1`.
-  GTKWave 4 has no release yet, only pre-alpha builds from source, so the flow
+- GTKWave 4 has no release yet, only pre-alpha builds from source, so the flow
   targets GTKWave 3.
 
 The flow runs each tool that it finds on `PATH`, or that its executable variable

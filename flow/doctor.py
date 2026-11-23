@@ -24,7 +24,6 @@ from pathlib import Path
 
 from flow.runner import PROJECT_DIR
 from flow.simulators import VerilatorProfile
-from flow.viewers import JSON2STEMS_GTKWAVE
 
 CI_WORKFLOW = PROJECT_DIR / ".github" / "workflows" / "ci.yml"
 MISE_CONFIG = PROJECT_DIR / "mise.toml"
@@ -116,11 +115,10 @@ GROUPS = (
     ),
     Group(
         "Waveforms",
-        f"make waves; RTLBrowse needs json2stems, from GTKWave {JSON2STEMS_GTKWAVE} or newer",
+        "make waves; rtlbrowse for its RTLBrowse window",
         (
             Tool("gtkwave", "GTKWAVE"),
             Tool("rtlbrowse", version_args=()),
-            Tool("json2stems", "JSON2STEMS", version_args=()),
         ),
     ),
     # Commercial tools are only located: their version commands may need a license.
