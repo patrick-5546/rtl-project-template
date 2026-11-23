@@ -31,13 +31,17 @@ Generated artifacts are ignored by Git and stay under `build/`.
 
 ## Quick start
 
-Install the external tools first; see [Tools](docs/flow/tools.md).
+Install [mise](https://mise.jdx.dev/getting-started.html), which installs the
+external tools at the versions that CI uses; [Tools](docs/flow/tools.md) has
+the details, and the little that mise does not install.
 
 ```sh
-make doctor # check the installed tools and their versions
-make test   # run the cocotb regression of every DUT
-make lint   # run all lint and type checks
-make help   # list every target, override variable and simulator
+mise trust   # trust the checkout's mise.toml
+mise install # install its tools
+make doctor  # check the installed tools and their versions
+make test    # run the cocotb regression of every DUT
+make lint    # run all lint and type checks
+make help    # list every target, override variable and simulator
 ```
 
 ## Start a project from this template

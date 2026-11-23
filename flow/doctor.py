@@ -30,7 +30,6 @@ from pathlib import Path
 from flow.runner import PROJECT_DIR
 from flow.simulators import VerilatorProfile, homebrew_lz4
 
-CI_WORKFLOW = PROJECT_DIR / ".github" / "workflows" / "ci.yml"
 MISE_CONFIG = PROJECT_DIR / "mise.toml"
 # The first uv that reads the relative ``exclude-newer`` in pyproject.toml; older
 # ones ignore the whole ``[tool.uv]`` table and relock without it.
@@ -177,24 +176,6 @@ GROUPS = (
         ),
     ),
 )
-
-
-def ci_pins(workflow: Path = CI_WORKFLOW) -> dict[str, str]:
-    """The ``*_VERSION`` pins in *workflow*'s ``env``, without a leading ``v``.
-
-    Only literal versions count, not expressions such as ``${{ env.X_VERSION }}``;
-    the first definition of each wins.
-    """
-    if not workflow.is_file():
-        return {}
-    pins: dict[str, str] = {}
-    for name, version in re.findall(
-        r"^[ \t]+([A-Z0-9_]+_VERSION):[ \t]*[\"']?v?(\d[^\s\"']*)",
-        workflow.read_text(encoding="utf-8"),
-        re.MULTILINE,
-    ):
-        pins.setdefault(name, version)
-    return pins
 
 
 def mise_pins(config: Path = MISE_CONFIG) -> dict[str, str]:

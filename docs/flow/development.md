@@ -103,21 +103,19 @@ in both files, or only the tools that you name. After editing `mise.toml` by
 hand, run `mise lock`. The `env` of `.github/workflows/ci.yml` pins mise.
 
 OSS CAD Suite releases daily, so it always has a newer release: take one for a
-newer Verilator, slang or GTKWave, and note the versions that it bundles, which
-`make doctor` shows. Its slang is 12.1, which needs the slang-tidy workarounds
-for [slang#2100](https://github.com/MikePopoloski/slang/issues/2100) and
+newer Verilator, slang or GTKWave, and update the
+[verified environment](tools.md#verified-environment) with its date and the
+versions that it bundles, which `make doctor` shows. Its slang is 12.1, which
+needs the slang-tidy workarounds for
+[slang#2100](https://github.com/MikePopoloski/slang/issues/2100) and
 [slang#2101](https://github.com/MikePopoloski/slang/issues/2101). Take the
 first release whose slang is 12.2 or newer before it is a week old, with
 `mise upgrade --bump --no-global --minimum-release-age 0s github:YosysHQ/oss-cad-suite-build`,
 and remove the workarounds.
 
-After updating a tool, update the
-[verified environment](tools.md#verified-environment) to match its pin;
-`make doctor` reports the tools that `mise.toml` pins as verified at those
-versions. A cocotb update
-can raise the Verilator version that cocotb needs: `make test-flow-py` then
-fails until the flow's own minimum, `VerilatorProfile.minimum_version` in
-`flow/simulators.py`, is at least that.
+A cocotb update can raise the Verilator version that cocotb needs:
+`make test-flow-py` then fails until the flow's own minimum,
+`VerilatorProfile.minimum_version` in `flow/simulators.py`, is at least that.
 
 Workarounds for upstream bugs are commented where they live, with their issue
 and when to remove them; `git grep issues/` lists them.

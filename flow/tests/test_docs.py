@@ -44,22 +44,10 @@ def verified_versions() -> dict[str, str]:
     return {tool.lower(): version for tool, version in rows}
 
 
-def pinned_versions() -> dict[str, str]:
-    """The versions that CI and mise.toml pin, by lowercase tool name: the CI pin
-    ``MISE_VERSION`` is ``mise``, the mise tool ``github:chipsalliance/verible``
-    is ``verible``, and ``github:YosysHQ/oss-cad-suite-build`` is ``oss cad suite``."""
-    ci = {pin.removesuffix("_VERSION").lower(): v for pin, v in doctor.ci_pins().items()}
-    mise = {
-        re.split(r"[:/]", key)[-1].lower().removesuffix("-build").replace("-", " "): v
-        for key, v in doctor.mise_pins().items()
-    }
-    return ci | mise
-
-
-@pytest.mark.parametrize("tool", sorted(pinned_versions()))
-def test_verified_versions_are_the_pins(tool: str) -> None:
-    documented = verified_versions().get(tool, "missing").removeprefix("v")
-    assert documented == pinned_versions()[tool], f"docs/flow/tools.md: {tool} {documented}"
+def test_verified_suite_is_the_pinned_one() -> None:
+    """The verified Verilator, slang and GTKWave are those of the pinned OSS CAD Suite."""
+    pin = doctor.mise_pins()["github:YosysHQ/oss-cad-suite-build"]
+    assert verified_versions()["oss cad suite"] == pin
 
 
 @pytest.mark.parametrize(

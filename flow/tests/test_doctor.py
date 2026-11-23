@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from flow import doctor
-from flow.doctor import GROUPS, Tool, check, check_lz4, ci_pins, mise_pins, numbers, report
+from flow.doctor import GROUPS, Tool, check, check_lz4, mise_pins, numbers, report
 from flow.simulators import VerilatorProfile
 
 VERILATOR = Tool(
@@ -48,23 +48,6 @@ def fake_tool(directory: Path, name: str, output: str = "", status: int = 0) -> 
     )
     path.chmod(0o755)
     return path
-
-
-def test_ci_pins_reads_literal_versions(tmp_path: Path) -> None:
-    workflow = tmp_path / "ci.yml"
-    workflow.write_text(
-        "env:\n"
-        '  UV_LOCKED: "1"\n'
-        "  VERILATOR_VERSION: v5.054\n"
-        '  SLANG_VERSION: "v12.1"\n'
-        "jobs:\n"
-        "  rtl:\n"
-        "    env:\n"
-        "      VERILATOR_VERSION: ${{ env.VERILATOR_VERSION }}\n",
-        encoding="utf-8",
-    )
-    assert ci_pins(workflow) == {"VERILATOR_VERSION": "5.054", "SLANG_VERSION": "12.1"}
-    assert ci_pins(tmp_path / "missing.yml") == {}
 
 
 def test_mise_pins_reads_versions(tmp_path: Path) -> None:
