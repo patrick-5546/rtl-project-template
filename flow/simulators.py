@@ -66,7 +66,8 @@ def genhtml_env() -> dict[str, str]:
     finds lcovutil.pm itself, which Perl then loads again, warning that each of
     its hundreds of subroutines is redefined. ``LCOV_PURE_PERL=1`` skips the
     extension, as the failed ``require`` does elsewhere. Remove this once an LCOV
-    release looks for the extension only where it is built. An ``LCOV_PURE_PERL``
+    release looks for the extension only where it is built
+    (https://github.com/linux-test-project/lcov/issues/574). An ``LCOV_PURE_PERL``
     that the environment sets, such as 0 for an LCOV whose extension is built, is
     kept.
     """

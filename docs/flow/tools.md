@@ -48,7 +48,8 @@ mise does not install what Verilator and LCOV need from the system:
   `genhtml` with `LCOV_PURE_PERL=1`: LCOV 2.6 looks for its C++ extension, which
   its release does not build, by a name that on macOS's case-insensitive
   filesystem finds its main module again, so Perl would load that module twice
-  and warn that each of its subroutines is redefined.
+  and warn that each of its subroutines is redefined
+  ([lcov#574](https://github.com/linux-test-project/lcov/issues/574)).
 
 OSS CAD Suite releases daily, named by date: each release is a 0.5 to 0.7 GB
 download, and about 2 GB once installed. It builds Verilator from its master
