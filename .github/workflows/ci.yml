@@ -29,10 +29,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # Installs the tools that mise.lock pins, uv among them.
+      # These checks need only uv and GNU Make of the tools that mise.lock pins.
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           version: ${{ env.MISE_VERSION }}
+          install_args: uv make
       - name: Install the locked Python packages
         run: uv sync
       - name: Lint
@@ -65,9 +66,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The flow's tests mock the EDA tools, so they need only uv and GNU Make.
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           version: ${{ env.MISE_VERSION }}
+          install_args: uv make
       - name: Install the locked Python packages
         run: uv sync
       - run: make test-flow-py

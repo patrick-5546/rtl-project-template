@@ -77,7 +77,8 @@ SHA, have time limits, and fail if `uv.lock` or `mise.lock` is out of date
   summarizes each configuration's coverage by type on the run's summary page.
 
 Each job installs the tools that `mise.lock` pins, uv and OSS CAD Suite among
-them, with `jdx/mise-action`, which caches them.
+them, with `jdx/mise-action`, which caches them; `lint` and `flow-tests` install
+only uv and GNU Make, and skip OSS CAD Suite's download.
 
 ## Updating dependencies
 
