@@ -55,13 +55,8 @@ OSS CAD Suite releases daily, named by date: each release is a 0.5 to 0.7 GB
 download, and about 2 GB once installed. It builds Verilator from its master
 branch, so its Verilator is a development snapshot rather than a release; its
 slang is the one that Yosys pins, which can trail slang's releases; and its
-GTKWave is GTKWave 4, which has no release yet. GTKWave 4 and its RTLBrowse
-window print GTK warnings and critical messages that are harmless: `No IM module
-matching GTK_IM_MODULE= found`, since OSS CAD Suite's launchers empty
-`GTK_IM_MODULE`; RTLBrowse's `Allocation width too small`; GTKWave's
-`gdk_atom_intern: assertion 'atom_name != NULL' failed`; and, when RTLBrowse's
-GTK 4 cannot use the GPU, as under WSL, libEGL and MESA warnings, after which it
-renders without it.
+GTKWave is GTKWave 4, which has no release yet. GTKWave 4 prints GTK warnings and
+critical messages, which are harmless.
 
 Without mise, install the tools as you like: the flow runs each one that it
 finds on `PATH`, or that its executable variable names (`make help` lists
