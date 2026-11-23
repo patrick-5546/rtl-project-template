@@ -32,16 +32,19 @@ target first runs; `uv sync` does that alone, e.g. for an editor.
 | LCOV | Coverage HTML report generation | [Documentation](https://github.com/linux-test-project/lcov/tree/master/docs/man) |
 | GTKWave | Waveform viewer | [Documentation](https://gtkwave.github.io/gtkwave/) |
 
-mise does not install what two of them need:
+mise does not install what Verilator and LCOV need from the system:
 
+- Verilator builds each model with `g++`: on Debian and Ubuntu,
+  `build-essential`; on macOS, Xcode's Command Line Tools
+  (`xcode-select --install`). Its FST waveforms (`WAVES=1`) also need lz4's and
+  zlib's libraries and headers: on Debian and Ubuntu, `liblz4-dev` and
+  `zlib1g-dev`; on macOS, `brew install lz4`, since macOS has zlib. Apple's
+  compiler does not search Homebrew's prefix on Apple silicon, so the flow
+  passes Homebrew's lz4 to Verilator itself.
 - LCOV's `lcov` and `genhtml` need the Perl modules Capture::Tiny, DateTime,
   Devel::StackTrace and TimeDate: on Debian and Ubuntu,
   `libcapture-tiny-perl`, `libdatetime-perl`, `libdevel-stacktrace-perl` and
   `libtimedate-perl`.
-- Verilator's FST waveforms (`WAVES=1`) need lz4's library and headers: on
-  Debian and Ubuntu, `liblz4-dev`; on macOS, `brew install lz4`. Apple's
-  compiler does not search Homebrew's prefix on Apple silicon, so the flow
-  passes Homebrew's lz4 to Verilator itself.
 
 OSS CAD Suite releases daily, named by date: each release is a 0.5 to 0.7 GB
 download, and about 2 GB once installed. It builds Verilator from its master

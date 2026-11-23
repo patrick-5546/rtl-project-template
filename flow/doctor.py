@@ -10,10 +10,9 @@ A tool that only other targets need is reported missing, with a reminder to run
 "verified" at that version, which CI uses, and "untested" at any other; a
 Verible other than CI's is a warning instead: Verible's formatting, and so
 ``make lint-sv``, can differ between versions. Any version of another tool, such
-as Verilator, is "ok" when it is not older than the flow needs. A library that
-builds link,
-such as lz4 for Verilator's FST waveforms, is looked for as the compiler finds
-it, and reported missing when it is not found.
+as Verilator, is "ok" when it is not older than the flow needs. The libraries
+that Verilator's FST waveforms link, lz4 and zlib, are looked for as the C++
+compiler finds them, and reported missing when it does not.
 """
 
 import os
@@ -39,6 +38,8 @@ MAKE_MINIMUM = "4.0"
 # A version as tools print it: 5.054, v0.0-4298-g085eef05, 12.1.627+89a2c9fe9, 2.6-11.g1ad5aed.
 VERSION = re.compile(r"(?<!\S)v?(\d+(?:[.-]\d+)+\S*)")
 VERSION_TIMEOUT_SECONDS = 30
+# The C++ compiler that builds Verilator's models: OSS CAD Suite's verilated.mk names it.
+CXX = "g++"
 
 
 @dataclass(frozen=True)
@@ -76,30 +77,43 @@ class Group:
     checks: tuple[Callable[[], Check], ...] = ()
 
 
-def check_lz4() -> Check:
-    """Whether Verilator's FST builds find lz4, which mise does not install.
+def find_header(name: str, header: str, options: list[str], install: str) -> Check:
+    """Whether the C++ compiler finds *header*, with *options*, as Verilator's builds do.
 
-    The C++ compiler looks for ``lz4.h`` as an FST build does, with Homebrew's lz4
-    on macOS (:func:`flow.simulators.homebrew_lz4`).
+    *name* is what the report calls it, and *install* says how to install it.
     """
-    lz4 = homebrew_lz4()
-    include = [f"-I{lz4 / 'include'}"] if lz4 else []
     try:
         result = subprocess.run(
-            ["c++", *include, "-M", "-x", "c++", "-"],
-            input="#include <lz4.h>\n",
+            [CXX, *options, "-M", "-x", "c++", "-"],
+            input=f"#include <{header}>\n",
             capture_output=True,
             text=True,
             timeout=VERSION_TIMEOUT_SECONDS,
             check=False,
         )
     except subprocess.TimeoutExpired, OSError:
-        return Check("missing", "lz4", detail="c++ failed, so lz4.h was not looked for")
+        return Check("missing", name, detail=f"{CXX} did not run, so {header} was not looked for")
     if result.returncode != 0:
-        install = "run `brew install lz4`" if sys.platform == "darwin" else "install liblz4-dev"
-        return Check("missing", "lz4", detail=f"lz4.h not found; {install}")
+        return Check("missing", name, detail=f"{header} not found; {install}")
     headers = result.stdout.replace("\\\n", " ").split()
-    return Check("ok", "lz4", path=next((h for h in headers if Path(h).name == "lz4.h"), ""))
+    return Check("ok", name, path=next((h for h in headers if Path(h).name == header), ""))
+
+
+def check_lz4() -> Check:
+    """Whether Verilator's FST builds find lz4, with Homebrew's on macOS.
+
+    See :func:`flow.simulators.homebrew_lz4`.
+    """
+    lz4 = homebrew_lz4()
+    options = [f"-I{lz4 / 'include'}"] if lz4 else []
+    install = "run `brew install lz4`" if sys.platform == "darwin" else "install liblz4-dev"
+    return find_header("lz4", "lz4.h", options, install)
+
+
+def check_zlib() -> Check:
+    """Whether Verilator's FST builds find zlib, which macOS's SDK has."""
+    install = "run `xcode-select --install`" if sys.platform == "darwin" else "install zlib1g-dev"
+    return find_header("zlib", "zlib.h", [], install)
 
 
 GROUPS = (
@@ -153,12 +167,12 @@ GROUPS = (
     ),
     Group(
         "Waveforms",
-        "make waves; rtlbrowse for its RTLBrowse window, lz4 for Verilator's FST",
+        "make waves; rtlbrowse for its RTLBrowse window, lz4 and zlib for Verilator's FST",
         (
             Tool("gtkwave", "GTKWAVE"),
             Tool("rtlbrowse", version_args=()),
         ),
-        checks=(check_lz4,),
+        checks=(check_lz4, check_zlib),
     ),
     # Commercial tools are only located: their version commands may need a license.
     Group(

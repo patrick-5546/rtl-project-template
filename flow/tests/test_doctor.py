@@ -187,7 +187,7 @@ def test_lz4_is_looked_for_as_fst_builds_find_it(
     monkeypatch.setenv("HOMEBREW_PREFIX", str(tmp_path / "homebrew"))
     monkeypatch.setattr(sys, "platform", platform)
     # A compiler that finds lz4.h only in an -I directory, and lists it as -M does.
-    compiler = bin_dir / "c++"
+    compiler = bin_dir / doctor.CXX
     compiler.write_text(
         '#!/bin/sh\nfor arg; do case $arg in -I*) echo "-: ${arg#-I}/lz4.h"; exit 0;; esac; done\n'
         "exit 1\n",
