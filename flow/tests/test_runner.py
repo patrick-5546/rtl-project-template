@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -19,9 +20,16 @@ from flow.runner import (
     discover_duts,
     expose_tool_on_path,
     make_target_command,
+    run,
     validate_config_name,
 )
 from flow.simulators import SIMULATORS, SimulatorProfile
+
+
+def test_run_adds_its_environment_and_echoes_it(capsys: pytest.CaptureFixture[str]) -> None:
+    check = "import os, sys; sys.exit(os.environ.get('FLOW_TEST') != '1')"
+    run([sys.executable, "-c", check], env={"FLOW_TEST": "1"})
+    assert capsys.readouterr().out.startswith("+ FLOW_TEST=1 ")
 
 
 @pytest.mark.parametrize(

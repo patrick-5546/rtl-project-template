@@ -176,6 +176,31 @@ def test_verilator_html_report_has_no_percentage_gate(tmp_path: Path) -> None:
     assert "--fail-under-branches" not in command
 
 
+@pytest.mark.parametrize(
+    ("platform", "preset", "env"),
+    [
+        ("darwin", None, {"LCOV_PURE_PERL": "1"}),
+        ("darwin", "0", {}),
+        ("linux", None, {}),
+    ],
+)
+def test_genhtml_skips_lcovs_cpp_extension_on_macos(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    platform: str,
+    preset: str | None,
+    env: dict[str, str],
+) -> None:
+    monkeypatch.setattr(sys, "platform", platform)
+    if preset is None:
+        monkeypatch.delenv("LCOV_PURE_PERL", raising=False)
+    else:
+        monkeypatch.setenv("LCOV_PURE_PERL", preset)
+    with patch("flow.simulators.run") as run:
+        VerilatorProfile().write_coverage_html(tmp_path, tmp_path)
+    assert run.call_args.kwargs["env"] == env
+
+
 def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
     build_dir = tmp_path / "build"
     build_dir.mkdir()
@@ -187,8 +212,7 @@ def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
         "SF:no_lines.sv\nBRF:0\nBRH:0\nend_of_record\n"
     )
 
-    def fake_run(cmd: list[str], *, cwd: Path) -> None:
-        del cwd
+    def fake_run(cmd: list[str], **_: object) -> None:
         if "--write-info" in cmd:
             Path(cmd[cmd.index("--write-info") + 1]).write_text(written, encoding="utf-8")
 
@@ -231,8 +255,7 @@ def test_verilator_report_writes_html_on_request(
         monkeypatch.setenv("COVERAGE_HTML", coverage_html)
     tools: list[str] = []
 
-    def fake_run(cmd: list[str], *, cwd: Path) -> None:
-        del cwd
+    def fake_run(cmd: list[str], **_: object) -> None:
         tools.append(cmd[0])
         if "--write-info" in cmd:
             Path(cmd[cmd.index("--write-info") + 1]).write_text("end_of_record\n", encoding="utf-8")

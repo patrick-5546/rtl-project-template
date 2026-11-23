@@ -13,6 +13,7 @@ Add a simulator by subclassing :class:`SimulatorProfile`, implementing the
 capabilities it supports, and registering an instance in :data:`SIMULATORS`.
 """
 
+import os
 import shutil
 import sys
 from collections.abc import Mapping
@@ -55,6 +56,23 @@ def homebrew_lz4() -> Path | None:
         return None
     lz4 = Path(env_str("HOMEBREW_PREFIX", "/opt/homebrew")) / "opt" / "lz4"
     return lz4 if (lz4 / "include" / "lz4.h").is_file() else None
+
+
+def genhtml_env() -> dict[str, str]:
+    """What genhtml's environment needs beyond the flow's: ``LCOV_PURE_PERL=1`` on macOS.
+
+    LCOV 2.6's lcovutil.pm tries ``require LcovUtil`` for its C++ extension, which
+    its release does not build. On macOS's case-insensitive filesystem that name
+    finds lcovutil.pm itself, which Perl then loads again, warning that each of
+    its hundreds of subroutines is redefined. ``LCOV_PURE_PERL=1`` skips the
+    extension, as the failed ``require`` does elsewhere. Remove this once an LCOV
+    release looks for the extension only where it is built. An ``LCOV_PURE_PERL``
+    that the environment sets, such as 0 for an LCOV whose extension is built, is
+    kept.
+    """
+    if sys.platform == "darwin" and "LCOV_PURE_PERL" not in os.environ:
+        return {"LCOV_PURE_PERL": "1"}
+    return {}
 
 
 def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
@@ -409,6 +427,7 @@ class VerilatorProfile(SimulatorProfile):
                 str(build_dir / "coverage.info"),
             ],
             cwd=project_dir,
+            env=genhtml_env(),
         )
         return html_dir / "index.html"
 

@@ -171,15 +171,19 @@ def artifact_build_mode(*, waves: bool, hdl_coverage: bool) -> str:
     return "normal"
 
 
-def run(cmd: list[str], *, cwd: Path | None = None) -> None:
-    """Echo and run *cmd*, raising :class:`SystemExit` on a non-zero exit.
+def run(cmd: list[str], *, cwd: Path | None = None, env: Mapping[str, str] | None = None) -> None:
+    """Echo and run *cmd*, with *env* added to its environment, raising
+    :class:`SystemExit` on a non-zero exit.
 
     Shared by the simulator/viewer profiles and the CLI to drive external tools
     (coverage reporters, waveform viewers) the way the old Makefile recipes did.
     """
-    print("+ " + shlex.join(cmd), flush=True)
+    assignments = [f"{name}={value}" for name, value in (env or {}).items()]
+    print("+ " + shlex.join([*assignments, *cmd]), flush=True)
     try:
-        result = subprocess.run(cmd, cwd=cwd, check=False)
+        result = subprocess.run(
+            cmd, cwd=cwd, check=False, env={**os.environ, **env} if env else None
+        )
     except FileNotFoundError:
         raise SystemExit(f"{cmd[0]}: command not found") from None
     if result.returncode != 0:

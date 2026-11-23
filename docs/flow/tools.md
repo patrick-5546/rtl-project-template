@@ -44,7 +44,11 @@ mise does not install what Verilator and LCOV need from the system:
 - LCOV's `lcov` and `genhtml` need the Perl modules Capture::Tiny, DateTime,
   Devel::StackTrace and TimeDate: on Debian and Ubuntu,
   `libcapture-tiny-perl`, `libdatetime-perl`, `libdevel-stacktrace-perl` and
-  `libtimedate-perl`.
+  `libtimedate-perl`. macOS's own Perl has them. On macOS, the flow runs
+  `genhtml` with `LCOV_PURE_PERL=1`: LCOV 2.6 looks for its C++ extension, which
+  its release does not build, by a name that on macOS's case-insensitive
+  filesystem finds its main module again, so Perl would load that module twice
+  and warn that each of its subroutines is redefined.
 
 OSS CAD Suite releases daily, named by date: each release is a 0.5 to 0.7 GB
 download, and about 2 GB once installed. It builds Verilator from its master
