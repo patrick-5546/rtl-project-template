@@ -129,6 +129,9 @@ reports.
 | Questa | Questa | WLF | `waves/<DUT>.do` | Yes | Yes (double-click a signal) |
 | Verdi | VCS | FSDB | `waves/<DUT>.rc` | Yes | Yes (from VCS's `simv.daidir`) |
 
+A configuration's own layout, `waves/<DUT>/<CONFIG>.*`, replaces the DUT's; see
+[Workflows](workflows.md#waveforms).
+
 ## Verified environment
 
 The open-source tools were verified on macOS 26 and in CI on Ubuntu 24.04 at

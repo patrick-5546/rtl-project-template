@@ -89,7 +89,7 @@ SIM ?= verilator
 # module with a tests/test_<module>.py harness, and the commands that open one
 # waveform or coverage report use the only one, or ask for DUT. Passed to the
 # flow CLI (which forwards it to the cocotb runner and the waveform viewers:
-# GTKWave stems and the waves/<DUT>.* layouts) so every command targets the same
+# GTKWave stems and the waves/ layouts) so every command targets the same
 # module. CONFIG selects one named HDL configuration of the DUT: test and coverage
 # run every configuration of the selected DUTs without it, and the commands that
 # open one artifact need it when the DUT has several.

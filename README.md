@@ -20,7 +20,8 @@ Python package, `flow/`, that drives the tools.
   - `cocotb_configs.py`: named HDL parameter configurations.
 - `flow/`: the build, run and view flow that the Makefile calls, with its own
   unit tests in `flow/tests/` and its README.
-- `waves/`: reusable waveform layouts, one per viewer, named `<DUT>.*`.
+- `waves/`: reusable waveform layouts, one per viewer, named `<DUT>.*`, and
+  `<DUT>/<CONFIG>.*` for a configuration that needs its own.
 - `docs/`: the documentation below: `design/` holds the design's
   specifications, and `flow/` the flow's guides.
 - `Makefile`, `pyproject.toml` (uv-managed Python dependencies and tool

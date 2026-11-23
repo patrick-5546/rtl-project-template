@@ -25,6 +25,7 @@ from flow.runner import (
     make_target_command,
     run,
     validate_config_name,
+    waveform_layout,
 )
 from flow.simulators import SIMULATORS, SimulatorProfile
 
@@ -33,6 +34,23 @@ def test_run_adds_its_environment_and_echoes_it(capsys: pytest.CaptureFixture[st
     check = "import os, sys; sys.exit(os.environ.get('FLOW_TEST') != '1')"
     run([sys.executable, "-c", check], env={"FLOW_TEST": "1"})
     assert capsys.readouterr().out.startswith("+ FLOW_TEST=1 ")
+
+
+def test_a_configurations_own_layout_replaces_the_duts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GTKWAVE_SAVE", raising=False)
+    dut_layout = tmp_path / "waves" / "top.gtkw"
+    own = tmp_path / "waves" / "top" / "width4.gtkw"
+    assert waveform_layout("GTKWAVE_SAVE", tmp_path, "top", "width4", ".gtkw") == dut_layout
+    own.parent.mkdir(parents=True)
+    own.touch()
+    assert waveform_layout("GTKWAVE_SAVE", tmp_path, "top", "width4", ".gtkw") == own
+    assert waveform_layout("GTKWAVE_SAVE", tmp_path, "top", "width8", ".gtkw") == dut_layout
+    monkeypatch.setenv("GTKWAVE_SAVE", "mine.gtkw")
+    assert waveform_layout("GTKWAVE_SAVE", tmp_path, "top", "width4", ".gtkw") == (
+        tmp_path / "mine.gtkw"
+    )
 
 
 @pytest.mark.parametrize(

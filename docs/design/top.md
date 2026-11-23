@@ -57,4 +57,5 @@ With `ABV=1`, `rtl/top_abv.sv` adds:
 
 `make coverage DUT=top` collects these in each configuration;
 `make waves DUT=top CONFIG=width8` opens the waveform with the layout in
-`waves/`, which shows the 8-bit count.
+`waves/`, which shows the 8-bit count, and `CONFIG=width4` with its own in
+`waves/top/`, which shows the 4-bit count.

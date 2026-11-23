@@ -4,7 +4,37 @@ from unittest.mock import patch
 
 import pytest
 
-from flow.viewers import GtkwaveProfile, VerdiProfile
+from flow.viewers import GtkwaveProfile, QuestaViewerProfile, VerdiProfile, ViewerProfile
+
+
+@pytest.mark.parametrize(
+    ("profile", "wave", "suffix"),
+    [
+        (GtkwaveProfile(), "dump.fst", ".gtkw"),
+        (QuestaViewerProfile(), "vsim.wlf", ".do"),
+        (VerdiProfile(), "dump.fsdb", ".rc"),
+    ],
+)
+def test_viewers_open_the_configurations_own_layout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    profile: ViewerProfile,
+    wave: str,
+    suffix: str,
+) -> None:
+    own = tmp_path / "waves" / "top" / f"width4{suffix}"
+    own.parent.mkdir(parents=True)
+    own.touch()
+    (tmp_path / "waves" / f"top{suffix}").touch()
+    build_dir = tmp_path / "build"
+    build_dir.mkdir()
+    (build_dir / wave).touch()
+    monkeypatch.setenv("NO_RTLBROWSE", "1")
+    for variable in ("GTKWAVE_SAVE", "QUESTA_DO", "VERDI_RC"):
+        monkeypatch.delenv(variable, raising=False)
+    with patch("flow.viewers.run") as run:
+        profile.open_waves(tmp_path, build_dir, "top", "width4")
+    assert str(own) in run.call_args.args[0]
 
 
 def test_gtkwave_command_without_rtlbrowse(

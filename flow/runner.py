@@ -10,9 +10,10 @@ Makefile and the flow CLI set it (``SIM``, ``ABV``, ``WAVES``, ``HDL_COVERAGE``,
 The module also holds what :mod:`flow.cli`, :mod:`flow.simulators` and
 :mod:`flow.viewers` share: the defaults, finding DUTs and their configurations
 (:func:`discover_duts`, :func:`hdl_configs`, :func:`config_params`), the build
-directory layout (:func:`default_build_dir`), the ``make`` commands that error
-hints suggest (:func:`make_target_command`), and running tools and checking
-their versions (:func:`run`, :func:`require_tool_version`).
+directory layout (:func:`default_build_dir`), the waveform layouts
+(:func:`waveform_layout`), the ``make`` commands that error hints suggest
+(:func:`make_target_command`), and running tools and checking their versions
+(:func:`run`, :func:`require_tool_version`).
 """
 
 import json
@@ -476,9 +477,20 @@ def default_sources_files(project_dir: Path) -> list[Path]:
     return resolve_sources_files(os.environ.get("SV_SOURCES_FILE"), project_dir)
 
 
-def default_questa_do(project_dir: Path, dut: str) -> Path:
-    """``$QUESTA_DO`` override, or the ``waves/<dut>.do`` layout for *dut*."""
-    return project_path_from_env("QUESTA_DO", project_dir, project_dir / "waves" / f"{dut}.do")
+def waveform_layout(variable: str, project_dir: Path, dut: str, config: str, suffix: str) -> Path:
+    """The waveform layout, ending in *suffix*, of *dut*'s *config*: ``$variable``, or
+    the configuration's own ``waves/<dut>/<config><suffix>`` when it exists, else the
+    DUT's ``waves/<dut><suffix>``.
+
+    A configuration has its own layout when it needs other signals than the DUT's,
+    or when its parameters change the width of a vector that the layout names with
+    its range, as GTKWave's and Verdi's layouts do.
+    """
+    waves = project_dir / "waves"
+    own = waves / dut / f"{config}{suffix}"
+    return project_path_from_env(
+        variable, project_dir, own if own.is_file() else waves / f"{dut}{suffix}"
+    )
 
 
 def vsim_exe() -> str:
@@ -513,7 +525,8 @@ def build_and_test(
     yields. Each configuration builds in its own directory. The flow CLI selects
     DUTs and configurations by running harnesses by their pytest node IDs, so
     this function runs whatever pytest calls it with. The derived module drives
-    the build dir, the GTKWave stems, and the ``waves/<DUT>.*`` layouts.
+    the build dir, the GTKWave stems, and the waveform layouts
+    (:func:`waveform_layout`).
 
     All other configuration (SIM, BUILD_DIR, TEST, ABV, HDL_COVERAGE,
     QUESTA_GUI, etc.) is read from environment variables, matching the
@@ -548,7 +561,7 @@ def build_and_test(
     waves_enabled = env_flag("WAVES", default=False)
     artifact = artifact_build_mode(waves=waves_enabled, hdl_coverage=hdl_coverage)
     build_dir = default_build_dir(project_dir, hdl_toplevel, simulator, config, artifact)
-    questa_do = default_questa_do(project_dir, hdl_toplevel)
+    questa_do = waveform_layout("QUESTA_DO", project_dir, hdl_toplevel, config, ".do")
     wave_path = profile.wave_path(build_dir) if profile else build_dir / "dump.vcd"
     cm_hier = optional_path_from_env("CM_HIER", project_dir)
     # The cocotb sim subprocess loads the test module from ``test_dir`` and must

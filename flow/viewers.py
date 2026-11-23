@@ -2,7 +2,8 @@
 
 Each simulator has one waveform viewer. A profile declares the simulator whose
 wave format it reads (``wave_sim``) and how to open an existing waveform
-(:meth:`ViewerProfile.open_waves`).
+(:meth:`ViewerProfile.open_waves`), with the layout that
+:func:`flow.runner.waveform_layout` finds for the DUT's configuration.
 
 Add or replace a simulator's viewer by subclassing :class:`ViewerProfile`,
 setting ``wave_sim``, and registering an instance in :data:`VIEWERS`, which is
@@ -14,15 +15,14 @@ from pathlib import Path
 from typing import override
 
 from flow.runner import (
-    default_questa_do,
     env_flag,
     env_str,
     make_target_command,
-    project_path_from_env,
     require,
     run,
     verdi_command,
     vsim_exe,
+    waveform_layout,
 )
 from flow.simulators import SIMULATORS
 from flow.stems import write_stems
@@ -81,11 +81,7 @@ class GtkwaveProfile(ViewerProfile):
         require(wave, self.waves_hint(dut, config))
         gtkwave = env_str("GTKWAVE", "gtkwave")
         gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", ""))
-        save = project_path_from_env(
-            "GTKWAVE_SAVE",
-            project_dir,
-            project_dir / "waves" / f"{dut}.gtkw",
-        )
+        save = waveform_layout("GTKWAVE_SAVE", project_dir, dut, config, ".gtkw")
         cmd = [gtkwave, *gtkwave_args]
         if not env_flag("NO_RTLBROWSE", default=False):
             top = dut
@@ -118,7 +114,7 @@ class QuestaViewerProfile(ViewerProfile):
     ) -> None:
         wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
-        do = default_questa_do(project_dir, dut)
+        do = waveform_layout("QUESTA_DO", project_dir, dut, config, ".do")
         cmd = [vsim_exe(), "-gui", "-view", str(wave)]
         if do.is_file():
             cmd.extend(["-do", str(do)])
@@ -140,7 +136,7 @@ class VerdiProfile(ViewerProfile):
         wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
         daidir = build_dir / "simv.daidir"
-        rc = project_path_from_env("VERDI_RC", project_dir, project_dir / "waves" / f"{dut}.rc")
+        rc = waveform_layout("VERDI_RC", project_dir, dut, config, ".rc")
         cmd = [*verdi_command(), "-dbdir", str(daidir), "-ssf", str(wave)]
         if rc.is_file():
             cmd.extend(["-sswr", str(rc)])
