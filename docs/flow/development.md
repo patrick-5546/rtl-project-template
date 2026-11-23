@@ -105,7 +105,8 @@ its version there.
 
 After updating a tool, update the
 [verified environment](tools.md#verified-environment) to match its pin;
-`make doctor` reads the pins from the workflow and `mise.toml`. A cocotb update
+`make doctor` reports the tools that `mise.toml` pins as verified at those
+versions. A cocotb update
 can raise the Verilator version that cocotb needs: `make test-flow-py` then
 fails until the flow's own minimum, `VerilatorProfile.minimum_version` in
 `flow/simulators.py`, is at least that.

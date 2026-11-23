@@ -13,14 +13,12 @@ from flow.simulators import VerilatorProfile
 VERILATOR = Tool(
     "verilator",
     "VERILATOR",
-    pin="VERILATOR_VERSION",
     minimum=VerilatorProfile.minimum_version,
     minimum_for="the flow",
 )
 VERIBLE = Tool("verible-verilog-format", mise="github:chipsalliance/verible", exact=True)
 GENHTML = Tool("genhtml", "GENHTML", mise="github:linux-test-project/lcov")
 PINS = {
-    "VERILATOR_VERSION": "5.054",
     "github:chipsalliance/verible": "0.0-4298-g085eef05",
     "github:linux-test-project/lcov": "2.6",
 }
@@ -89,7 +87,6 @@ def test_mise_pins_reads_versions(tmp_path: Path) -> None:
 
 def test_every_pin_is_pinned() -> None:
     tools = [tool for group in GROUPS for tool in group.tools]
-    assert {tool.pin for tool in tools if tool.pin} <= ci_pins().keys()
     assert {tool.mise for tool in tools if tool.mise} <= mise_pins().keys()
 
 
@@ -117,12 +114,12 @@ def test_versions_compare_numerically() -> None:
 @pytest.mark.parametrize(
     ("tool", "output", "status", "expected"),
     [
-        (VERILATOR, "Verilator 5.054 2026-11-01 rev v5.054", 0, ("verified", "5.054", "")),
+        (VERILATOR, "Verilator 5.054 2026-11-01 rev v5.054", 0, ("ok", "5.054", "")),
         (
             VERILATOR,
             "Verilator 5.055 devel rev v5.054-69-ge10a6237c",
             0,
-            ("untested", "5.055", "CI verifies 5.054"),
+            ("ok", "5.055", ""),
         ),
         (
             VERILATOR,
@@ -228,17 +225,13 @@ def test_tools_are_located_as_the_flow_runs_them(
     assert doctor.locate(VERILATOR) == str(verilator)
 
 
-def test_report_fails_only_on_errors(
-    bin_dir: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_report_fails_only_on_errors(bin_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
     fake_tool(bin_dir, "uv", "uv 0.13.7 (x86_64-unknown-linux-gnu)")
     fake_tool(bin_dir, "verilator", "Verilator 5.055 devel rev v5.054-69-ge10a6237c")
-    workflow = tmp_path / "ci.yml"
-    workflow.write_text("env:\n  VERILATOR_VERSION: v5.054\n", encoding="utf-8")
-    assert report(workflow) == 1
+    assert report() == 1
     assert "1 error." in capsys.readouterr().out
     fake_tool(bin_dir, "make", "GNU Make 4.4.1")
-    assert report(workflow) == 0
+    assert report() == 0
     output = capsys.readouterr().out
     assert "missing   vsim" in output
     assert "error" not in output

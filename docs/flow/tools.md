@@ -52,9 +52,10 @@ first runs; `uv sync` does that alone, e.g. for an editor.
 The flow runs each tool that it finds on `PATH`, or that its executable variable
 names (`make help` lists them), however it was installed. `make doctor` shows
 which it finds and its version. A version older than the flow needs is an error,
-as is a missing tool that `make test` needs; the version that CI uses is
-"verified", and any other "untested". It checks versions only: after installing
-or updating a tool, run the flow with it.
+as is a missing tool that `make test` needs. The version that `mise.toml` pins,
+which CI uses, is "verified", and any other "untested"; any version of another
+tool, such as Verilator or slang, is "ok". It checks versions only: after
+installing or updating a tool, run the flow with it.
 
 ## Simulators
 

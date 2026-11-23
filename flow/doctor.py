@@ -6,10 +6,12 @@ located as the flow locates it, honoring its executable variable (e.g.
 ``VERILATOR``). A version older than the flow needs is an error, and so is a
 missing tool that ``make test`` needs; only errors fail the report.
 A tool that only other targets need is reported missing, with a reminder to run
-``mise install`` when mise installs it. The version that CI uses is "verified"
-and any other "untested": ``mise.toml`` and ``.github/workflows/ci.yml`` pin
-them. A Verible other than CI's is a warning instead: Verible's formatting, and
-so ``make lint-sv``, can differ between versions. A library that builds link,
+``mise install`` when mise installs it. A tool that ``mise.toml`` pins is
+"verified" at that version, which CI uses, and "untested" at any other; a
+Verible other than CI's is a warning instead: Verible's formatting, and so
+``make lint-sv``, can differ between versions. Any version of another tool, such
+as Verilator, is "ok" when it is not older than the flow needs. A library that
+builds link,
 such as lz4 for Verilator's FST waveforms, is looked for as the compiler finds
 it, and reported missing when it is not found.
 """
@@ -47,8 +49,6 @@ class Tool:
     variable: str = ""
     # Empty for a tool that is only located, such as a commercial one.
     version_args: tuple[str, ...] = ("--version",)
-    # The CI workflow's environment variable that pins the tool's version.
-    pin: str = ""
     # The tool's key in mise.toml, which pins the version that mise installs.
     mise: str = ""
     # Verify only an identical version string, since equal numbers are not enough.
@@ -113,7 +113,6 @@ GROUPS = (
             Tool(
                 "verilator",
                 "VERILATOR",
-                pin="VERILATOR_VERSION",
                 minimum=VerilatorProfile.minimum_version,
                 minimum_for="the flow",
             ),
@@ -136,8 +135,8 @@ GROUPS = (
                 mise="github:chipsalliance/verible",
                 exact=True,
             ),
-            Tool("slang", "SLANG", pin="SLANG_VERSION"),
-            Tool("slang-tidy", "SLANG_TIDY", pin="SLANG_VERSION"),
+            Tool("slang", "SLANG"),
+            Tool("slang-tidy", "SLANG_TIDY"),
         ),
     ),
     Group(
@@ -147,7 +146,6 @@ GROUPS = (
             Tool(
                 "verilator_coverage",
                 "VERILATOR_COVERAGE",
-                pin="VERILATOR_VERSION",
                 minimum=VerilatorProfile.minimum_version,
                 minimum_for="the flow",
             ),
@@ -277,8 +275,7 @@ def check(tool: Tool, pins: Mapping[str, str], *, required: bool) -> Check:
     if tool.minimum and numbers(version) < numbers(tool.minimum):
         detail = f"{tool.minimum_for} needs {tool.minimum} or newer"
         return Check("error", tool.name, version, path, detail)
-    key = tool.pin or tool.mise
-    pin = pins.get(key) if key else None
+    pin = pins.get(tool.mise) if tool.mise else None
     if not pin:
         return Check("ok", tool.name, version, path)
     same = (version == pin) if tool.exact else (numbers(version) == numbers(pin))
@@ -289,9 +286,9 @@ def check(tool: Tool, pins: Mapping[str, str], *, required: bool) -> Check:
     return Check("untested", tool.name, version, path, f"CI verifies {pin}")
 
 
-def report(workflow: Path = CI_WORKFLOW, mise_config: Path = MISE_CONFIG) -> int:
+def report(mise_config: Path = MISE_CONFIG) -> int:
     """Print the check of every tool, by group; return 1 when any is an error, else 0."""
-    pins = ci_pins(workflow) | mise_pins(mise_config)
+    pins = mise_pins(mise_config)
     errors = 0
     for group in GROUPS:
         print(f"{group.title} ({group.purpose}):")
