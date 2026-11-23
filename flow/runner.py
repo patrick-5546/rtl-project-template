@@ -18,6 +18,7 @@ their versions (:func:`run`, :func:`require_tool_version`).
 import json
 import logging
 import os
+import platform
 import re
 import shlex
 import shutil
@@ -293,10 +294,32 @@ def require(path: Path, hint: str, *, kind: str = "file") -> None:
         raise SystemExit(f"{path} not found. {hint}")
 
 
+def html_viewer() -> str:
+    """The program that opens HTML files: ``$HTML_VIEWER``, or the platform's opener.
+
+    That is ``open`` on macOS; on WSL, wslview (from wslu), which opens a file in
+    Windows' default browser, when it is installed; and ``xdg-open`` elsewhere.
+    """
+    if viewer := env_str("HTML_VIEWER", ""):
+        return viewer
+    if sys.platform == "darwin":
+        return "open"
+    on_wsl = sys.platform == "linux" and "microsoft" in platform.release().lower()
+    if on_wsl and shutil.which("wslview"):
+        return "wslview"
+    return "xdg-open"
+
+
 def open_html(index: Path, *, hint: str) -> None:
-    """Open an HTML report *index* with ``$HTML_VIEWER`` (default xdg-open)."""
+    """Open an HTML report *index* with :func:`html_viewer`."""
     require(index, hint)
-    run([env_str("HTML_VIEWER", "xdg-open"), str(index)])
+    viewer = html_viewer()
+    if shutil.which(viewer) is None:
+        raise SystemExit(
+            f"{viewer}: command not found. Open {index} in a browser, or set HTML_VIEWER "
+            "to a program that opens it."
+        )
+    run([viewer, str(index)])
 
 
 def resolve_project_path(value: str | None, project_dir: Path, default: Path) -> Path:

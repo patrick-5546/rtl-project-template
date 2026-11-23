@@ -1,5 +1,7 @@
 import logging
 import os
+import platform
+import shutil
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -19,6 +21,7 @@ from flow.runner import (
     discover_configs,
     discover_duts,
     expose_tool_on_path,
+    html_viewer,
     make_target_command,
     run,
     validate_config_name,
@@ -30,6 +33,34 @@ def test_run_adds_its_environment_and_echoes_it(capsys: pytest.CaptureFixture[st
     check = "import os, sys; sys.exit(os.environ.get('FLOW_TEST') != '1')"
     run([sys.executable, "-c", check], env={"FLOW_TEST": "1"})
     assert capsys.readouterr().out.startswith("+ FLOW_TEST=1 ")
+
+
+@pytest.mark.parametrize(
+    ("system", "release", "wslview", "viewer"),
+    [
+        ("darwin", "25.1.0", None, "open"),
+        ("linux", "6.8.0-48-generic", "/usr/bin/wslview", "xdg-open"),
+        ("linux", "5.15.167.4-microsoft-standard-WSL2", "/usr/bin/wslview", "wslview"),
+        ("linux", "5.15.167.4-microsoft-standard-WSL2", None, "xdg-open"),
+    ],
+)
+def test_html_reports_open_with_the_platforms_opener(
+    monkeypatch: pytest.MonkeyPatch,
+    system: str,
+    release: str,
+    wslview: str | None,
+    viewer: str,
+) -> None:
+    def which(name: str) -> str | None:
+        return wslview if name == "wslview" else None
+
+    monkeypatch.delenv("HTML_VIEWER", raising=False)
+    monkeypatch.setattr(sys, "platform", system)
+    monkeypatch.setattr(platform, "release", lambda: release)
+    monkeypatch.setattr(shutil, "which", which)
+    assert html_viewer() == viewer
+    monkeypatch.setenv("HTML_VIEWER", "firefox")
+    assert html_viewer() == "firefox"
 
 
 @pytest.mark.parametrize(

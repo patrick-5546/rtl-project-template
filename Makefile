@@ -190,7 +190,7 @@ help:
 	@echo "  VERDI_RC=                       Verdi layout"
 	@echo "  CM_HIER= / ELLIST=              Optional VCS coverage hierarchy / exclusions"
 	@echo "  COVERAGE_HTML=1                 coverage also writes Verilator's HTML report (LCOV)"
-	@echo "  HTML_VIEWER=wslview             HTML opener (e.g. wslview on WSL)"
+	@echo "  HTML_VIEWER=                    HTML opener (default: open on macOS, wslview on WSL, else xdg-open)"
 
 # Build the RTL and run the cocotb tests. flow/cli.py sets up the per-simulator
 # pytest invocation (the supported cocotb runner path); command-line VAR=value

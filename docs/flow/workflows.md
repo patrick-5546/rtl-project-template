@@ -127,8 +127,9 @@ unhit point with `%00`; `make open-coverage-html CONFIG=<name>` writes and opens
 LCOV's HTML report for one configuration, and `COVERAGE_HTML=1` makes
 `make coverage` write it for each. With `SIM=questa` or `SIM=vcs`,
 `make coverage` writes the simulator's own reports, and `make open-coverage`
-opens one in the simulator's coverage GUI. `HTML_VIEWER` sets the program that
-opens HTML reports (e.g. `wslview`, from wslu, on WSL).
+opens one in the simulator's coverage GUI. HTML reports open with `open` on
+macOS, with `wslview`, from wslu, on WSL when it is installed, and with
+`xdg-open` elsewhere; `HTML_VIEWER` sets another program.
 
 The reports fail on missing data or tool errors, but no simulator's report fails
 on a coverage hole. [Tools](tools.md#coverage) compares what each simulator
