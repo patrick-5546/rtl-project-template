@@ -80,7 +80,7 @@ class GtkwaveProfile(ViewerProfile):
         wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
         gtkwave = env_str("GTKWAVE", "gtkwave")
-        gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", "-o"))
+        gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", ""))
         save = project_path_from_env(
             "GTKWAVE_SAVE",
             project_dir,
