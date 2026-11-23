@@ -42,6 +42,10 @@ first runs; `uv sync` does that alone, e.g. for an editor.
   Devel::StackTrace and TimeDate, which mise does not install: on Debian and
   Ubuntu, `libcapture-tiny-perl`, `libdatetime-perl`,
   `libdevel-stacktrace-perl` and `libtimedate-perl`.
+- Verilator's FST waveforms (`WAVES=1`) need lz4's library and headers, which
+  mise does not install either: on Debian and Ubuntu, `liblz4-dev`; on macOS,
+  `brew install lz4`. Apple's compiler does not search Homebrew's prefix on
+  Apple silicon, so the flow passes Homebrew's lz4 to Verilator itself.
 - GTKWave 4 has no release yet, only pre-alpha builds from source, so the flow
   targets GTKWave 3.
 

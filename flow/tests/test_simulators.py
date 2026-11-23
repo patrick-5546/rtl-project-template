@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -52,6 +53,30 @@ def test_verilator_configure_modes(
     assert ("--trace-fst" in args.build_args) is waves
     assert ("--coverage" in args.build_args) is coverage
     assert bool(args.plusargs) is coverage
+
+
+@pytest.mark.parametrize(
+    ("platform", "installed", "found"),
+    [("darwin", True, True), ("darwin", False, False), ("linux", True, False)],
+)
+def test_verilator_fst_builds_find_homebrews_lz4_on_macos(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    platform: str,
+    installed: bool,
+    found: bool,
+) -> None:
+    lz4 = tmp_path / "homebrew" / "opt" / "lz4"
+    if installed:
+        (lz4 / "include").mkdir(parents=True)
+        (lz4 / "include" / "lz4.h").touch()
+    monkeypatch.setenv("HOMEBREW_PREFIX", str(tmp_path / "homebrew"))
+    monkeypatch.setattr(sys, "platform", platform)
+    profile = VerilatorProfile()
+    with patch.object(profile, "require_version"):
+        args = profile.configure(config(tmp_path, waves=True))
+    flags = ["-CFLAGS", f"-I{lz4 / 'include'}", "-LDFLAGS", f"-L{lz4 / 'lib'}"]
+    assert (args.build_args[-4:] == flags) is found
 
 
 def test_verilator_makes_only_the_top_levels_ports_public(tmp_path: Path) -> None:

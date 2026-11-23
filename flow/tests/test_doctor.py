@@ -1,12 +1,13 @@
 import re
 import shlex
+import sys
 from importlib.resources import files
 from pathlib import Path
 
 import pytest
 
 from flow import doctor
-from flow.doctor import GROUPS, Tool, check, ci_pins, mise_pins, numbers, report
+from flow.doctor import GROUPS, Tool, check, check_lz4, ci_pins, mise_pins, numbers, report
 from flow.simulators import VerilatorProfile
 
 VERILATOR = Tool(
@@ -180,6 +181,42 @@ def test_missing_tool_that_mise_installs_suggests_mise_install(
     monkeypatch.setenv("GENHTML", str(bin_dir / "custom" / "genhtml"))
     result = check(GENHTML, PINS, required=False)
     assert result.detail == f"not found: GENHTML={bin_dir / 'custom' / 'genhtml'}"
+
+
+@pytest.mark.parametrize(
+    ("platform", "installed", "status", "detail"),
+    [
+        ("darwin", True, "ok", ""),
+        ("darwin", False, "missing", "lz4.h not found; run `brew install lz4`"),
+        ("linux", True, "missing", "lz4.h not found; install liblz4-dev"),
+    ],
+)
+def test_lz4_is_looked_for_as_fst_builds_find_it(
+    bin_dir: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    platform: str,
+    installed: bool,
+    status: str,
+    detail: str,
+) -> None:
+    include = tmp_path / "homebrew" / "opt" / "lz4" / "include"
+    if installed:
+        include.mkdir(parents=True)
+        (include / "lz4.h").touch()
+    monkeypatch.setenv("HOMEBREW_PREFIX", str(tmp_path / "homebrew"))
+    monkeypatch.setattr(sys, "platform", platform)
+    # A compiler that finds lz4.h only in an -I directory, and lists it as -M does.
+    compiler = bin_dir / "c++"
+    compiler.write_text(
+        '#!/bin/sh\nfor arg; do case $arg in -I*) echo "-: ${arg#-I}/lz4.h"; exit 0;; esac; done\n'
+        "exit 1\n",
+        encoding="utf-8",
+    )
+    compiler.chmod(0o755)
+    result = check_lz4()
+    assert (result.status, result.detail) == (status, detail)
+    assert result.path == (str(include / "lz4.h") if status == "ok" else "")
 
 
 def test_tools_are_located_as_the_flow_runs_them(

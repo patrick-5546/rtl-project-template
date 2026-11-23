@@ -9,7 +9,9 @@ A tool that only other targets need is reported missing, with a reminder to run
 ``mise install`` when mise installs it. The version that CI uses is "verified"
 and any other "untested": ``mise.toml`` and ``.github/workflows/ci.yml`` pin
 them. A Verible other than CI's is a warning instead: Verible's formatting, and
-so ``make lint-sv``, can differ between versions.
+so ``make lint-sv``, can differ between versions. A library that builds link,
+such as lz4 for Verilator's FST waveforms, is looked for as the compiler finds
+it, and reported missing when it is not found.
 """
 
 import os
@@ -17,13 +19,14 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import tomllib
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 from flow.runner import PROJECT_DIR
-from flow.simulators import VerilatorProfile
+from flow.simulators import VerilatorProfile, homebrew_lz4
 
 CI_WORKFLOW = PROJECT_DIR / ".github" / "workflows" / "ci.yml"
 MISE_CONFIG = PROJECT_DIR / "mise.toml"
@@ -55,11 +58,49 @@ class Tool:
 
 
 @dataclass(frozen=True)
+class Check:
+    # "verified", "untested", "ok", "missing", "warning" or "error"
+    status: str
+    tool: str
+    version: str = ""
+    path: str = ""
+    detail: str = ""
+
+
+@dataclass(frozen=True)
 class Group:
     title: str
     purpose: str
     tools: tuple[Tool, ...]
     required: bool = False
+    # The checks of what is not an executable, such as a library that builds link.
+    checks: tuple[Callable[[], Check], ...] = ()
+
+
+def check_lz4() -> Check:
+    """Whether Verilator's FST builds find lz4, which mise does not install.
+
+    The C++ compiler looks for ``lz4.h`` as an FST build does, with Homebrew's lz4
+    on macOS (:func:`flow.simulators.homebrew_lz4`).
+    """
+    lz4 = homebrew_lz4()
+    include = [f"-I{lz4 / 'include'}"] if lz4 else []
+    try:
+        result = subprocess.run(
+            ["c++", *include, "-M", "-x", "c++", "-"],
+            input="#include <lz4.h>\n",
+            capture_output=True,
+            text=True,
+            timeout=VERSION_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired, OSError:
+        return Check("missing", "lz4", detail="c++ failed, so lz4.h was not looked for")
+    if result.returncode != 0:
+        install = "run `brew install lz4`" if sys.platform == "darwin" else "install liblz4-dev"
+        return Check("missing", "lz4", detail=f"lz4.h not found; {install}")
+    headers = result.stdout.replace("\\\n", " ").split()
+    return Check("ok", "lz4", path=next((h for h in headers if Path(h).name == "lz4.h"), ""))
 
 
 GROUPS = (
@@ -115,11 +156,12 @@ GROUPS = (
     ),
     Group(
         "Waveforms",
-        "make waves; rtlbrowse for its RTLBrowse window",
+        "make waves; rtlbrowse for its RTLBrowse window, lz4 for Verilator's FST",
         (
             Tool("gtkwave", "GTKWAVE"),
             Tool("rtlbrowse", version_args=()),
         ),
+        checks=(check_lz4,),
     ),
     # Commercial tools are only located: their version commands may need a license.
     Group(
@@ -137,16 +179,6 @@ GROUPS = (
         ),
     ),
 )
-
-
-@dataclass(frozen=True)
-class Check:
-    # "verified", "untested", "ok", "missing", "warning" or "error"
-    status: str
-    tool: str
-    version: str = ""
-    path: str = ""
-    detail: str = ""
 
 
 def ci_pins(workflow: Path = CI_WORKFLOW) -> dict[str, str]:
@@ -263,8 +295,8 @@ def report(workflow: Path = CI_WORKFLOW, mise_config: Path = MISE_CONFIG) -> int
     errors = 0
     for group in GROUPS:
         print(f"{group.title} ({group.purpose}):")
-        for tool in group.tools:
-            result = check(tool, pins, required=group.required)
+        results = [check(tool, pins, required=group.required) for tool in group.tools]
+        for result in [*results, *(extra() for extra in group.checks)]:
             errors += result.status == "error"
             detail = f"({result.detail})" if result.detail else ""
             where = "  ".join(part for part in (result.path, detail) if part)

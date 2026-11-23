@@ -14,6 +14,7 @@ capabilities it supports, and registering an instance in :data:`SIMULATORS`.
 """
 
 import shutil
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import override
@@ -41,6 +42,19 @@ VERILATOR_CONTROL_FILE = PROJECT_DIR / "rtl" / "verilator.vlt"
 # The timescale of a module that declares none, on every simulator. The
 # Makefile's SV_TIMESCALE gives the linters the same default.
 TIMESCALE = "1ns/1ps"
+
+
+def homebrew_lz4() -> Path | None:
+    """Homebrew's lz4 on macOS, or ``None`` elsewhere or when it is not installed.
+
+    Verilator's FST tracing compiles against ``lz4.h`` and links ``liblz4``. Apple's
+    compiler does not search Homebrew's prefix on Apple silicon, ``/opt/homebrew``,
+    which ``HOMEBREW_PREFIX`` (set by ``brew shellenv``) overrides.
+    """
+    if sys.platform != "darwin":
+        return None
+    lz4 = Path(env_str("HOMEBREW_PREFIX", "/opt/homebrew")) / "opt" / "lz4"
+    return lz4 if (lz4 / "include" / "lz4.h").is_file() else None
 
 
 def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
@@ -309,6 +323,10 @@ class VerilatorProfile(SimulatorProfile):
         if cfg.waves:
             args.build_args.append("--trace-fst")
             args.build_args.append("--trace-structs")
+            if lz4 := homebrew_lz4():
+                args.build_args.extend(
+                    ["-CFLAGS", f"-I{lz4 / 'include'}", "-LDFLAGS", f"-L{lz4 / 'lib'}"]
+                )
         return args
 
     @override
