@@ -50,7 +50,11 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
   module or package in one file is visible in the files after it.
 - slang-tidy warnings do not fail `make lint`, but checks configured as errors
   do. The named configuration passes use `--quiet` to hide passing checks
-  without hiding findings or changing the exit status.
+  without hiding findings. With `--quiet`, though, slang-tidy 12.1, which OSS
+  CAD Suite has, exits 0 even when a check configured as an error fails
+  ([slang#2101](https://github.com/MikePopoloski/slang/issues/2101)), so such a
+  failure in only a named configuration does not fail `make lint`; slang 12.2
+  fixes that.
 - typos skips the viewer layouts and the lockfiles; allow a project's own words
   in `[tool.typos]` in `pyproject.toml`.
 - zizmor also runs its online audits when `GH_TOKEN` is set;

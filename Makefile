@@ -304,7 +304,11 @@ SV_VENDOR_PATHS := $(sort $(realpath $(SV_VENDOR_DIR) $(wildcard $(SV_VENDOR_DIR
 VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall -Wno-MULTITOP --timescale $(SV_TIMESCALE) --sv +define+ABV rtl/verilator.vlt
 SLANG_OPTIONS = $(strip --single-unit +define+ABV --timescale $(SV_TIMESCALE) $(foreach path,$(SV_VENDOR_PATHS),--suppress-warnings $(path)/...))
 SLANG_LINT = $(SLANG) -Werror $(SLANG_OPTIONS)
-SLANG_TIDY_LINT = $(strip $(SLANG_TIDY) $(SLANG_OPTIONS) $(foreach path,$(SV_VENDOR_PATHS),--skip-path $(path)))
+# The trailing slash keeps slang-tidy 12.1's --skip-path from also skipping the
+# directory's parent, and so all of rtl/
+# (https://github.com/MikePopoloski/slang/issues/2100). Remove it once OSS CAD
+# Suite's slang is 12.2 or newer.
+SLANG_TIDY_LINT = $(strip $(SLANG_TIDY) $(SLANG_OPTIONS) $(foreach path,$(SV_VENDOR_PATHS),--skip-path $(path)/))
 
 lint-sv-verilator:
 	$(VERILATOR_LINT) $(SV_SOURCES_ARGS)
