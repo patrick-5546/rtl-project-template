@@ -9,8 +9,9 @@ A tool that only other targets need is reported missing, with a reminder to run
 ``mise install`` when mise installs it. A tool that ``mise.toml`` pins is
 "verified" at that version, which CI uses, and "untested" at any other; a
 Verible other than CI's is a warning instead: Verible's formatting, and so
-``make lint-sv``, can differ between versions. Any version of another tool, such
-as Verilator, is "ok" when it is not older than the flow needs. The libraries
+``make lint-sv``, can differ between versions. Any version of a tool from OSS CAD
+Suite, such as Verilator, is "ok" when it is not older than the flow needs:
+``mise.toml`` pins the suite's release, not the tools' versions. The libraries
 that Verilator's FST waveforms link, lz4 and zlib, are looked for as the C++
 compiler finds them, and reported missing when it does not.
 """
@@ -30,6 +31,9 @@ from flow.runner import PROJECT_DIR
 from flow.simulators import VerilatorProfile, homebrew_lz4
 
 MISE_CONFIG = PROJECT_DIR / "mise.toml"
+# OSS CAD Suite's key in mise.toml, which installs Verilator, slang and GTKWave.
+# It pins a release date, not their versions.
+OSS_CAD_SUITE = "github:YosysHQ/oss-cad-suite-build"
 # The first uv that reads the relative ``exclude-newer`` in pyproject.toml; older
 # ones ignore the whole ``[tool.uv]`` table and relock without it.
 UV_MINIMUM = "0.9.17"
@@ -49,7 +53,8 @@ class Tool:
     variable: str = ""
     # Empty for a tool that is only located, such as a commercial one.
     version_args: tuple[str, ...] = ("--version",)
-    # The tool's key in mise.toml, which pins the version that mise installs.
+    # The tool's key in mise.toml, which mise installs it from. Its pin is the tool's
+    # version, except for the tools from OSS_CAD_SUITE.
     mise: str = ""
     # Verify only an identical version string, since equal numbers are not enough.
     exact: bool = False
@@ -126,6 +131,7 @@ GROUPS = (
             Tool(
                 "verilator",
                 "VERILATOR",
+                mise=OSS_CAD_SUITE,
                 minimum=VerilatorProfile.minimum_version,
                 minimum_for="the flow",
             ),
@@ -148,8 +154,8 @@ GROUPS = (
                 mise="github:chipsalliance/verible",
                 exact=True,
             ),
-            Tool("slang", "SLANG"),
-            Tool("slang-tidy", "SLANG_TIDY"),
+            Tool("slang", "SLANG", mise=OSS_CAD_SUITE),
+            Tool("slang-tidy", "SLANG_TIDY", mise=OSS_CAD_SUITE),
         ),
     ),
     Group(
@@ -159,6 +165,7 @@ GROUPS = (
             Tool(
                 "verilator_coverage",
                 "VERILATOR_COVERAGE",
+                mise=OSS_CAD_SUITE,
                 minimum=VerilatorProfile.minimum_version,
                 minimum_for="the flow",
             ),
@@ -169,8 +176,8 @@ GROUPS = (
         "Waveforms",
         "make waves; rtlbrowse for its RTLBrowse window, lz4 and zlib for Verilator's FST",
         (
-            Tool("gtkwave", "GTKWAVE"),
-            Tool("rtlbrowse", version_args=()),
+            Tool("gtkwave", "GTKWAVE", mise=OSS_CAD_SUITE),
+            Tool("rtlbrowse", version_args=(), mise=OSS_CAD_SUITE),
         ),
         checks=(check_lz4, check_zlib),
     ),
@@ -270,7 +277,7 @@ def check(tool: Tool, pins: Mapping[str, str], *, required: bool) -> Check:
     if tool.minimum and numbers(version) < numbers(tool.minimum):
         detail = f"{tool.minimum_for} needs {tool.minimum} or newer"
         return Check("error", tool.name, version, path, detail)
-    pin = pins.get(tool.mise) if tool.mise else None
+    pin = pins.get(tool.mise) if tool.mise and tool.mise != OSS_CAD_SUITE else None
     if not pin:
         return Check("ok", tool.name, version, path)
     same = (version == pin) if tool.exact else (numbers(version) == numbers(pin))

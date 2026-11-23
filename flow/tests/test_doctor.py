@@ -13,12 +13,14 @@ from flow.simulators import VerilatorProfile
 VERILATOR = Tool(
     "verilator",
     "VERILATOR",
+    mise=doctor.OSS_CAD_SUITE,
     minimum=VerilatorProfile.minimum_version,
     minimum_for="the flow",
 )
 VERIBLE = Tool("verible-verilog-format", mise="github:chipsalliance/verible", exact=True)
 GENHTML = Tool("genhtml", "GENHTML", mise="github:linux-test-project/lcov")
 PINS = {
+    doctor.OSS_CAD_SUITE: "2026-11-16",
     "github:chipsalliance/verible": "0.0-4298-g085eef05",
     "github:linux-test-project/lcov": "2.6",
 }
@@ -158,6 +160,8 @@ def test_missing_tool_that_mise_installs_suggests_mise_install(
 ) -> None:
     result = check(GENHTML, PINS, required=False)
     assert (result.status, result.detail) == ("missing", "not found; run `mise install`")
+    result = check(VERILATOR, PINS, required=True)
+    assert (result.status, result.detail) == ("error", "not found; run `mise install`")
     monkeypatch.setenv("GENHTML", str(bin_dir / "custom" / "genhtml"))
     result = check(GENHTML, PINS, required=False)
     assert result.detail == f"not found: GENHTML={bin_dir / 'custom' / 'genhtml'}"

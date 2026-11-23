@@ -46,7 +46,7 @@ def verified_versions() -> dict[str, str]:
 
 def test_verified_suite_is_the_pinned_one() -> None:
     """The verified Verilator, slang and GTKWave are those of the pinned OSS CAD Suite."""
-    pin = doctor.mise_pins()["github:YosysHQ/oss-cad-suite-build"]
+    pin = doctor.mise_pins()[doctor.OSS_CAD_SUITE]
     assert verified_versions()["oss cad suite"] == pin
 
 

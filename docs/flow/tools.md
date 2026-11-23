@@ -69,9 +69,10 @@ them). A few have minimum versions:
 `make doctor` shows which tools it finds and their versions. A version older
 than the flow needs is an error, as is a missing tool that `make test` needs.
 The version that `mise.toml` pins is "verified", and any other "untested"; a
-Verible other than CI's can format the RTL differently. Any version of the other
-tools, such as Verilator and slang, is "ok". It checks versions only: after
-installing or updating a tool, run the flow with it.
+Verible other than CI's can format the RTL differently. Any version of the tools
+from OSS CAD Suite, such as Verilator and slang, is "ok": `mise.toml` pins the
+suite's release, not their versions. It checks versions only: after installing
+or updating a tool, run the flow with it.
 
 ## Simulators
 
