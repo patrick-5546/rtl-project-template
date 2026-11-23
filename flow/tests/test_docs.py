@@ -46,10 +46,13 @@ def verified_versions() -> dict[str, str]:
 
 def pinned_versions() -> dict[str, str]:
     """The versions that CI and mise.toml pin, by lowercase tool name: the CI pin
-    ``VERILATOR_VERSION`` is ``verilator``, and the mise tool
-    ``github:chipsalliance/verible`` is ``verible``."""
+    ``MISE_VERSION`` is ``mise``, the mise tool ``github:chipsalliance/verible``
+    is ``verible``, and ``github:YosysHQ/oss-cad-suite-build`` is ``oss cad suite``."""
     ci = {pin.removesuffix("_VERSION").lower(): v for pin, v in doctor.ci_pins().items()}
-    mise = {re.split(r"[:/]", key)[-1].lower(): v for key, v in doctor.mise_pins().items()}
+    mise = {
+        re.split(r"[:/]", key)[-1].lower().removesuffix("-build").replace("-", " "): v
+        for key, v in doctor.mise_pins().items()
+    }
     return ci | mise
 
 

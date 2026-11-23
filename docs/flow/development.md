@@ -57,8 +57,7 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
   fixes that.
 - typos skips the viewer layouts and the lockfiles; allow a project's own words
   in `[tool.typos]` in `pyproject.toml`.
-- zizmor also runs its online audits when `GH_TOKEN` is set;
-  `.github/zizmor.yml` says which audit is off and why.
+- zizmor also runs its online audits when `GH_TOKEN` is set.
 
 ## Continuous integration
 
@@ -77,16 +76,14 @@ SHA, have time limits, and fail if `uv.lock` or `mise.lock` is out of date
   uploads them and the LCOV data as the `coverage-reports` artifact, and
   summarizes each configuration's coverage by type on the run's summary page.
 
-Each job installs the tools that `mise.lock` pins, uv among them, with
-`jdx/mise-action`, which caches them. The local action
-`.github/actions/setup-eda-tools` builds Verilator and slang, cached per version
-and runner image.
+Each job installs the tools that `mise.lock` pins, uv and OSS CAD Suite among
+them, with `jdx/mise-action`, which caches them.
 
 ## Updating dependencies
 
 Dependabot (`.github/dependabot.yml`) proposes weekly updates of the locked
-Python packages and of the actions that the workflow and its local action use,
-in one pull request per ecosystem; each major Python update comes on its own.
+Python packages and of the actions that the workflow uses, in one pull request
+per ecosystem; each major Python update comes on its own.
 Most compromised releases are found and pulled within days, so every update
 takes only releases at least a week old: Dependabot waits a week, uv locks only
 week-old releases (`exclude-newer` in `pyproject.toml`), and mise upgrades only
@@ -100,12 +97,19 @@ to `pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
 minimum version in `pyproject.toml` must be a week old too, or locking fails.
 
 Dependabot does not update the other tools. `mise.toml` and `mise.lock` pin GNU
-Make, uv, Verible and LCOV: `mise outdated --bump --no-global` lists their newer
-releases, and `mise upgrade --bump --no-global` upgrades them in both files, or
-only the tools that you name. After editing `mise.toml` by hand, run
-`mise lock`. The `env` of `.github/workflows/ci.yml` pins mise and the EDA
-tools that CI builds, Verilator and slang: to move one to a new release, change
-its version there.
+Make, uv, Verible, LCOV and OSS CAD Suite: `mise outdated --bump --no-global`
+lists their newer releases, and `mise upgrade --bump --no-global` upgrades them
+in both files, or only the tools that you name. After editing `mise.toml` by
+hand, run `mise lock`. The `env` of `.github/workflows/ci.yml` pins mise.
+
+OSS CAD Suite releases daily, so it always has a newer release: take one for a
+newer Verilator, slang or GTKWave, and note the versions that it bundles, which
+`make doctor` shows. Its slang is 12.1, which needs the slang-tidy workarounds
+for [slang#2100](https://github.com/MikePopoloski/slang/issues/2100) and
+[slang#2101](https://github.com/MikePopoloski/slang/issues/2101). Take the
+first release whose slang is 12.2 or newer before it is a week old, with
+`mise upgrade --bump --no-global --minimum-release-age 0s github:YosysHQ/oss-cad-suite-build`,
+and remove the workarounds.
 
 After updating a tool, update the
 [verified environment](tools.md#verified-environment) to match its pin;

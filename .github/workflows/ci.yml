@@ -16,9 +16,8 @@ concurrency:
 env:
   # Fail instead of updating uv.lock, including in the uv runs that make starts.
   UV_LOCKED: "1"
-  # Pinned versions of mise and of the EDA tools that CI builds (docs/flow/development.md).
-  VERILATOR_VERSION: v5.054
-  SLANG_VERSION: v12.2
+  # The pinned version of mise, which installs the tools that mise.lock pins
+  # (docs/flow/development.md).
   MISE_VERSION: 2026.11.1
 
 jobs:
@@ -45,16 +44,12 @@ jobs:
   lint-sv:
     name: Lint SystemVerilog
     runs-on: ubuntu-24.04
-    # Building Verilator and slang when they are not cached takes about 15 minutes.
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup-eda-tools
-        with:
-          verilator-version: ${{ env.VERILATOR_VERSION }}
-          slang-version: ${{ env.SLANG_VERSION }}
+      # Installs the tools that mise.lock pins: Verible, and OSS CAD Suite's Verilator and slang.
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           version: ${{ env.MISE_VERSION }}
@@ -93,15 +88,11 @@ jobs:
             target: coverage
             waves: "0"
     runs-on: ubuntu-24.04
-    # Building Verilator when it is not cached takes about 10 minutes.
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/setup-eda-tools
-        with:
-          verilator-version: ${{ env.VERILATOR_VERSION }}
       - name: Install the Perl modules that LCOV loads
         if: matrix.target == 'coverage'
         run: |

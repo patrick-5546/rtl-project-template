@@ -10,13 +10,14 @@ Install the tools that you plan to use and put them on `PATH`:
 | Tool | Purpose | Install | Documentation |
 | --- | --- | --- | --- |
 | GNU Make | Runs the flow's targets | mise | [Documentation](https://www.gnu.org/software/make/manual/) |
-| mise | Installs GNU Make, uv, Verible and LCOV | [Getting started](https://mise.jdx.dev/getting-started.html) | [Documentation](https://mise.jdx.dev/) |
+| mise | Installs GNU Make, uv, Verible, LCOV and OSS CAD Suite | [Getting started](https://mise.jdx.dev/getting-started.html) | [Documentation](https://mise.jdx.dev/) |
 | uv | Python package manager | mise | [Documentation](https://docs.astral.sh/uv/) |
-| Verilator | Simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [Documentation](https://verilator.org/guide/latest/) |
-| slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
+| OSS CAD Suite | Builds of Verilator, slang and GTKWave, among other open-source EDA tools | mise | [Documentation](https://github.com/YosysHQ/oss-cad-suite-build) |
+| Verilator | Simulator and RTL lint-only flow | mise (OSS CAD Suite) | [Documentation](https://verilator.org/guide/latest/) |
+| slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | mise (OSS CAD Suite) | [Documentation](https://sv-lang.com/) |
 | Verible | SystemVerilog formatting and linting | mise | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | mise | [Documentation](https://github.com/linux-test-project/lcov/tree/master/docs/man) |
-| GTKWave | Waveform viewer | [Build instructions](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
+| GTKWave | Waveform viewer | mise (OSS CAD Suite) | [Documentation](https://gtkwave.github.io/gtkwave/) |
 
 With mise [activated](https://mise.jdx.dev/getting-started.html#activate-mise)
 in your shell, run these in the checkout to install its tools at the versions
@@ -46,8 +47,14 @@ first runs; `uv sync` does that alone, e.g. for an editor.
   mise does not install either: on Debian and Ubuntu, `liblz4-dev`; on macOS,
   `brew install lz4`. Apple's compiler does not search Homebrew's prefix on
   Apple silicon, so the flow passes Homebrew's lz4 to Verilator itself.
-- GTKWave 4 has no release yet, only pre-alpha builds from source, so the flow
-  targets GTKWave 3.
+- OSS CAD Suite releases daily, named by date, and `mise.toml` pins one: each
+  release is a 0.5 to 0.7 GB download, and about 2 GB once installed. It builds
+  Verilator from its master branch, so its Verilator is a development snapshot
+  rather than a release; its slang is the one that Yosys pins, which can trail
+  slang's releases; and its GTKWave is GTKWave 4, which has no release yet.
+  GTKWave 4's RTLBrowse uses GTK 4, which prints libEGL and MESA warnings and
+  renders without the GPU when it cannot use one, as under WSL; they are
+  harmless.
 
 The flow runs each tool that it finds on `PATH`, or that its executable variable
 names (`make help` lists them), however it was installed. `make doctor` shows
@@ -105,23 +112,25 @@ reports.
 
 ## Verified environment
 
-The open-source tools were verified with these versions on Ubuntu 26.04 and in
-CI on Ubuntu 24.04: `mise.toml` and the `env` of `.github/workflows/ci.yml` pin
-them, and `uv.lock` the Python packages. Questa, VCS and Verdi were verified
+The open-source tools were verified with these versions on macOS 26 and in CI
+on Ubuntu 24.04: `mise.toml` pins them, through the OSS CAD Suite release for
+Verilator, slang and GTKWave, and `uv.lock` the Python packages; the `env` of
+`.github/workflows/ci.yml` pins mise. Questa, VCS and Verdi were verified
 with these versions elsewhere, before later changes to their profiles, and not
 since: CI cannot run them, and the flow's unit tests check only the commands
 that it gives them.
 
 | Tool | Verified version |
 | --- | --- |
-| GTKWave | 3.3.126 |
+| GTKWave | 4.0.0-prealpha (git e40ba79) |
 | LCOV | 2.6 |
 | Make | 4.4.1 |
 | mise | 2026.11.1 |
+| OSS CAD Suite | 2026-11-16 |
 | Questa | 2025.1 |
-| slang | 12.2 |
+| slang | 12.1 |
 | uv | 0.13.7 |
 | VCS | W-2024.09-SP2-7 |
 | Verdi | W-2024.09-SP2-7 |
 | Verible | v0.0-4298-g085eef05 |
-| Verilator | 5.054 |
+| Verilator | 5.055-devel (git e0ff8e65b) |

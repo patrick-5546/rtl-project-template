@@ -143,9 +143,9 @@ def test_versions_compare_numerically() -> None:
         (GENHTML, PERL_ERROR, 2, ("warning", "", f"genhtml --version failed: {PERL_ERROR}")),
         (
             Tool("gtkwave"),
-            "GTKWave Analyzer v3.3.126 (w)1999-2025 BSI",
+            "GTKWave Analyzer v4.0.0-prealpha (e40ba79) (w)1999-2022 BSI",
             0,
-            ("ok", "3.3.126", ""),
+            ("ok", "4.0.0-prealpha", ""),
         ),
     ],
 )

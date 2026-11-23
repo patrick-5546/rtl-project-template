@@ -292,9 +292,8 @@ class VerilatorProfile(SimulatorProfile):
     wave_filename = "dump.fst"
     supports_coverage = True
     # Verilator 5.050 added SV covergroups, and 5.052 and 5.054 fixed several of
-    # their bugs; 5.054 is also the version that CI verifies. Every build and
-    # coverage report checks it, so an older Verilator fails up front instead of
-    # dropping covergroups from the coverage.
+    # their bugs. Every build and coverage report checks it, so an older
+    # Verilator fails up front instead of dropping covergroups from the coverage.
     minimum_version = "5.054"
 
     def require_version(self, executable: str) -> None:
