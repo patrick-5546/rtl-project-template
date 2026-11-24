@@ -212,8 +212,11 @@ def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
         "SF:no_lines.sv\nBRF:0\nBRH:0\nend_of_record\n"
     )
 
+    write_info: list[str] = []
+
     def fake_run(cmd: list[str], **_: object) -> None:
         if "--write-info" in cmd:
+            write_info.extend(cmd)
             Path(cmd[cmd.index("--write-info") + 1]).write_text(written, encoding="utf-8")
 
     profile = VerilatorProfile()
@@ -224,6 +227,8 @@ def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
         profile.report_coverage(
             tmp_path, build_dir, build_dir / "coverage.dat", dut="top", config="width4"
         )
+    # Verilator's own totals count a point as hit at one hit, as LCOV does.
+    assert write_info[write_info.index("--annotate-min") + 1] == "1"
     info = build_dir / "coverage.info"
     expected = written.replace(
         "BRH:0\nend_of_record\nSF:has", "BRH:0\nLF:3\nLH:2\nend_of_record\nSF:has", 1

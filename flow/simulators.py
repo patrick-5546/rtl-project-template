@@ -389,11 +389,16 @@ class VerilatorProfile(SimulatorProfile):
             ],
             cwd=project_dir,
         )
+        # A point is hit at its first hit, as in the annotated report. Verilator counts
+        # the LCOV data's BRH, and after 5.054 its LH, against --annotate-min, which
+        # is 10 by default, so the totals would disagree with the records.
         run(
             [
                 verilator_coverage,
                 "--write-info",
                 str(info),
+                "--annotate-min",
+                "1",
                 "--include-reset-arcs",
                 str(coverage_data),
             ],
