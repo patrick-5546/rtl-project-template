@@ -33,7 +33,7 @@ Install [mise](https://mise.jdx.dev/getting-started.html), which installs the
 external tools at the versions that CI uses; [Tools](docs/flow/tools.md) has
 the details, and the little that mise does not install.
 
-```sh
+```text
 mise trust   # trust the checkout's mise.toml
 mise install # install its tools
 make doctor  # check the installed tools and their versions
