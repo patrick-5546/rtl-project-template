@@ -98,9 +98,8 @@ paid `svverification` license.
 
 The open-source tools were verified on macOS 27 and in CI on Ubuntu 24.04 at the
 versions that `mise.toml` and `uv.lock` pin; the pinned OSS CAD Suite bundles the
-Verilator, slang and GTKWave below. Questa, VCS and Verdi were verified
-elsewhere, at the versions below, before later changes to their profiles, and
-not since: CI cannot run them.
+Verilator, slang and GTKWave below. Questa, VCS and Verdi were verified outside
+CI, which cannot run them, at the versions below.
 
 | Tool | Verified version |
 | --- | --- |
