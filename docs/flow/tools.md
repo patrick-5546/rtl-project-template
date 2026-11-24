@@ -120,12 +120,9 @@ reports.
 
 | Viewer | Simulator | Format | Layout | Source browse | Driver trace |
 | --- | --- | --- | --- | --- | --- |
-| GTKWave | Verilator | FST | `waves/<DUT>.gtkw` | Yes (RTLBrowse) | Somewhat |
-| Questa | Questa | WLF | `waves/<DUT>.do` | Yes | Yes (double-click a signal) |
-| Verdi | VCS | FSDB | `waves/<DUT>.rc` | Yes | Yes (from VCS's `simv.daidir`) |
-
-A configuration's own layout, `waves/<DUT>/<CONFIG>.*`, replaces the DUT's; see
-[Workflows](workflows.md#waveforms).
+| GTKWave | Verilator | FST | `.gtkw` | Yes (RTLBrowse) | Somewhat |
+| Questa | Questa | WLF | `.do` | Yes | Yes (double-click a signal) |
+| Verdi | VCS | FSDB | `.rc` | Yes | Yes (from VCS's `simv.daidir`) |
 
 ## Verified environment
 

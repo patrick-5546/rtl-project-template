@@ -479,17 +479,17 @@ def default_sources_files(project_dir: Path) -> list[Path]:
 
 def waveform_layout(variable: str, project_dir: Path, dut: str, config: str, suffix: str) -> Path:
     """The waveform layout, ending in *suffix*, of *dut*'s *config*: ``$variable``, or
-    the configuration's own ``waves/<dut>/<config><suffix>`` when it exists, else the
-    DUT's ``waves/<dut><suffix>``.
+    ``waves/<dut>/<config><suffix>`` when it exists, else ``waves/<dut>/default<suffix>``.
 
-    A configuration has its own layout when it needs other signals than the DUT's,
-    or when its parameters change the width of a vector that the layout names with
-    its range, as GTKWave's and Verdi's layouts do.
+    :data:`DEFAULT_CONFIG` is the only configuration of a DUT without named ones, and
+    its layout serves each named configuration that has none of its own. One needs its
+    own when it shows other signals, or when its parameters change the width of a
+    vector that the layout names with its range, as GTKWave's and Verdi's layouts do.
     """
-    waves = project_dir / "waves"
-    own = waves / dut / f"{config}{suffix}"
+    layouts = project_dir / "waves" / dut
+    own = layouts / f"{config}{suffix}"
     return project_path_from_env(
-        variable, project_dir, own if own.is_file() else waves / f"{dut}{suffix}"
+        variable, project_dir, own if own.is_file() else layouts / f"{DEFAULT_CONFIG}{suffix}"
     )
 
 

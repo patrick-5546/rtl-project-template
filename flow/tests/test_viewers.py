@@ -25,7 +25,7 @@ def test_viewers_open_the_configurations_own_layout(
     own = tmp_path / "waves" / "top" / f"width4{suffix}"
     own.parent.mkdir(parents=True)
     own.touch()
-    (tmp_path / "waves" / f"top{suffix}").touch()
+    (own.parent / f"default{suffix}").touch()
     build_dir = tmp_path / "build"
     build_dir.mkdir()
     (build_dir / wave).touch()

@@ -55,7 +55,6 @@ With `ABV=1`, `rtl/top_abv.sv` adds:
 - the covergroup `counter_cg`: the count in four ranges (low, mid, high and the
   maximum), the enable, the reset, and the enable crossed with the count range.
 
-`make coverage DUT=top` collects these in each configuration;
-`make waves DUT=top CONFIG=width8` opens the waveform with the layout in
-`waves/`, which shows the 8-bit count, and `CONFIG=width4` with its own in
-`waves/top/`, which shows the 4-bit count.
+`make coverage DUT=top` collects these in each configuration, and
+`make waves DUT=top CONFIG=<name>` opens a configuration's waveform with its
+layouts in `waves/top/`.

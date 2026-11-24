@@ -139,20 +139,18 @@ collects.
 
 `make waves` runs the tests with waveform dumping, then opens the waveform in the
 simulator's viewer; `make open-waves` opens the last one again. Each viewer
-loads the configuration's own layout, `waves/<DUT>/<CONFIG>.*`, when it exists,
-and otherwise the DUT's, `waves/<DUT>.*` (see
-[Tools](tools.md#waveform-viewers); `make help` lists the variables that select
-another). With Verilator, the wave targets also open GTKWave's RTLBrowse window,
-which annotates the source with the waveform's values; `NO_RTLBROWSE=1` skips
-it.
+loads its layout ([Tools](tools.md#waveform-viewers)) from
+`waves/<DUT>/<CONFIG>.*`, or from `waves/<DUT>/default.*` when that does not
+exist; `make help` lists the variables that select another. With Verilator, the
+wave targets also open GTKWave's RTLBrowse window, which annotates the source
+with the waveform's values; `NO_RTLBROWSE=1` skips it.
 
-A configuration needs its own layout when it shows other signals, or when its
-parameters change the width of a vector that a GTKWave or Verdi layout names:
-those viewers find a vector by its name and range, and leave out one that they
-do not find. So `waves/top.gtkw` and `waves/top.rc` name `count_o[7:0]`, for
-`top`'s `width8` configuration, and `waves/top/width4.gtkw` and
-`waves/top/width4.rc` name `count_o[3:0]`. Questa's `waves/top.do` names
-`/top/count_o` without its range, so it serves both.
+A DUT without named configurations needs only `default` layouts. A named
+configuration needs its own when it shows other signals, or when its parameters
+change the range of a vector that a GTKWave or Verdi layout names, since those
+viewers leave out a vector whose range differs. So `top`'s `width4` and `width8`
+each have their own GTKWave and Verdi layouts, and share Questa's `default.do`,
+which names `count_o` without a range.
 
 ## Build directories
 
