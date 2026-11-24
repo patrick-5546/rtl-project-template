@@ -35,7 +35,7 @@ mise does not install what Verilator and LCOV need from the system:
 - LCOV's `lcov` and `genhtml` need the Perl modules Capture::Tiny, DateTime,
   Devel::StackTrace and TimeDate: on Ubuntu, `libcapture-tiny-perl`,
   `libdatetime-perl`, `libdevel-stacktrace-perl` and `libtimedate-perl`.
-  macOS's own Perl has them.
+  macOS's own Perl has them; Homebrew's Perl does not.
 
 OSS CAD Suite is a 0.5 to 0.7 GB download, and about 2 GB once installed. Its
 Verilator is a development snapshot from Verilator's master branch, and its
@@ -96,10 +96,10 @@ paid `svverification` license.
 
 ## Verified environment
 
-The open-source tools were verified on macOS 27 and in CI on Ubuntu 26.04 at the
-versions that `mise.toml` and `uv.lock` pin; the pinned OSS CAD Suite bundles the
-Verilator, slang and GTKWave below. Questa, VCS and Verdi were verified outside
-CI, which cannot run them, at the versions below.
+The open-source tools were verified on macOS 27 and in CI on Ubuntu 26.04 and
+macOS 26 at the versions that `mise.toml` and `uv.lock` pin; the pinned OSS CAD
+Suite bundles the Verilator, slang and GTKWave below. Questa, VCS and Verdi were
+verified outside CI, which cannot run them, at the versions below.
 
 | Tool | Verified version |
 | --- | --- |

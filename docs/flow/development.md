@@ -66,6 +66,8 @@ its jobs fail if `uv.lock` or `mise.lock` is out of date:
   Verilator. The coverage job also uploads LCOV's HTML reports and data as the
   `coverage-reports` artifact, and summarizes each configuration's coverage on
   the run's summary page.
+- `rtl-macos`: `make coverage WAVES=1 COVERAGE_HTML=1` on macOS. In a private
+  repository, macOS minutes cost about ten times as much as Linux's.
 
 ## Updating dependencies
 

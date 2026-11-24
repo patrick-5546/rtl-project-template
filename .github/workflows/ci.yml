@@ -143,3 +143,30 @@ jobs:
             build/*/verilator/*/coverage/coverage_html/
             build/*/verilator/*/coverage/coverage.info
           if-no-files-found: error
+
+  rtl-macos:
+    name: RTL coverage with waveforms on macOS
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install lz4, which Verilator's FST waveforms link
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: brew install lz4
+      # LCOV runs the first perl on PATH, and the runner's Homebrew Perl lacks the modules that
+      # LCOV loads, which macOS's own Perl has.
+      - name: Put macOS's own Perl first on PATH
+        run: |
+          mkdir "$RUNNER_TEMP/macos-perl"
+          ln -s /usr/bin/perl "$RUNNER_TEMP/macos-perl/perl"
+          echo "$RUNNER_TEMP/macos-perl" >> "$GITHUB_PATH"
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        with:
+          version: ${{ env.MISE_VERSION }}
+      - name: Install the locked Python packages
+        run: uv sync
+      # One run covers what differs on macOS: Apple's compiler, Homebrew's lz4, and LCOV.
+      - run: make coverage WAVES=1 COVERAGE_HTML=1
