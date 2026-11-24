@@ -80,7 +80,7 @@ its coverage GUI.
 | Toggle | ✅ | ✅ | ✅ |
 | FSM | ✅ | ✅ | ✅ |
 | `cover property` | ✅ (aka user) | ✅ (aka directive) | ✅ |
-| `assert property` | — | ✅ | ✅ |
+| `assert property` | ❌ (checked only) | ✅ | ✅ |
 | Covergroups (SV) | ✅ | ❌ (needs license) | ✅ |
 
 The free Questa Starter Edition does not collect SV covergroups: that needs a
@@ -90,7 +90,7 @@ paid `svverification` license.
 
 | Viewer | Simulator | Format | Layout | Source browse | Driver trace |
 | --- | --- | --- | --- | --- | --- |
-| GTKWave | Verilator | FST | `.gtkw` | Yes (RTLBrowse) | Somewhat |
+| GTKWave | Verilator | FST | `.gtkw` | Separate window (RTLBrowse) | Somewhat |
 | Questa | Questa | WLF | `.do` | Yes | Yes (double-click a signal) |
 | Verdi | VCS | FSDB | `.rc` | Yes | Yes (from VCS's `simv.daidir`) |
 
