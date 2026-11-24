@@ -6,14 +6,7 @@ and the versions this template was verified with.
 ## Installation
 
 `mise install`, as in the [quick start](../../README.md#quick-start), installs
-the open-source tools at the versions that `mise.toml` pins and CI uses: GNU
-Make, uv, Verible, LCOV, and OSS CAD Suite, which brings Verilator, slang and
-GTKWave. With mise
-[activated](https://mise.jdx.dev/getting-started.html#activate-mise) in your
-shell, they are on `PATH` anywhere in the checkout; otherwise, run a target
-through mise, as in `mise exec -- make test`. uv installs Python and the locked
-Python packages, including the Python and Markdown linters, when a target first
-runs; `uv sync` does that alone, e.g. for an editor.
+these tools at the versions that `mise.toml` pins and CI uses:
 
 | Tool | Purpose | Documentation |
 | --- | --- | --- |
@@ -25,6 +18,12 @@ runs; `uv sync` does that alone, e.g. for an editor.
 | Verible | SystemVerilog formatting and linting | [Documentation](https://chipsalliance.github.io/verible/) |
 | LCOV | Coverage HTML report generation | [Documentation](https://github.com/linux-test-project/lcov/tree/master/docs/man) |
 | GTKWave | Waveform viewer | [Documentation](https://gtkwave.github.io/gtkwave/) |
+
+With mise [activated](https://mise.jdx.dev/getting-started.html#activate-mise)
+in your shell, they are on `PATH` anywhere in the checkout; otherwise, run a
+target through mise, as in `mise exec -- make test`. uv installs Python and the
+locked Python packages, including the Python and Markdown linters, when a target
+first runs; `uv sync` does that alone, e.g. for an editor.
 
 mise does not install what Verilator and LCOV need from the system:
 
@@ -62,18 +61,15 @@ needs.
 | Questa | Event-based | Vendor-style simulation and coverage |
 | VCS | Event-based | Vendor-style simulation and coverage |
 
-Verilator is an open-source, cycle-based simulator that is fast,
-script-friendly, and easy to run in CI. The flow needs version 5.054 or newer:
-5.050 added SV covergroups, and 5.052 and 5.054 fixed several of their bugs.
+Verilator is open source, fast, and easy to run in CI. The flow needs version
+5.054 or newer: 5.050 added SV covergroups, and 5.052 and 5.054 fixed several of
+their bugs.
 
-Questa (`SIM=questa`) is a commercial, event-based simulator with broad
-SystemVerilog support and native interactive debug. Override its executable with
-`VSIM`, not `MODELSIM`: Questa reads `MODELSIM` as the path of a
-`modelsim.ini`.
-
-VCS (`SIM=vcs`) is a commercial, event-based simulator with full SystemVerilog
-support. It reports coverage through `urg`, and Verdi is both its waveform
-viewer and its coverage GUI, so `vcs` and `verdi` must be on `PATH`.
+Questa (`SIM=questa`) and VCS (`SIM=vcs`) are commercial, with broad
+SystemVerilog support and interactive debug. Override Questa's executable with
+`VSIM`, not `MODELSIM`: Questa reads `MODELSIM` as the path of a `modelsim.ini`.
+VCS reports coverage through `urg`, and Verdi is both its waveform viewer and
+its coverage GUI.
 
 ## Coverage
 
@@ -88,9 +84,7 @@ viewer and its coverage GUI, so `vcs` and `verdi` must be on `PATH`.
 | Covergroups (SV) | ✅ | ❌ (needs license) | ✅ |
 
 The free Questa Starter Edition does not collect SV covergroups: that needs a
-paid `svverification` license. Verilator compiles its own `verilated_std.sv`
-for covergroups, and `rtl/verilator.vlt` keeps it out of the coverage
-reports.
+paid `svverification` license.
 
 ## Waveform viewers
 

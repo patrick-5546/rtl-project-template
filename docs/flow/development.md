@@ -1,20 +1,18 @@
 # Development
 
 How the repository is kept consistent and up to date: its conventions, linting,
-CI, and updating dependencies. The flow package itself, its unit tests, and
-adding a simulator or viewer are described in
-[flow/README.md](../../flow/README.md).
+CI, and updating dependencies.
 
 ## Conventions
 
 - Run Python tools through uv (`uv run ...`) or the Makefile targets, never bare
   `ruff`/`ty`/`pytest`.
-- Do not commit files from `build/`, and do not add new tools unless a change
-  needs them.
-- `.editorconfig` gives editors each file type's indentation and line endings,
-  and `.gitattributes` keeps every text file's line endings LF in Git.
+- Do not add new tools unless a change needs them.
 - When behavior changes, update what describes it: a module's specification in
   `docs/design/`, these guides, `make help`, source headers and docstrings.
+- Say each thing once, where its reader looks for it, and link to it from
+  elsewhere: how to use the flow in these guides and `make help`, and how the
+  code works in its source headers and docstrings.
 
 ## Linting and formatting
 
@@ -36,11 +34,8 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
   tracks, or would track since `.gitignore` does not ignore it, outside
   `rtl/vendor/`. Git lists a symlinked or submodule IP directory as one entry,
   so Verible never sees its files.
-- Nothing lints or formats `rtl/vendor/`, where third-party RTL goes: Verible's
-  file list leaves it out, `rtl/verilator.vlt` waives it for Verilator, the
-  Makefile's options skip it for slang and slang-tidy, also through a symlinked
-  IP directory, and `pyproject.toml` excludes it from the Python, Markdown and
-  spelling tools.
+- Nothing lints or formats `rtl/vendor/`, where third-party RTL goes, also
+  through a symlinked IP directory: each tool's settings leave it out.
 - Verilator, slang and slang-tidy lint the RTL with its default parameters, with
   every DUT as a top level, and again for each named HDL configuration that
   overrides them, with that configuration's DUT as the top module: a Verilator
@@ -55,50 +50,47 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
   ([slang#2101](https://github.com/MikePopoloski/slang/issues/2101)), so such a
   failure in only a named configuration does not fail `make lint`; slang 12.2
   fixes that.
-- typos skips the viewer layouts and the lockfiles; allow a project's own words
-  in `[tool.typos]` in `pyproject.toml`.
+- List the project's own words that typos flags in `[tool.typos]` in
+  `pyproject.toml`.
 - zizmor also runs its online audits when `GH_TOKEN` is set.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on pushes to `main` and on pull requests; a newer
-push to a pull request cancels its run in progress. Its jobs fail if `uv.lock`
-or `mise.lock` is out of date:
+`.github/workflows/ci.yml` runs on pushes to `main` and on pull requests, and
+its jobs fail if `uv.lock` or `mise.lock` is out of date:
 
-- `lint`: the Python, Markdown, spelling and workflow checks, with zizmor's
-  online audits;
+- `lint`: the Python, Markdown, spelling and workflow checks;
 - `lint-sv`: Verible, Verilator and slang;
 - `flow-tests`: `make test-flow-py`;
 - `rtl`: `make test`, again with `WAVES=1`, and `make coverage`, each with
-  Verilator. The coverage job also writes the HTML reports with LCOV,
-  uploads them and the LCOV data as the `coverage-reports` artifact, and
-  summarizes each configuration's coverage by type on the run's summary page.
+  Verilator. The coverage job also uploads LCOV's HTML reports and data as the
+  `coverage-reports` artifact, and summarizes each configuration's coverage on
+  the run's summary page.
 
 ## Updating dependencies
 
 Dependabot (`.github/dependabot.yml`) proposes weekly updates of the locked
-Python packages and of the actions that the workflow uses, in one pull request
-per ecosystem; each major Python update comes on its own.
+Python packages and of the actions that the workflow uses.
 Most compromised releases are found and pulled within days, so every update
 takes only releases at least a week old: Dependabot waits a week, uv locks only
 week-old releases (`exclude-newer` in `pyproject.toml`), and mise upgrades only
 to them (`minimum_release_age` in `mise.toml`).
 
 To update by hand, upgrade the locked Python packages with `uv lock --upgrade`,
-or one package with `uv lock --upgrade-package <name>`; the next `uv run`
-installs them. To take a newer release, such as a security fix, add the package
-to `pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
-`false` and run `uv lock`; remove the entry once the release is a week old. A
-minimum version in `pyproject.toml` must be a week old too, or locking fails.
-The local Python version is pinned to `3.14` in `.python-version`, the newest
-that the locked cocotb release supports; move to Python 3.15 once a cocotb
-release ships wheels for it.
+or one package with `uv lock --upgrade-package <name>`. To take a newer release,
+such as a security fix, add the package to `pyproject.toml`'s
+`[tool.uv.exclude-newer-package]` table with the value `false` and run
+`uv lock`; remove the entry once the release is a week old. A minimum version in
+`pyproject.toml` must be a week old too, or locking fails. The local Python
+version is pinned to `3.14` in `.python-version`, the newest that the locked
+cocotb release supports; move to Python 3.15 once a cocotb release ships wheels
+for it.
 
-Dependabot does not update the other tools. `mise.toml` and `mise.lock` pin GNU
-Make, uv, Verible, LCOV and OSS CAD Suite: `mise outdated --bump --no-global`
-lists their newer releases, and `mise upgrade --bump --no-global` upgrades them
-in both files, or only the tools that you name. After editing `mise.toml` by
-hand, run `mise lock`. The `env` of `.github/workflows/ci.yml` pins mise.
+Dependabot does not update the other tools, which `mise.toml` and `mise.lock`
+pin: `mise outdated --bump --no-global` lists their newer releases, and
+`mise upgrade --bump --no-global` upgrades them in both files, or only the tools
+that you name. After editing `mise.toml` by hand, run `mise lock`. The `env` of
+`.github/workflows/ci.yml` pins mise.
 
 After taking a newer OSS CAD Suite, update the
 [verified environment](tools.md#verified-environment) with its date and the

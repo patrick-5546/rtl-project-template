@@ -12,9 +12,7 @@ Python package, `flow/`, that drives the tools.
   - `top.sv`: a parameterized counter, the example design.
   - `top_abv.sv`: assertions, cover properties and a covergroup for `top.sv`.
   - `sources.vf`: the compilation filelist (the default `SV_SOURCES_FILE`).
-  - `verilator.vlt`: Verilator's control file: lint waivers, the coverage
-    exclusion of Verilator's own library, and internal signals that tests
-    access.
+  - `verilator.vlt`: Verilator's lint waivers and other settings.
 - `tests/`: the cocotb tests, launched by pytest.
   - `test_top.py`: tests for `top`.
   - `cocotb_configs.py`: named HDL parameter configurations.
@@ -66,8 +64,7 @@ it yours, then delete this section:
 
 The design:
 
-- [top](docs/design/top.md): the example counter's specification. Give each
-  module a specification in `docs/design/`.
+- [top](docs/design/top.md): the example counter's specification.
 
 The flow:
 

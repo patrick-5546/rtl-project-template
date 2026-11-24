@@ -1,8 +1,7 @@
 # top: parameterized counter
 
 The template's example design: a counter with an enable and a synchronous,
-active-low reset. Replace this spec, the RTL and its tests with your own design;
-give each module a spec like this one in `docs/design/`.
+active-low reset.
 
 ## Parameters
 
@@ -54,7 +53,3 @@ With `ABV=1`, `rtl/top_abv.sv` adds:
   high;
 - the covergroup `counter_cg`: the count in four ranges (low, mid, high and the
   maximum), the enable, the reset, and the enable crossed with the count range.
-
-`make coverage DUT=top` collects these in each configuration, and
-`make waves DUT=top CONFIG=<name>` opens a configuration's waveform with its
-layouts in `waves/top/`.

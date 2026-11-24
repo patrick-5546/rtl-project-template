@@ -21,18 +21,14 @@ give several, space-separated, to compile more RTL (e.g.
 `make test SV_SOURCES_FILE='rtl/sources.vf rtl/extra.vf'`).
 
 Questa and VCS rebuild on every run unless `REBUILD=0`, which reuses the last
-build while its simulator, defines, parameters, build arguments, waveform
-tracing and input files are unchanged, and otherwise rebuilds and says why.
-The input files are the filelists, the RTL they name, the files that RTL
-includes, and files named in build arguments. Verilator always rebuilds
-incrementally.
+build while its settings and input files are unchanged, and otherwise rebuilds
+and says why. Verilator always rebuilds incrementally.
 
 ## Adding RTL
 
 - Put new RTL in `rtl/` and list it in `rtl/sources.vf`, the filelist that the
   simulators and the Verilator and slang linters compile; its header describes
-  its entries. Verible finds the files to lint and format by itself: every
-  SystemVerilog file that Git tracks or would track, outside `rtl/vendor/`.
+  its entries. Verible finds the files to lint and format by itself.
 - Put third-party RTL, unmodified, in `rtl/vendor/<ip>/`, with its license: copy
   it there, add it as a Git submodule, or make `rtl/vendor/<ip>` a relative
   symlink to a directory elsewhere in your repository. List the files that the
@@ -127,9 +123,9 @@ unhit point with `%00`; `make open-coverage-html CONFIG=<name>` writes and opens
 LCOV's HTML report for one configuration, and `COVERAGE_HTML=1` makes
 `make coverage` write it for each. With `SIM=questa` or `SIM=vcs`,
 `make coverage` writes the simulator's own reports, and `make open-coverage`
-opens one in the simulator's coverage GUI. HTML reports open with `open` on
-macOS, with `wslview`, from wslu, on WSL when it is installed, and with
-`xdg-open` elsewhere; `HTML_VIEWER` sets another program.
+opens one in the simulator's coverage GUI. On WSL, HTML reports open in Windows'
+browser through wslu's `wslview` when it is installed; `HTML_VIEWER` sets
+another program.
 
 The reports fail on missing data or tool errors, but no simulator's report fails
 on a coverage hole. [Tools](tools.md#coverage) compares what each simulator
@@ -164,14 +160,13 @@ build/<dut>/<sim>/<config>/coverage/
 build/<dut>/<sim>/<config>/waves-coverage/
 ```
 
-`<config>` is `default` for a DUT without named configurations. Each directory
-also holds its run's waveform, coverage data and reports, which the run deletes
-first, so a build that fails leaves no older ones behind. A waveform or coverage
-database can also come from a `WAVES=1 HDL_COVERAGE=1` run, in
-`waves-coverage/`: `open-waves`, `open-coverage` and `open-coverage-html` then
-use the newer of the two and say which, unless `HDL_COVERAGE` (for a waveform)
-or `WAVES` (for coverage) selects one. `make waves` and `make coverage` always
-open what their own run made.
+Each directory also holds its run's waveform, coverage data and reports, which
+the run deletes first, so a build that fails leaves no older ones behind. A
+waveform or coverage database can also come from a `WAVES=1 HDL_COVERAGE=1` run,
+in `waves-coverage/`: `open-waves`, `open-coverage` and `open-coverage-html`
+then use the newer of the two and say which, unless `HDL_COVERAGE` (for a
+waveform) or `WAVES` (for coverage) selects one. `make waves` and
+`make coverage` always open what their own run made.
 
 `BUILD_DIR=<path>` moves the root of this tree. `make clean` removes `build/`,
 but not a moved root.
