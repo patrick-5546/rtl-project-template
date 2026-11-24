@@ -19,5 +19,6 @@ uv = "0.13.7"
 make = "4.4.1"
 # OSS CAD Suite: Verilator, slang and GTKWave, among other tools, with the
 # libraries that they need. It releases daily, named by date; each release is a
-# 0.5 to 0.7 GB download.
-"github:YosysHQ/oss-cad-suite-build" = "2026-11-16"
+# 0.5 to 0.7 GB download. Only the commands that the flow runs go on PATH: add
+# another of the suite's to filter_bins to use it.
+"github:YosysHQ/oss-cad-suite-build" = { version = "2026-11-16", filter_bins = ["verilator", "verilator_coverage", "slang", "slang-tidy", "gtkwave", "rtlbrowse"] }
