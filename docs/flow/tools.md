@@ -5,21 +5,15 @@ and the versions this template was verified with.
 
 ## Installation
 
-[Install mise](https://mise.jdx.dev/getting-started.html) and
-[activate it](https://mise.jdx.dev/getting-started.html#activate-mise) in your
-shell, then run these in the checkout:
-
-```sh
-mise trust
-mise install
-```
-
-mise then puts the open-source tools on `PATH` anywhere in the checkout, at the
-versions that `mise.toml` pins and CI uses: GNU Make, uv, Verible, LCOV, and OSS
-CAD Suite, which brings Verilator, slang and GTKWave. Without activating mise,
-run a target through it, as in `mise exec -- make test`. uv installs Python and
-the locked Python packages, including the Python and Markdown linters, when a
-target first runs; `uv sync` does that alone, e.g. for an editor.
+`mise install`, as in the [quick start](../../README.md#quick-start), installs
+the open-source tools at the versions that `mise.toml` pins and CI uses: GNU
+Make, uv, Verible, LCOV, and OSS CAD Suite, which brings Verilator, slang and
+GTKWave. With mise
+[activated](https://mise.jdx.dev/getting-started.html#activate-mise) in your
+shell, they are on `PATH` anywhere in the checkout; otherwise, run a target
+through mise, as in `mise exec -- make test`. uv installs Python and the locked
+Python packages, including the Python and Markdown linters, when a target first
+runs; `uv sync` does that alone, e.g. for an editor.
 
 | Tool | Purpose | Documentation |
 | --- | --- | --- |
@@ -34,49 +28,31 @@ target first runs; `uv sync` does that alone, e.g. for an editor.
 
 mise does not install what Verilator and LCOV need from the system:
 
-- Verilator builds each model with `g++`: on Debian and Ubuntu,
-  `build-essential`; on macOS, Xcode's Command Line Tools
-  (`xcode-select --install`). Its FST waveforms (`WAVES=1`) also need lz4's and
-  zlib's libraries and headers: on Debian and Ubuntu, `liblz4-dev` and
-  `zlib1g-dev`; on macOS, `brew install lz4`, since macOS has zlib. Apple's
-  compiler does not search Homebrew's prefix on Apple silicon, so the flow
-  passes Homebrew's lz4 to Verilator itself.
+- Verilator builds each model with `g++`: on Ubuntu, `build-essential`; on
+  macOS, Xcode's Command Line Tools (`xcode-select --install`). Its FST
+  waveforms (`WAVES=1`) also need lz4's and zlib's libraries and headers: on
+  Ubuntu, `liblz4-dev` and `zlib1g-dev`; on macOS, `brew install lz4`, since
+  macOS has zlib.
 - LCOV's `lcov` and `genhtml` need the Perl modules Capture::Tiny, DateTime,
-  Devel::StackTrace and TimeDate: on Debian and Ubuntu,
-  `libcapture-tiny-perl`, `libdatetime-perl`, `libdevel-stacktrace-perl` and
-  `libtimedate-perl`. macOS's own Perl has them. On macOS, the flow runs
-  `genhtml` with `LCOV_PURE_PERL=1`: LCOV 2.6 looks for its C++ extension, which
-  its release does not build, by a name that on macOS's case-insensitive
-  filesystem finds its main module again, so Perl would load that module twice
-  and warn that each of its subroutines is redefined
-  ([lcov#574](https://github.com/linux-test-project/lcov/issues/574)).
+  Devel::StackTrace and TimeDate: on Ubuntu, `libcapture-tiny-perl`,
+  `libdatetime-perl`, `libdevel-stacktrace-perl` and `libtimedate-perl`.
+  macOS's own Perl has them.
 
-OSS CAD Suite releases daily, named by date: each release is a 0.5 to 0.7 GB
-download, and about 2 GB once installed. It builds Verilator from its master
-branch, so its Verilator is a development snapshot rather than a release; its
-slang is the one that Yosys pins, which can trail slang's releases; and its
-GTKWave is GTKWave 4, which has no release yet. GTKWave 4 prints GTK warnings and
-critical messages, which are harmless.
+OSS CAD Suite is a 0.5 to 0.7 GB download, and about 2 GB once installed. Its
+Verilator is a development snapshot from Verilator's master branch, and its
+GTKWave is GTKWave 4, which has no release yet and prints harmless GTK warnings
+and critical messages.
 
 Without mise, install the tools as you like: the flow runs each one that it
 finds on `PATH`, or that its executable variable names (`make help` lists
-them). A few have minimum versions:
+them). GNU Make must be 4.0 or newer: the Makefile rejects the 3.81 that macOS
+ships as `/usr/bin/make`. uv must be 0.9.17 or newer, the first release that
+reads the relative `exclude-newer` in `pyproject.toml`.
 
-- GNU Make must be 4.0 or newer: the Makefile rejects the 3.81 that macOS
-  ships as `/usr/bin/make`.
-- uv must be 0.9.17 or newer, the first release that reads the relative
-  `exclude-newer` in `pyproject.toml`. The local Python version is pinned to
-  `3.14` in `.python-version`, the newest that the locked cocotb release
-  supports; move to Python 3.15 once a cocotb release ships wheels for it.
-- Verilator must be 5.054 or newer, as [Simulators](#simulators) explains.
-
-`make doctor` shows which tools it finds and their versions. A version older
-than the flow needs is an error, as is a missing tool that `make test` needs.
-The version that `mise.toml` pins is "verified", and any other "untested"; a
-Verible other than CI's can format the RTL differently. Any version of the tools
-from OSS CAD Suite, such as Verilator and slang, is "ok": `mise.toml` pins the
-suite's release, not their versions. It checks versions only: after installing
-or updating a tool, run the flow with it.
+`make doctor` lists the tools that it finds, with their versions: "verified" is
+the version that `mise.toml` pins, "untested" another, "ok" one that `mise.toml`
+does not pin, as for OSS CAD Suite's tools, and "error" one older than the flow
+needs.
 
 ## Simulators
 
@@ -126,14 +102,11 @@ reports.
 
 ## Verified environment
 
-The open-source tools were verified on macOS 26 and in CI on Ubuntu 24.04 at
-the versions that `mise.toml` pins, with mise at the version in the `env` of
-`.github/workflows/ci.yml`, and the Python packages at the versions in
-`uv.lock`. The OSS CAD Suite release that `mise.toml` pins bundles the versions
-of Verilator, slang and GTKWave below. Questa, VCS and Verdi were verified with
-the versions below elsewhere, before later changes to their profiles, and not
-since: CI cannot run them, and the flow's unit tests check only the commands
-that it gives them.
+The open-source tools were verified on macOS 27 and in CI on Ubuntu 24.04 at the
+versions that `mise.toml` and `uv.lock` pin; the pinned OSS CAD Suite bundles the
+Verilator, slang and GTKWave below. Questa, VCS and Verdi were verified
+elsewhere, at the versions below, before later changes to their profiles, and
+not since: CI cannot run them.
 
 | Tool | Verified version |
 | --- | --- |

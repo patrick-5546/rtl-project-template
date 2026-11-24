@@ -62,10 +62,8 @@ another build of its tool (e.g. `make lint-sv VERILATOR=/opt/verilator/bin/veril
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests; a newer
-push to a pull request cancels its run in progress. Its jobs can only read the
-repository, keep no credentials in their checkouts, pin each action by commit
-SHA, have time limits, and fail if `uv.lock` or `mise.lock` is out of date
-(`UV_LOCKED`, and mise's `--locked`):
+push to a pull request cancels its run in progress. Its jobs fail if `uv.lock`
+or `mise.lock` is out of date:
 
 - `lint`: the Python, Markdown, spelling and workflow checks, with zizmor's
   online audits;
@@ -75,10 +73,6 @@ SHA, have time limits, and fail if `uv.lock` or `mise.lock` is out of date
   Verilator. The coverage job also writes the HTML reports with LCOV,
   uploads them and the LCOV data as the `coverage-reports` artifact, and
   summarizes each configuration's coverage by type on the run's summary page.
-
-Each job installs the tools that `mise.lock` pins, uv and OSS CAD Suite among
-them, with `jdx/mise-action`, which caches them; `lint` and `flow-tests` install
-only uv and GNU Make, and skip OSS CAD Suite's download.
 
 ## Updating dependencies
 
@@ -96,6 +90,9 @@ installs them. To take a newer release, such as a security fix, add the package
 to `pyproject.toml`'s `[tool.uv.exclude-newer-package]` table with the value
 `false` and run `uv lock`; remove the entry once the release is a week old. A
 minimum version in `pyproject.toml` must be a week old too, or locking fails.
+The local Python version is pinned to `3.14` in `.python-version`, the newest
+that the locked cocotb release supports; move to Python 3.15 once a cocotb
+release ships wheels for it.
 
 Dependabot does not update the other tools. `mise.toml` and `mise.lock` pin GNU
 Make, uv, Verible, LCOV and OSS CAD Suite: `mise outdated --bump --no-global`
@@ -103,16 +100,14 @@ lists their newer releases, and `mise upgrade --bump --no-global` upgrades them
 in both files, or only the tools that you name. After editing `mise.toml` by
 hand, run `mise lock`. The `env` of `.github/workflows/ci.yml` pins mise.
 
-OSS CAD Suite releases daily, so it always has a newer release: take one for a
-newer Verilator, slang or GTKWave, and update the
+After taking a newer OSS CAD Suite, update the
 [verified environment](tools.md#verified-environment) with its date and the
-versions that it bundles, which `make doctor` shows. Its slang is 12.1, which
-needs the slang-tidy workarounds for
-[slang#2100](https://github.com/MikePopoloski/slang/issues/2100) and
-[slang#2101](https://github.com/MikePopoloski/slang/issues/2101). Take the
-first release whose slang is 12.2 or newer before it is a week old, with
+versions that `make doctor` shows. Its slang 12.1 needs the slang-tidy
+workarounds for [slang#2100](https://github.com/MikePopoloski/slang/issues/2100)
+and [slang#2101](https://github.com/MikePopoloski/slang/issues/2101): take the
+first release with slang 12.2 or newer before it is a week old, with
 `mise upgrade --bump --no-global --minimum-release-age 0s github:YosysHQ/oss-cad-suite-build`,
-and remove the workarounds.
+and remove them.
 
 A cocotb update can raise the Verilator version that cocotb needs:
 `make test-flow-py` then fails until the flow's own minimum,

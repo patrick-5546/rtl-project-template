@@ -10,6 +10,7 @@ from flow import doctor
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_DOC = REPO_ROOT / "docs" / "flow" / "tools.md"
+DEVELOPMENT_DOC = REPO_ROOT / "docs" / "flow" / "development.md"
 DOCS = [
     REPO_ROOT / "README.md",
     REPO_ROOT / "AGENTS.md",
@@ -63,9 +64,9 @@ def test_python_version_is_consistent() -> None:
     major, minor = (int(part) for part in version.split("."))
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert pyproject["project"]["requires-python"] == f">={version},<{major}.{minor + 1}"
-    tools_doc = flattened(TOOLS_DOC)
-    assert f"pinned to `{version}`" in tools_doc
-    assert f"move to Python {major}.{minor + 1} once" in tools_doc
+    development_doc = flattened(DEVELOPMENT_DOC)
+    assert f"pinned to `{version}`" in development_doc
+    assert f"move to Python {major}.{minor + 1} once" in development_doc
 
 
 @pytest.mark.parametrize("doc", DOCS, ids=[doc.relative_to(REPO_ROOT).as_posix() for doc in DOCS])
