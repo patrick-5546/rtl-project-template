@@ -5,55 +5,53 @@ and the versions this template was verified with.
 
 ## Installation
 
-Install the tools that you plan to use and put them on `PATH`:
+`mise install`, as in the [quick start](../../README.md#quick-start), installs
+these tools at the versions that `mise.toml` pins and CI uses:
 
-| Tool | Purpose | Install | Documentation |
-| --- | --- | --- | --- |
-| GNU Make | Runs the flow's targets | mise | [Documentation](https://www.gnu.org/software/make/manual/) |
-| mise | Installs GNU Make, uv, Verible and LCOV | [Getting started](https://mise.jdx.dev/getting-started.html) | [Documentation](https://mise.jdx.dev/) |
-| uv | Python package manager | mise | [Documentation](https://docs.astral.sh/uv/) |
-| Verilator | Simulator and RTL lint-only flow | [Build instructions](https://verilator.org/guide/latest/install.html#detailed-build-instructions) | [Documentation](https://verilator.org/guide/latest/) |
-| slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Build instructions](https://sv-lang.com/building.html) | [Documentation](https://sv-lang.com/) |
-| Verible | SystemVerilog formatting and linting | mise | [Documentation](https://chipsalliance.github.io/verible/) |
-| LCOV | Coverage HTML report generation | mise | [Documentation](https://github.com/linux-test-project/lcov/tree/master/docs/man) |
-| GTKWave | Waveform viewer | [Build instructions](https://gtkwave.github.io/gtkwave/install/unix_linux.html#building-and-installing-gtkwave-from-source) | [Documentation](https://gtkwave.github.io/gtkwave/) |
+| Tool | Purpose | Documentation |
+| --- | --- | --- |
+| GNU Make | Runs the flow's targets | [Documentation](https://www.gnu.org/software/make/manual/) |
+| uv | Python package manager | [Documentation](https://docs.astral.sh/uv/) |
+| OSS CAD Suite | Builds of Verilator, slang and GTKWave, among other open-source EDA tools | [Documentation](https://github.com/YosysHQ/oss-cad-suite-build) |
+| Verilator | Simulator and RTL lint-only flow | [Documentation](https://verilator.org/guide/latest/) |
+| slang | Strict SystemVerilog frontend (`slang`) and style/synthesis linter (`slang-tidy`) | [Documentation](https://sv-lang.com/) |
+| Verible | SystemVerilog formatting and linting | [Documentation](https://chipsalliance.github.io/verible/) |
+| LCOV | Coverage HTML report generation | [Documentation](https://github.com/linux-test-project/lcov/tree/master/docs/man) |
+| GTKWave | Waveform viewer | [Documentation](https://gtkwave.github.io/gtkwave/) |
 
 With mise [activated](https://mise.jdx.dev/getting-started.html#activate-mise)
-in your shell, run these in the checkout to install its tools at the versions
-that CI uses:
-
-```sh
-mise trust
-mise install
-```
-
-They are then on `PATH` anywhere in the checkout; without activating mise, run
-a target through it, as in `mise exec -- make test`. uv installs Python and the
+in your shell, they are on `PATH` anywhere in the checkout; otherwise, run a
+target through mise, as in `mise exec -- make test`. uv installs Python and the
 locked Python packages, including the Python and Markdown linters, when a target
 first runs; `uv sync` does that alone, e.g. for an editor.
 
-- GNU Make must be 4.0 or newer: the Makefile rejects the 3.81 that macOS
-  ships as `/usr/bin/make`.
-- uv must be 0.9.17 or newer, the first release that reads the relative
-  `exclude-newer` in `pyproject.toml`. The local Python version is pinned to
-  `3.14` in `.python-version`, the newest that the locked cocotb release
-  supports; move to Python 3.15 once a cocotb release ships wheels for it.
-- LCOV's `lcov` and `genhtml` need the Perl modules Capture::Tiny, DateTime,
-  Devel::StackTrace and TimeDate, which mise does not install: on Debian and
-  Ubuntu, `libcapture-tiny-perl`, `libdatetime-perl`,
-  `libdevel-stacktrace-perl` and `libtimedate-perl`.
-- GTKWave's RTLBrowse window needs `json2stems`, which comes with GTKWave
-  3.3.125 or newer: Ubuntu 26.04's package has it, but Ubuntu 24.04's and
-  Debian 13's are older. Without it, skip RTLBrowse with `NO_RTLBROWSE=1`.
-  GTKWave 4 has no release yet, only pre-alpha builds from source, so the flow
-  targets GTKWave 3.
+mise does not install what Verilator and LCOV need from the system:
 
-The flow runs each tool that it finds on `PATH`, or that its executable variable
-names (`make help` lists them), however it was installed. `make doctor` shows
-which it finds and its version. A version older than the flow needs is an error,
-as is a missing tool that `make test` needs; the version that CI uses is
-"verified", and any other "untested". It checks versions only: after installing
-or updating a tool, run the flow with it.
+- Verilator builds each model with `g++`: on Ubuntu, `build-essential`; on
+  macOS, Xcode's Command Line Tools (`xcode-select --install`). Its FST
+  waveforms (`WAVES=1`) also need lz4's and zlib's libraries and headers: on
+  Ubuntu, `liblz4-dev` and `zlib1g-dev`; on macOS, `brew install lz4`, since
+  macOS has zlib.
+- LCOV's `lcov` and `genhtml` need the Perl modules Capture::Tiny, DateTime,
+  Devel::StackTrace and TimeDate: on Ubuntu, `libcapture-tiny-perl`,
+  `libdatetime-perl`, `libdevel-stacktrace-perl` and `libtimedate-perl`.
+  macOS's own Perl has them; Homebrew's Perl does not.
+
+OSS CAD Suite is a 0.5 to 0.7 GB download, and about 2 GB once installed. Its
+Verilator is a development snapshot from Verilator's master branch, and its
+GTKWave is GTKWave 4, which has no release yet and prints harmless GTK warnings
+and critical messages.
+
+Without mise, install the tools as you like: the flow runs each one that it
+finds on `PATH`, or that its executable variable names (`make help` lists
+them). GNU Make must be 4.0 or newer: the Makefile rejects the 3.81 that macOS
+ships as `/usr/bin/make`. uv must be 0.9.17 or newer, the first release that
+reads the relative `exclude-newer` in `pyproject.toml`.
+
+`make doctor` lists the tools that it finds, with their versions: "verified" is
+the version that `mise.toml` pins, "untested" another, "ok" one that `mise.toml`
+does not pin, as for OSS CAD Suite's tools, and "error" one older than the flow
+needs.
 
 ## Simulators
 
@@ -63,18 +61,15 @@ or updating a tool, run the flow with it.
 | Questa | Event-based | Vendor-style simulation and coverage |
 | VCS | Event-based | Vendor-style simulation and coverage |
 
-Verilator is an open-source, cycle-based simulator that is fast,
-script-friendly, and easy to run in CI. The flow needs version 5.054 or newer:
-5.050 added SV covergroups, and 5.052 and 5.054 fixed several of their bugs.
+Verilator is open source, fast, and easy to run in CI. The flow needs version
+5.054 or newer: 5.050 added SV covergroups, and 5.052 and 5.054 fixed several of
+their bugs.
 
-Questa (`SIM=questa`) is a commercial, event-based simulator with broad
-SystemVerilog support and native interactive debug. Override its executable with
-`VSIM`, not `MODELSIM`: Questa reads `MODELSIM` as the path of a
-`modelsim.ini`.
-
-VCS (`SIM=vcs`) is a commercial, event-based simulator with full SystemVerilog
-support. It reports coverage through `urg`, and Verdi is both its waveform
-viewer and its coverage GUI, so `vcs` and `verdi` must be on `PATH`.
+Questa (`SIM=questa`) and VCS (`SIM=vcs`) are commercial, with broad
+SystemVerilog support and interactive debug. Override Questa's executable with
+`VSIM`, not `MODELSIM`: Questa reads `MODELSIM` as the path of a `modelsim.ini`.
+VCS reports coverage through `urg`, and Verdi is both its waveform viewer and
+its coverage GUI.
 
 ## Coverage
 
@@ -85,41 +80,33 @@ viewer and its coverage GUI, so `vcs` and `verdi` must be on `PATH`.
 | Toggle | ✅ | ✅ | ✅ |
 | FSM | ✅ | ✅ | ✅ |
 | `cover property` | ✅ (aka user) | ✅ (aka directive) | ✅ |
-| `assert property` | — | ✅ | ✅ |
+| `assert property` | ❌ (checked only) | ✅ | ✅ |
 | Covergroups (SV) | ✅ | ❌ (needs license) | ✅ |
 
 The free Questa Starter Edition does not collect SV covergroups: that needs a
-paid `svverification` license. Verilator compiles its own `verilated_std.sv`
-for covergroups, and `rtl/verilator.vlt` keeps it out of the coverage
-reports.
+paid `svverification` license.
 
 ## Waveform viewers
 
 | Viewer | Simulator | Format | Layout | Source browse | Driver trace |
 | --- | --- | --- | --- | --- | --- |
-| GTKWave | Verilator | FST | `waves/<DUT>.gtkw` | Yes (RTLBrowse) | Somewhat |
-| Questa | Questa | WLF | `waves/<DUT>.do` | Yes | Yes (double-click a signal) |
-| Verdi | VCS | FSDB | `waves/<DUT>.rc` | Yes | Yes (from VCS's `simv.daidir`) |
+| GTKWave | Verilator | FST | `.gtkw` | Separate window (RTLBrowse) | Somewhat |
+| Questa | Questa | WLF | `.do` | Yes | Yes (double-click a signal) |
+| Verdi | VCS | FSDB | `.rc` | Yes | Yes (from VCS's `simv.daidir`) |
 
 ## Verified environment
 
-The open-source tools were verified with these versions on Ubuntu 26.04 and in
-CI on Ubuntu 24.04: `mise.toml` and the `env` of `.github/workflows/ci.yml` pin
-them, and `uv.lock` the Python packages. Questa, VCS and Verdi were verified
-with these versions elsewhere, before later changes to their profiles, and not
-since: CI cannot run them, and the flow's unit tests check only the commands
-that it gives them.
+The open-source tools were verified on macOS 27 and in CI on Ubuntu 26.04 and
+macOS 26 at the versions that `mise.toml` and `uv.lock` pin; the pinned OSS CAD
+Suite bundles the Verilator, slang and GTKWave below. Questa, VCS and Verdi were
+verified outside CI, which cannot run them, at the versions below.
 
 | Tool | Verified version |
 | --- | --- |
-| GTKWave | 3.3.126 |
-| LCOV | 2.6 |
-| Make | 4.4.1 |
-| mise | 2026.11.1 |
+| OSS CAD Suite | 2026-11-16 |
+| GTKWave | 4.0.0-prealpha (git e40ba79) |
+| slang | 12.1 |
+| Verilator | 5.055-devel (git e0ff8e65b) |
 | Questa | 2025.1 |
-| slang | 12.2 |
-| uv | 0.13.7 |
 | VCS | W-2024.09-SP2-7 |
 | Verdi | W-2024.09-SP2-7 |
-| Verible | v0.0-4298-g085eef05 |
-| Verilator | 5.054 |

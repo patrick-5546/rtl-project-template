@@ -6,10 +6,14 @@ located as the flow locates it, honoring its executable variable (e.g.
 ``VERILATOR``). A version older than the flow needs is an error, and so is a
 missing tool that ``make test`` needs; only errors fail the report.
 A tool that only other targets need is reported missing, with a reminder to run
-``mise install`` when mise installs it. The version that CI uses is "verified"
-and any other "untested": ``mise.toml`` and ``.github/workflows/ci.yml`` pin
-them. A Verible other than CI's is a warning instead: Verible's formatting, and
-so ``make lint-sv``, can differ between versions.
+``mise install`` when mise installs it. A tool that ``mise.toml`` pins is
+"verified" at that version, which CI uses, and "untested" at any other; a
+Verible other than CI's is a warning instead: Verible's formatting, and so
+``make lint-sv``, can differ between versions. Any version of a tool from OSS CAD
+Suite, such as Verilator, is "ok" when it is not older than the flow needs:
+``mise.toml`` pins the suite's release, not the tools' versions. The libraries
+that Verilator's FST waveforms link, lz4 and zlib, are looked for as the C++
+compiler finds them, and reported missing when it does not.
 """
 
 import os
@@ -17,17 +21,19 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import tomllib
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 from flow.runner import PROJECT_DIR
-from flow.simulators import VerilatorProfile
-from flow.viewers import JSON2STEMS_GTKWAVE
+from flow.simulators import VerilatorProfile, homebrew_lz4
 
-CI_WORKFLOW = PROJECT_DIR / ".github" / "workflows" / "ci.yml"
 MISE_CONFIG = PROJECT_DIR / "mise.toml"
+# OSS CAD Suite's key in mise.toml, which installs Verilator, slang and GTKWave.
+# It pins a release date, not their versions.
+OSS_CAD_SUITE = "github:YosysHQ/oss-cad-suite-build"
 # The first uv that reads the relative ``exclude-newer`` in pyproject.toml; older
 # ones ignore the whole ``[tool.uv]`` table and relock without it.
 UV_MINIMUM = "0.9.17"
@@ -36,6 +42,8 @@ MAKE_MINIMUM = "4.0"
 # A version as tools print it: 5.054, v0.0-4298-g085eef05, 12.1.627+89a2c9fe9, 2.6-11.g1ad5aed.
 VERSION = re.compile(r"(?<!\S)v?(\d+(?:[.-]\d+)+\S*)")
 VERSION_TIMEOUT_SECONDS = 30
+# The C++ compiler that builds Verilator's models: OSS CAD Suite's verilated.mk names it.
+CXX = "g++"
 
 
 @dataclass(frozen=True)
@@ -45,9 +53,8 @@ class Tool:
     variable: str = ""
     # Empty for a tool that is only located, such as a commercial one.
     version_args: tuple[str, ...] = ("--version",)
-    # The CI workflow's environment variable that pins the tool's version.
-    pin: str = ""
-    # The tool's key in mise.toml, which pins the version that mise installs.
+    # The tool's key in mise.toml, which mise installs it from. Its pin is the tool's
+    # version, except for the tools from OSS_CAD_SUITE.
     mise: str = ""
     # Verify only an identical version string, since equal numbers are not enough.
     exact: bool = False
@@ -56,11 +63,62 @@ class Tool:
 
 
 @dataclass(frozen=True)
+class Check:
+    # "verified", "untested", "ok", "missing", "warning" or "error"
+    status: str
+    tool: str
+    version: str = ""
+    path: str = ""
+    detail: str = ""
+
+
+@dataclass(frozen=True)
 class Group:
     title: str
     purpose: str
     tools: tuple[Tool, ...]
     required: bool = False
+    # The checks of what is not an executable, such as a library that builds link.
+    checks: tuple[Callable[[], Check], ...] = ()
+
+
+def find_header(name: str, header: str, options: list[str], install: str) -> Check:
+    """Whether the C++ compiler finds *header*, with *options*, as Verilator's builds do.
+
+    *name* is what the report calls it, and *install* says how to install it.
+    """
+    try:
+        result = subprocess.run(
+            [CXX, *options, "-M", "-x", "c++", "-"],
+            input=f"#include <{header}>\n",
+            capture_output=True,
+            text=True,
+            timeout=VERSION_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired, OSError:
+        return Check("missing", name, detail=f"{CXX} did not run, so {header} was not looked for")
+    if result.returncode != 0:
+        return Check("missing", name, detail=f"{header} not found; {install}")
+    headers = result.stdout.replace("\\\n", " ").split()
+    return Check("ok", name, path=next((h for h in headers if Path(h).name == header), ""))
+
+
+def check_lz4() -> Check:
+    """Whether Verilator's FST builds find lz4, with Homebrew's on macOS.
+
+    See :func:`flow.simulators.homebrew_lz4`.
+    """
+    lz4 = homebrew_lz4()
+    options = [f"-I{lz4 / 'include'}"] if lz4 else []
+    install = "run `brew install lz4`" if sys.platform == "darwin" else "install liblz4-dev"
+    return find_header("lz4", "lz4.h", options, install)
+
+
+def check_zlib() -> Check:
+    """Whether Verilator's FST builds find zlib, which macOS's SDK has."""
+    install = "run `xcode-select --install`" if sys.platform == "darwin" else "install zlib1g-dev"
+    return find_header("zlib", "zlib.h", [], install)
 
 
 GROUPS = (
@@ -73,7 +131,7 @@ GROUPS = (
             Tool(
                 "verilator",
                 "VERILATOR",
-                pin="VERILATOR_VERSION",
+                mise=OSS_CAD_SUITE,
                 minimum=VerilatorProfile.minimum_version,
                 minimum_for="the flow",
             ),
@@ -96,8 +154,8 @@ GROUPS = (
                 mise="github:chipsalliance/verible",
                 exact=True,
             ),
-            Tool("slang", "SLANG", pin="SLANG_VERSION"),
-            Tool("slang-tidy", "SLANG_TIDY", pin="SLANG_VERSION"),
+            Tool("slang", "SLANG", mise=OSS_CAD_SUITE),
+            Tool("slang-tidy", "SLANG_TIDY", mise=OSS_CAD_SUITE),
         ),
     ),
     Group(
@@ -107,7 +165,7 @@ GROUPS = (
             Tool(
                 "verilator_coverage",
                 "VERILATOR_COVERAGE",
-                pin="VERILATOR_VERSION",
+                mise=OSS_CAD_SUITE,
                 minimum=VerilatorProfile.minimum_version,
                 minimum_for="the flow",
             ),
@@ -116,12 +174,12 @@ GROUPS = (
     ),
     Group(
         "Waveforms",
-        f"make waves; RTLBrowse needs json2stems, from GTKWave {JSON2STEMS_GTKWAVE} or newer",
+        "make waves; rtlbrowse for its RTLBrowse window, lz4 and zlib for Verilator's FST",
         (
-            Tool("gtkwave", "GTKWAVE"),
-            Tool("rtlbrowse", version_args=()),
-            Tool("json2stems", "JSON2STEMS", version_args=()),
+            Tool("gtkwave", "GTKWAVE", mise=OSS_CAD_SUITE),
+            Tool("rtlbrowse", version_args=(), mise=OSS_CAD_SUITE),
         ),
+        checks=(check_lz4, check_zlib),
     ),
     # Commercial tools are only located: their version commands may need a license.
     Group(
@@ -139,34 +197,6 @@ GROUPS = (
         ),
     ),
 )
-
-
-@dataclass(frozen=True)
-class Check:
-    # "verified", "untested", "ok", "missing", "warning" or "error"
-    status: str
-    tool: str
-    version: str = ""
-    path: str = ""
-    detail: str = ""
-
-
-def ci_pins(workflow: Path = CI_WORKFLOW) -> dict[str, str]:
-    """The ``*_VERSION`` pins in *workflow*'s ``env``, without a leading ``v``.
-
-    Only literal versions count, not expressions such as ``${{ env.X_VERSION }}``;
-    the first definition of each wins.
-    """
-    if not workflow.is_file():
-        return {}
-    pins: dict[str, str] = {}
-    for name, version in re.findall(
-        r"^[ \t]+([A-Z0-9_]+_VERSION):[ \t]*[\"']?v?(\d[^\s\"']*)",
-        workflow.read_text(encoding="utf-8"),
-        re.MULTILINE,
-    ):
-        pins.setdefault(name, version)
-    return pins
 
 
 def mise_pins(config: Path = MISE_CONFIG) -> dict[str, str]:
@@ -247,8 +277,7 @@ def check(tool: Tool, pins: Mapping[str, str], *, required: bool) -> Check:
     if tool.minimum and numbers(version) < numbers(tool.minimum):
         detail = f"{tool.minimum_for} needs {tool.minimum} or newer"
         return Check("error", tool.name, version, path, detail)
-    key = tool.pin or tool.mise
-    pin = pins.get(key) if key else None
+    pin = pins.get(tool.mise) if tool.mise and tool.mise != OSS_CAD_SUITE else None
     if not pin:
         return Check("ok", tool.name, version, path)
     same = (version == pin) if tool.exact else (numbers(version) == numbers(pin))
@@ -259,14 +288,14 @@ def check(tool: Tool, pins: Mapping[str, str], *, required: bool) -> Check:
     return Check("untested", tool.name, version, path, f"CI verifies {pin}")
 
 
-def report(workflow: Path = CI_WORKFLOW, mise_config: Path = MISE_CONFIG) -> int:
+def report(mise_config: Path = MISE_CONFIG) -> int:
     """Print the check of every tool, by group; return 1 when any is an error, else 0."""
-    pins = ci_pins(workflow) | mise_pins(mise_config)
+    pins = mise_pins(mise_config)
     errors = 0
     for group in GROUPS:
         print(f"{group.title} ({group.purpose}):")
-        for tool in group.tools:
-            result = check(tool, pins, required=group.required)
+        results = [check(tool, pins, required=group.required) for tool in group.tools]
+        for result in [*results, *(extra() for extra in group.checks)]:
             errors += result.status == "error"
             detail = f"({result.detail})" if result.detail else ""
             where = "  ".join(part for part in (result.path, detail) if part)

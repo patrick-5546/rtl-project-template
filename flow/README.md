@@ -2,10 +2,7 @@
 
 The Python package that the Makefile's test, coverage and waveform targets
 call. Its CLI runs the cocotb regression through pytest, and then each
-simulator's coverage reports and each viewer's waveform commands. Using the flow
-is described in [Workflows](../docs/flow/workflows.md); the repository's
-conventions, linting, CI and dependencies in
-[Development](../docs/flow/development.md).
+simulator's coverage reports and each viewer's waveform commands.
 
 ## Modules
 
@@ -19,6 +16,8 @@ conventions, linting, CI and dependencies in
   preparation, and coverage behavior.
 - `viewers.py`: a `ViewerProfile` per simulator's waveform viewer: the
   `wave_sim` whose format it reads and the `open-waves` behavior.
+- `stems.py`: the stems that GTKWave's RTLBrowse reads, written from
+  Verilator's design tree; a port of GTKWave 3's `json2stems`.
 - `cli.py`: the dispatcher the Makefile calls (`python -m flow.cli`).
 - `doctor.py`: the `make doctor` report of the external tools and their
   versions.
@@ -26,36 +25,20 @@ conventions, linting, CI and dependencies in
 
 Each module's header and docstrings document how it works.
 
-Build and test configuration is read from environment variables. The flow's
-single-source defaults live in `runner.py`: the `SIM`/`SV_SOURCES_FILE`
-selectors (`DEFAULT_*`) and the `default_*` build-dir/coverage/sources/wave-path
-helpers shared by `cli.py`, `simulators.py`, and `viewers.py`. Per-simulator
-specifics (build/test args, coverage artifact) stay in the matching
-`SimulatorProfile`. The Makefile passes `SIM`, `DUT`, `CONFIG` and
-`SV_SOURCES_FILE` to the flow CLI as flags; other command-line overrides reach
-the flow through the environment.
-
 ## Adding a simulator or viewer
 
 Tool-specific behavior lives in the profiles, so the generic targets (`test`,
-`waves`, `coverage`, ...) stay the same as the tool set grows. To add a
-simulator, subclass `SimulatorProfile` in `simulators.py` and register it in the
-`SIMULATORS` dict. Each simulator has one waveform viewer: to add or replace
-one, subclass `ViewerProfile` in `viewers.py`, set its `wave_sim`, and register
-it in `VIEWERS`, which is keyed by `wave_sim`. `make help` lists the simulators
-automatically, and an unknown `SIM` is rejected with the list of available
-simulators. List a new tool's executables in `GROUPS` in `doctor.py`, so that
-`make doctor` reports them.
+`waves`, `coverage`, ...) stay the same as the tool set grows. Add a
+simulator's profile to `simulators.py` and its viewer's to `viewers.py`, as
+their headers describe, and list its executables in `GROUPS` in `doctor.py`, so
+that `make doctor` reports them.
 
 ## Testing the flow
 
-`make test-flow-py` runs the flow's unit tests in `tests/`. They mock the EDA
-tools, so they run anywhere. Normal pytest discovery stays confined to the RTL
-tests in the repository's `tests/`. pytest runs in strict mode, and a warning
-fails the test that raises it, in both suites. Some of them catch drift:
-`make help` must list every target, `ENABLE_*` flag and executable variable,
-and the docs must match the version pins in CI and `mise.toml`, the minimum
-versions, the Python version, and their own relative links.
+`make test-flow-py` runs the flow's unit tests in `tests/`, which mock the EDA
+tools, so they run anywhere; a bare `pytest` runs only the RTL tests. In both, a
+warning fails the test that raises it. Some of the flow's tests catch drift
+between the code and `make help` or the docs.
 
 ## cocotb's pytest plugin
 

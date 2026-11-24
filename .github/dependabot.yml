@@ -1,8 +1,8 @@
 version: 2
 updates:
-  # The actions that the workflow and the local setup-eda-tools action use.
+  # The actions that the workflow uses.
   - package-ecosystem: github-actions
-    directories: ["/", "/.github/actions/*"]
+    directory: /
     schedule:
       interval: weekly
     # Wait a week before adopting a release, as uv.lock's exclude-newer does: most

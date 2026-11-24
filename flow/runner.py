@@ -10,14 +10,16 @@ Makefile and the flow CLI set it (``SIM``, ``ABV``, ``WAVES``, ``HDL_COVERAGE``,
 The module also holds what :mod:`flow.cli`, :mod:`flow.simulators` and
 :mod:`flow.viewers` share: the defaults, finding DUTs and their configurations
 (:func:`discover_duts`, :func:`hdl_configs`, :func:`config_params`), the build
-directory layout (:func:`default_build_dir`), the ``make`` commands that error
-hints suggest (:func:`make_target_command`), and running tools and checking
-their versions (:func:`run`, :func:`require_tool_version`).
+directory layout (:func:`default_build_dir`), the waveform layouts
+(:func:`waveform_layout`), the ``make`` commands that error hints suggest
+(:func:`make_target_command`), and running tools and checking their versions
+(:func:`run`, :func:`require_tool_version`).
 """
 
 import json
 import logging
 import os
+import platform
 import re
 import shlex
 import shutil
@@ -171,15 +173,19 @@ def artifact_build_mode(*, waves: bool, hdl_coverage: bool) -> str:
     return "normal"
 
 
-def run(cmd: list[str], *, cwd: Path | None = None) -> None:
-    """Echo and run *cmd*, raising :class:`SystemExit` on a non-zero exit.
+def run(cmd: list[str], *, cwd: Path | None = None, env: Mapping[str, str] | None = None) -> None:
+    """Echo and run *cmd*, with *env* added to its environment, raising
+    :class:`SystemExit` on a non-zero exit.
 
     Shared by the simulator/viewer profiles and the CLI to drive external tools
     (coverage reporters, waveform viewers) the way the old Makefile recipes did.
     """
-    print("+ " + shlex.join(cmd), flush=True)
+    assignments = [f"{name}={value}" for name, value in (env or {}).items()]
+    print("+ " + shlex.join([*assignments, *cmd]), flush=True)
     try:
-        result = subprocess.run(cmd, cwd=cwd, check=False)
+        result = subprocess.run(
+            cmd, cwd=cwd, check=False, env={**os.environ, **env} if env else None
+        )
     except FileNotFoundError:
         raise SystemExit(f"{cmd[0]}: command not found") from None
     if result.returncode != 0:
@@ -289,10 +295,32 @@ def require(path: Path, hint: str, *, kind: str = "file") -> None:
         raise SystemExit(f"{path} not found. {hint}")
 
 
+def html_viewer() -> str:
+    """The program that opens HTML files: ``$HTML_VIEWER``, or the platform's opener.
+
+    That is ``open`` on macOS; on WSL, wslview (from wslu), which opens a file in
+    Windows' default browser, when it is installed; and ``xdg-open`` elsewhere.
+    """
+    if viewer := env_str("HTML_VIEWER", ""):
+        return viewer
+    if sys.platform == "darwin":
+        return "open"
+    on_wsl = sys.platform == "linux" and "microsoft" in platform.release().lower()
+    if on_wsl and shutil.which("wslview"):
+        return "wslview"
+    return "xdg-open"
+
+
 def open_html(index: Path, *, hint: str) -> None:
-    """Open an HTML report *index* with ``$HTML_VIEWER`` (default xdg-open)."""
+    """Open an HTML report *index* with :func:`html_viewer`."""
     require(index, hint)
-    run([env_str("HTML_VIEWER", "xdg-open"), str(index)])
+    viewer = html_viewer()
+    if shutil.which(viewer) is None:
+        raise SystemExit(
+            f"{viewer}: command not found. Open {index} in a browser, or set HTML_VIEWER "
+            "to a program that opens it."
+        )
+    run([viewer, str(index)])
 
 
 def resolve_project_path(value: str | None, project_dir: Path, default: Path) -> Path:
@@ -449,9 +477,20 @@ def default_sources_files(project_dir: Path) -> list[Path]:
     return resolve_sources_files(os.environ.get("SV_SOURCES_FILE"), project_dir)
 
 
-def default_questa_do(project_dir: Path, dut: str) -> Path:
-    """``$QUESTA_DO`` override, or the ``waves/<dut>.do`` layout for *dut*."""
-    return project_path_from_env("QUESTA_DO", project_dir, project_dir / "waves" / f"{dut}.do")
+def waveform_layout(variable: str, project_dir: Path, dut: str, config: str, suffix: str) -> Path:
+    """The waveform layout, ending in *suffix*, of *dut*'s *config*: ``$variable``, or
+    ``waves/<dut>/<config><suffix>`` when it exists, else ``waves/<dut>/default<suffix>``.
+
+    :data:`DEFAULT_CONFIG` is the only configuration of a DUT without named ones, and
+    its layout serves each named configuration that has none of its own. One needs its
+    own when it shows other signals, or when its parameters change the width of a
+    vector that the layout names with its range, as GTKWave's and Verdi's layouts do.
+    """
+    layouts = project_dir / "waves" / dut
+    own = layouts / f"{config}{suffix}"
+    return project_path_from_env(
+        variable, project_dir, own if own.is_file() else layouts / f"{DEFAULT_CONFIG}{suffix}"
+    )
 
 
 def vsim_exe() -> str:
@@ -486,7 +525,8 @@ def build_and_test(
     yields. Each configuration builds in its own directory. The flow CLI selects
     DUTs and configurations by running harnesses by their pytest node IDs, so
     this function runs whatever pytest calls it with. The derived module drives
-    the build dir, the GTKWave stems, and the ``waves/<DUT>.*`` layouts.
+    the build dir, the GTKWave stems, and the waveform layouts
+    (:func:`waveform_layout`).
 
     All other configuration (SIM, BUILD_DIR, TEST, ABV, HDL_COVERAGE,
     QUESTA_GUI, etc.) is read from environment variables, matching the
@@ -521,7 +561,7 @@ def build_and_test(
     waves_enabled = env_flag("WAVES", default=False)
     artifact = artifact_build_mode(waves=waves_enabled, hdl_coverage=hdl_coverage)
     build_dir = default_build_dir(project_dir, hdl_toplevel, simulator, config, artifact)
-    questa_do = default_questa_do(project_dir, hdl_toplevel)
+    questa_do = waveform_layout("QUESTA_DO", project_dir, hdl_toplevel, config, ".do")
     wave_path = profile.wave_path(build_dir) if profile else build_dir / "dump.vcd"
     cm_hier = optional_path_from_env("CM_HIER", project_dir)
     # The cocotb sim subprocess loads the test module from ``test_dir`` and must

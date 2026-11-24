@@ -1,5 +1,8 @@
 import logging
 import os
+import platform
+import shutil
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -18,10 +21,83 @@ from flow.runner import (
     discover_configs,
     discover_duts,
     expose_tool_on_path,
+    html_viewer,
     make_target_command,
+    run,
     validate_config_name,
+    waveform_layout,
 )
 from flow.simulators import SIMULATORS, SimulatorProfile
+
+# Settings that build_and_test and default_build_dir read, and that would change what
+# these tests check if a caller set them, as `make test-flow-py BUILD_DIR=...` does.
+RUN_SETTINGS = (
+    "ABV",
+    "BUILD_DIR",
+    "COCOTB_EXECUTED_CASES_FILE",
+    "HDL_COVERAGE",
+    "QUESTA_GUI",
+    "REBUILD",
+    "VERILATOR",
+    "WAVES",
+)
+
+
+@pytest.fixture(autouse=True)
+def default_run_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in RUN_SETTINGS:
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_run_adds_its_environment_and_echoes_it(capsys: pytest.CaptureFixture[str]) -> None:
+    check = "import os, sys; sys.exit(os.environ.get('FLOW_TEST') != '1')"
+    run([sys.executable, "-c", check], env={"FLOW_TEST": "1"})
+    assert capsys.readouterr().out.startswith("+ FLOW_TEST=1 ")
+
+
+def test_a_configuration_without_its_own_layout_gets_the_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GTKWAVE_SAVE", raising=False)
+    default = tmp_path / "waves" / "top" / "default.gtkw"
+    own = tmp_path / "waves" / "top" / "width4.gtkw"
+    assert waveform_layout("GTKWAVE_SAVE", tmp_path, "top", "width4", ".gtkw") == default
+    own.parent.mkdir(parents=True)
+    own.touch()
+    assert waveform_layout("GTKWAVE_SAVE", tmp_path, "top", "width4", ".gtkw") == own
+    assert waveform_layout("GTKWAVE_SAVE", tmp_path, "top", "width8", ".gtkw") == default
+    monkeypatch.setenv("GTKWAVE_SAVE", "mine.gtkw")
+    assert waveform_layout("GTKWAVE_SAVE", tmp_path, "top", "width4", ".gtkw") == (
+        tmp_path / "mine.gtkw"
+    )
+
+
+@pytest.mark.parametrize(
+    ("system", "release", "wslview", "viewer"),
+    [
+        ("darwin", "25.1.0", None, "open"),
+        ("linux", "6.8.0-48-generic", "/usr/bin/wslview", "xdg-open"),
+        ("linux", "5.15.167.4-microsoft-standard-WSL2", "/usr/bin/wslview", "wslview"),
+        ("linux", "5.15.167.4-microsoft-standard-WSL2", None, "xdg-open"),
+    ],
+)
+def test_html_reports_open_with_the_platforms_opener(
+    monkeypatch: pytest.MonkeyPatch,
+    system: str,
+    release: str,
+    wslview: str | None,
+    viewer: str,
+) -> None:
+    def which(name: str) -> str | None:
+        return wslview if name == "wslview" else None
+
+    monkeypatch.delenv("HTML_VIEWER", raising=False)
+    monkeypatch.setattr(sys, "platform", system)
+    monkeypatch.setattr(platform, "release", lambda: release)
+    monkeypatch.setattr(shutil, "which", which)
+    assert html_viewer() == viewer
+    monkeypatch.setenv("HTML_VIEWER", "firefox")
+    assert html_viewer() == "firefox"
 
 
 @pytest.mark.parametrize(
@@ -207,7 +283,6 @@ def test_wave_metadata_is_prepared_before_a_failing_test(
     monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
     monkeypatch.setenv("WAVES", "1")
     monkeypatch.delenv("CONFIG", raising=False)
-    monkeypatch.delenv("HDL_COVERAGE", raising=False)
 
     with (
         patch("flow.runner.get_runner", return_value=simulator),
@@ -222,8 +297,6 @@ def rebuilds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, **environment: str
     """Run build_and_test with REBUILD=0 and a fake cocotb runner; return its ``always``."""
     simulator = MagicMock()
     simulator.log = logging.getLogger("flow-test-rebuild")
-    for name in ("ABV", "WAVES", "HDL_COVERAGE", "VERILATOR", "COCOTB_EXECUTED_CASES_FILE"):
-        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("SIM", "verilator")
     monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
     monkeypatch.setenv("REBUILD", "0")
@@ -302,8 +375,6 @@ def test_previous_run_outputs_are_deleted_before_the_build(
         seen_at_build.extend(output.exists() for output in stale)
 
     simulator.build.side_effect = record_outputs
-    for name in ("ABV", "WAVES", "HDL_COVERAGE", "REBUILD", "COCOTB_EXECUTED_CASES_FILE"):
-        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("SIM", "verilator")
     monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
     with (
@@ -327,8 +398,6 @@ def test_a_run_without_the_makefile_sets_project_root(
         roots.append(os.environ.get("PROJECT_ROOT"))
 
     simulator.build.side_effect = record_root
-    for name in ("ABV", "WAVES", "HDL_COVERAGE", "REBUILD", "COCOTB_EXECUTED_CASES_FILE"):
-        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("PROJECT_ROOT", "")
     monkeypatch.delenv("PROJECT_ROOT")
     monkeypatch.setenv("SIM", "verilator")

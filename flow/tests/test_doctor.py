@@ -1,25 +1,26 @@
 import re
 import shlex
+import sys
 from importlib.resources import files
 from pathlib import Path
 
 import pytest
 
 from flow import doctor
-from flow.doctor import GROUPS, Tool, check, ci_pins, mise_pins, numbers, report
+from flow.doctor import GROUPS, Tool, check, check_lz4, mise_pins, numbers, report
 from flow.simulators import VerilatorProfile
 
 VERILATOR = Tool(
     "verilator",
     "VERILATOR",
-    pin="VERILATOR_VERSION",
+    mise=doctor.OSS_CAD_SUITE,
     minimum=VerilatorProfile.minimum_version,
     minimum_for="the flow",
 )
 VERIBLE = Tool("verible-verilog-format", mise="github:chipsalliance/verible", exact=True)
 GENHTML = Tool("genhtml", "GENHTML", mise="github:linux-test-project/lcov")
 PINS = {
-    "VERILATOR_VERSION": "5.054",
+    doctor.OSS_CAD_SUITE: "2026-11-16",
     "github:chipsalliance/verible": "0.0-4298-g085eef05",
     "github:linux-test-project/lcov": "2.6",
 }
@@ -51,23 +52,6 @@ def fake_tool(directory: Path, name: str, output: str = "", status: int = 0) -> 
     return path
 
 
-def test_ci_pins_reads_literal_versions(tmp_path: Path) -> None:
-    workflow = tmp_path / "ci.yml"
-    workflow.write_text(
-        "env:\n"
-        '  UV_LOCKED: "1"\n'
-        "  VERILATOR_VERSION: v5.054\n"
-        '  SLANG_VERSION: "v12.1"\n'
-        "jobs:\n"
-        "  rtl:\n"
-        "    env:\n"
-        "      VERILATOR_VERSION: ${{ env.VERILATOR_VERSION }}\n",
-        encoding="utf-8",
-    )
-    assert ci_pins(workflow) == {"VERILATOR_VERSION": "5.054", "SLANG_VERSION": "12.1"}
-    assert ci_pins(tmp_path / "missing.yml") == {}
-
-
 def test_mise_pins_reads_versions(tmp_path: Path) -> None:
     config = tmp_path / "mise.toml"
     config.write_text(
@@ -88,7 +72,6 @@ def test_mise_pins_reads_versions(tmp_path: Path) -> None:
 
 def test_every_pin_is_pinned() -> None:
     tools = [tool for group in GROUPS for tool in group.tools]
-    assert {tool.pin for tool in tools if tool.pin} <= ci_pins().keys()
     assert {tool.mise for tool in tools if tool.mise} <= mise_pins().keys()
 
 
@@ -116,12 +99,12 @@ def test_versions_compare_numerically() -> None:
 @pytest.mark.parametrize(
     ("tool", "output", "status", "expected"),
     [
-        (VERILATOR, "Verilator 5.054 2026-11-01 rev v5.054", 0, ("verified", "5.054", "")),
+        (VERILATOR, "Verilator 5.054 2026-11-01 rev v5.054", 0, ("ok", "5.054", "")),
         (
             VERILATOR,
             "Verilator 5.055 devel rev v5.054-69-ge10a6237c",
             0,
-            ("untested", "5.055", "CI verifies 5.054"),
+            ("ok", "5.055", ""),
         ),
         (
             VERILATOR,
@@ -145,9 +128,9 @@ def test_versions_compare_numerically() -> None:
         (GENHTML, PERL_ERROR, 2, ("warning", "", f"genhtml --version failed: {PERL_ERROR}")),
         (
             Tool("gtkwave"),
-            "GTKWave Analyzer v3.3.126 (w)1999-2025 BSI",
+            "GTKWave Analyzer v4.0.0-prealpha (e40ba79) (w)1999-2022 BSI",
             0,
-            ("ok", "3.3.126", ""),
+            ("ok", "4.0.0-prealpha", ""),
         ),
     ],
 )
@@ -177,9 +160,47 @@ def test_missing_tool_that_mise_installs_suggests_mise_install(
 ) -> None:
     result = check(GENHTML, PINS, required=False)
     assert (result.status, result.detail) == ("missing", "not found; run `mise install`")
+    result = check(VERILATOR, PINS, required=True)
+    assert (result.status, result.detail) == ("error", "not found; run `mise install`")
     monkeypatch.setenv("GENHTML", str(bin_dir / "custom" / "genhtml"))
     result = check(GENHTML, PINS, required=False)
     assert result.detail == f"not found: GENHTML={bin_dir / 'custom' / 'genhtml'}"
+
+
+@pytest.mark.parametrize(
+    ("platform", "installed", "status", "detail"),
+    [
+        ("darwin", True, "ok", ""),
+        ("darwin", False, "missing", "lz4.h not found; run `brew install lz4`"),
+        ("linux", True, "missing", "lz4.h not found; install liblz4-dev"),
+    ],
+)
+def test_lz4_is_looked_for_as_fst_builds_find_it(
+    bin_dir: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    platform: str,
+    installed: bool,
+    status: str,
+    detail: str,
+) -> None:
+    include = tmp_path / "homebrew" / "opt" / "lz4" / "include"
+    if installed:
+        include.mkdir(parents=True)
+        (include / "lz4.h").touch()
+    monkeypatch.setenv("HOMEBREW_PREFIX", str(tmp_path / "homebrew"))
+    monkeypatch.setattr(sys, "platform", platform)
+    # A compiler that finds lz4.h only in an -I directory, and lists it as -M does.
+    compiler = bin_dir / doctor.CXX
+    compiler.write_text(
+        '#!/bin/sh\nfor arg; do case $arg in -I*) echo "-: ${arg#-I}/lz4.h"; exit 0;; esac; done\n'
+        "exit 1\n",
+        encoding="utf-8",
+    )
+    compiler.chmod(0o755)
+    result = check_lz4()
+    assert (result.status, result.detail) == (status, detail)
+    assert result.path == (str(include / "lz4.h") if status == "ok" else "")
 
 
 def test_tools_are_located_as_the_flow_runs_them(
@@ -191,17 +212,13 @@ def test_tools_are_located_as_the_flow_runs_them(
     assert doctor.locate(VERILATOR) == str(verilator)
 
 
-def test_report_fails_only_on_errors(
-    bin_dir: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_report_fails_only_on_errors(bin_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
     fake_tool(bin_dir, "uv", "uv 0.13.7 (x86_64-unknown-linux-gnu)")
     fake_tool(bin_dir, "verilator", "Verilator 5.055 devel rev v5.054-69-ge10a6237c")
-    workflow = tmp_path / "ci.yml"
-    workflow.write_text("env:\n  VERILATOR_VERSION: v5.054\n", encoding="utf-8")
-    assert report(workflow) == 1
+    assert report() == 1
     assert "1 error." in capsys.readouterr().out
     fake_tool(bin_dir, "make", "GNU Make 4.4.1")
-    assert report(workflow) == 0
+    assert report() == 0
     output = capsys.readouterr().out
     assert "missing   vsim" in output
     assert "error" not in output

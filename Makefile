@@ -89,7 +89,7 @@ SIM ?= verilator
 # module with a tests/test_<module>.py harness, and the commands that open one
 # waveform or coverage report use the only one, or ask for DUT. Passed to the
 # flow CLI (which forwards it to the cocotb runner and the waveform viewers:
-# GTKWave stems and the waves/<DUT>.* layouts) so every command targets the same
+# GTKWave stems and the waves/ layouts) so every command targets the same
 # module. CONFIG selects one named HDL configuration of the DUT: test and coverage
 # run every configuration of the selected DUTs without it, and the commands that
 # open one artifact need it when the DUT has several.
@@ -168,7 +168,7 @@ help:
 	@echo ""
 	@echo "Tool executables (override as VAR=/path/to/tool; make doctor shows which it finds):"
 	@echo "  UV VERILATOR VERILATOR_COVERAGE GENHTML VERIBLE_FORMAT VERIBLE_LINT SLANG SLANG_TIDY"
-	@echo "  GTKWAVE JSON2STEMS VSIM VCOVER VCS URG VERDI"
+	@echo "  GTKWAVE VSIM VCOVER VCS URG VERDI"
 	@echo ""
 	@echo "Tool selection:"
 	@echo "  SIM=<sim>                       Simulator; available: $$($(FLOW) list-sims | tr '\n' ' ')"
@@ -190,7 +190,7 @@ help:
 	@echo "  VERDI_RC=                       Verdi layout"
 	@echo "  CM_HIER= / ELLIST=              Optional VCS coverage hierarchy / exclusions"
 	@echo "  COVERAGE_HTML=1                 coverage also writes Verilator's HTML report (LCOV)"
-	@echo "  HTML_VIEWER=wslview             HTML opener (e.g. wslview on WSL)"
+	@echo "  HTML_VIEWER=                    HTML opener (default: open on macOS, wslview on WSL, else xdg-open)"
 
 # Build the RTL and run the cocotb tests. flow/cli.py sets up the per-simulator
 # pytest invocation (the supported cocotb runner path); command-line VAR=value
@@ -304,7 +304,11 @@ SV_VENDOR_PATHS := $(sort $(realpath $(SV_VENDOR_DIR) $(wildcard $(SV_VENDOR_DIR
 VERILATOR_LINT = $(VERILATOR) --lint-only --timing -Wall -Wno-MULTITOP --timescale $(SV_TIMESCALE) --sv +define+ABV rtl/verilator.vlt
 SLANG_OPTIONS = $(strip --single-unit +define+ABV --timescale $(SV_TIMESCALE) $(foreach path,$(SV_VENDOR_PATHS),--suppress-warnings $(path)/...))
 SLANG_LINT = $(SLANG) -Werror $(SLANG_OPTIONS)
-SLANG_TIDY_LINT = $(strip $(SLANG_TIDY) $(SLANG_OPTIONS) $(foreach path,$(SV_VENDOR_PATHS),--skip-path $(path)))
+# The trailing slash keeps slang-tidy 12.1's --skip-path from also skipping the
+# directory's parent, and so all of rtl/
+# (https://github.com/MikePopoloski/slang/issues/2100). Remove it once OSS CAD
+# Suite's slang is 12.2 or newer.
+SLANG_TIDY_LINT = $(strip $(SLANG_TIDY) $(SLANG_OPTIONS) $(foreach path,$(SV_VENDOR_PATHS),--skip-path $(path)/))
 
 lint-sv-verilator:
 	$(VERILATOR_LINT) $(SV_SOURCES_ARGS)

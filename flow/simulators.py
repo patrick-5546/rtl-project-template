@@ -13,7 +13,9 @@ Add a simulator by subclassing :class:`SimulatorProfile`, implementing the
 capabilities it supports, and registering an instance in :data:`SIMULATORS`.
 """
 
+import os
 import shutil
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import override
@@ -41,6 +43,37 @@ VERILATOR_CONTROL_FILE = PROJECT_DIR / "rtl" / "verilator.vlt"
 # The timescale of a module that declares none, on every simulator. The
 # Makefile's SV_TIMESCALE gives the linters the same default.
 TIMESCALE = "1ns/1ps"
+
+
+def homebrew_lz4() -> Path | None:
+    """Homebrew's lz4 on macOS, or ``None`` elsewhere or when it is not installed.
+
+    Verilator's FST tracing compiles against ``lz4.h`` and links ``liblz4``. Apple's
+    compiler does not search Homebrew's prefix on Apple silicon, ``/opt/homebrew``,
+    which ``HOMEBREW_PREFIX`` (set by ``brew shellenv``) overrides.
+    """
+    if sys.platform != "darwin":
+        return None
+    lz4 = Path(env_str("HOMEBREW_PREFIX", "/opt/homebrew")) / "opt" / "lz4"
+    return lz4 if (lz4 / "include" / "lz4.h").is_file() else None
+
+
+def genhtml_env() -> dict[str, str]:
+    """What genhtml's environment needs beyond the flow's: ``LCOV_PURE_PERL=1`` on macOS.
+
+    LCOV 2.6's lcovutil.pm tries ``require LcovUtil`` for its C++ extension, which
+    its release does not build. On macOS's case-insensitive filesystem that name
+    finds lcovutil.pm itself, which Perl then loads again, warning that each of
+    its hundreds of subroutines is redefined. ``LCOV_PURE_PERL=1`` skips the
+    extension, as the failed ``require`` does elsewhere. Remove this once an LCOV
+    release looks for the extension only where it is built
+    (https://github.com/linux-test-project/lcov/issues/574). An ``LCOV_PURE_PERL``
+    that the environment sets, such as 0 for an LCOV whose extension is built, is
+    kept.
+    """
+    if sys.platform == "darwin" and "LCOV_PURE_PERL" not in os.environ:
+        return {"LCOV_PURE_PERL": "1"}
+    return {}
 
 
 def write_fsdb_dump_module(build_dir: Path, hdl_toplevel: str) -> Path:
@@ -278,9 +311,8 @@ class VerilatorProfile(SimulatorProfile):
     wave_filename = "dump.fst"
     supports_coverage = True
     # Verilator 5.050 added SV covergroups, and 5.052 and 5.054 fixed several of
-    # their bugs; 5.054 is also the version that CI verifies. Every build and
-    # coverage report checks it, so an older Verilator fails up front instead of
-    # dropping covergroups from the coverage.
+    # their bugs. Every build and coverage report checks it, so an older
+    # Verilator fails up front instead of dropping covergroups from the coverage.
     minimum_version = "5.054"
 
     def require_version(self, executable: str) -> None:
@@ -309,6 +341,10 @@ class VerilatorProfile(SimulatorProfile):
         if cfg.waves:
             args.build_args.append("--trace-fst")
             args.build_args.append("--trace-structs")
+            if lz4 := homebrew_lz4():
+                args.build_args.extend(
+                    ["-CFLAGS", f"-I{lz4 / 'include'}", "-LDFLAGS", f"-L{lz4 / 'lib'}"]
+                )
         return args
 
     @override
@@ -353,11 +389,16 @@ class VerilatorProfile(SimulatorProfile):
             ],
             cwd=project_dir,
         )
+        # A point is hit at its first hit, as in the annotated report. Verilator counts
+        # the LCOV data's BRH, and after 5.054 its LH, against --annotate-min, which
+        # is 10 by default, so the totals would disagree with the records.
         run(
             [
                 verilator_coverage,
                 "--write-info",
                 str(info),
+                "--annotate-min",
+                "1",
                 "--include-reset-arcs",
                 str(coverage_data),
             ],
@@ -392,6 +433,7 @@ class VerilatorProfile(SimulatorProfile):
                 str(build_dir / "coverage.info"),
             ],
             cwd=project_dir,
+            env=genhtml_env(),
         )
         return html_dir / "index.html"
 

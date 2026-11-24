@@ -12,15 +12,13 @@ Python package, `flow/`, that drives the tools.
   - `top.sv`: a parameterized counter, the example design.
   - `top_abv.sv`: assertions, cover properties and a covergroup for `top.sv`.
   - `sources.vf`: the compilation filelist (the default `SV_SOURCES_FILE`).
-  - `verilator.vlt`: Verilator's control file: lint waivers, the coverage
-    exclusion of Verilator's own library, and internal signals that tests
-    access.
+  - `verilator.vlt`: Verilator's lint waivers and other settings.
 - `tests/`: the cocotb tests, launched by pytest.
   - `test_top.py`: tests for `top`.
   - `cocotb_configs.py`: named HDL parameter configurations.
 - `flow/`: the build, run and view flow that the Makefile calls, with its own
   unit tests in `flow/tests/` and its README.
-- `waves/`: reusable waveform layouts, one per viewer, named `<DUT>.*`.
+- `waves/`: the waveform viewers' layouts, by DUT and configuration.
 - `docs/`: the documentation below: `design/` holds the design's
   specifications, and `flow/` the flow's guides.
 - `Makefile`, `pyproject.toml` (uv-managed Python dependencies and tool
@@ -31,13 +29,17 @@ Generated artifacts are ignored by Git and stay under `build/`.
 
 ## Quick start
 
-Install the external tools first; see [Tools](docs/flow/tools.md).
+Install [mise](https://mise.jdx.dev/getting-started.html), which installs the
+external tools at the versions that CI uses; [Tools](docs/flow/tools.md) has
+the details, and the little that mise does not install.
 
-```sh
-make doctor # check the installed tools and their versions
-make test   # run the cocotb regression of every DUT
-make lint   # run all lint and type checks
-make help   # list every target, override variable and simulator
+```text
+mise trust   # trust the checkout's mise.toml
+mise install # install its tools
+make doctor  # check the installed tools and their versions
+make test    # run the cocotb regression of every DUT
+make lint    # run all lint and type checks
+make help    # list every target, override variable and simulator
 ```
 
 ## Start a project from this template
@@ -62,8 +64,7 @@ it yours, then delete this section:
 
 The design:
 
-- [top](docs/design/top.md): the example counter's specification. Give each
-  module a specification in `docs/design/`.
+- [top](docs/design/top.md): the example counter's specification.
 
 The flow:
 

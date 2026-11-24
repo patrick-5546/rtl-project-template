@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 
 from flow import doctor
-from flow.viewers import JSON2STEMS_GTKWAVE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_DOC = REPO_ROOT / "docs" / "flow" / "tools.md"
+DEVELOPMENT_DOC = REPO_ROOT / "docs" / "flow" / "development.md"
 DOCS = [
     REPO_ROOT / "README.md",
     REPO_ROOT / "AGENTS.md",
@@ -45,27 +45,15 @@ def verified_versions() -> dict[str, str]:
     return {tool.lower(): version for tool, version in rows}
 
 
-def pinned_versions() -> dict[str, str]:
-    """The versions that CI and mise.toml pin, by lowercase tool name: the CI pin
-    ``VERILATOR_VERSION`` is ``verilator``, and the mise tool
-    ``github:chipsalliance/verible`` is ``verible``."""
-    ci = {pin.removesuffix("_VERSION").lower(): v for pin, v in doctor.ci_pins().items()}
-    mise = {re.split(r"[:/]", key)[-1].lower(): v for key, v in doctor.mise_pins().items()}
-    return ci | mise
-
-
-@pytest.mark.parametrize("tool", sorted(pinned_versions()))
-def test_verified_versions_are_the_pins(tool: str) -> None:
-    documented = verified_versions().get(tool, "missing").removeprefix("v")
-    assert documented == pinned_versions()[tool], f"docs/flow/tools.md: {tool} {documented}"
+def test_verified_suite_is_the_pinned_one() -> None:
+    """The verified Verilator, slang and GTKWave are those of the pinned OSS CAD Suite."""
+    pin = doctor.mise_pins()[doctor.OSS_CAD_SUITE]
+    assert verified_versions()["oss cad suite"] == pin
 
 
 @pytest.mark.parametrize(
     "minimum",
-    sorted(
-        {tool.minimum for group in doctor.GROUPS for tool in group.tools if tool.minimum}
-        | {JSON2STEMS_GTKWAVE}
-    ),
+    sorted({tool.minimum for group in doctor.GROUPS for tool in group.tools if tool.minimum}),
 )
 def test_minimum_versions_are_documented(minimum: str) -> None:
     assert f"{minimum} or newer" in flattened(TOOLS_DOC)
@@ -76,9 +64,9 @@ def test_python_version_is_consistent() -> None:
     major, minor = (int(part) for part in version.split("."))
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert pyproject["project"]["requires-python"] == f">={version},<{major}.{minor + 1}"
-    tools_doc = flattened(TOOLS_DOC)
-    assert f"pinned to `{version}`" in tools_doc
-    assert f"move to Python {major}.{minor + 1} once" in tools_doc
+    development_doc = flattened(DEVELOPMENT_DOC)
+    assert f"pinned to `{version}`" in development_doc
+    assert f"move to Python {major}.{minor + 1} once" in development_doc
 
 
 @pytest.mark.parametrize("doc", DOCS, ids=[doc.relative_to(REPO_ROOT).as_posix() for doc in DOCS])

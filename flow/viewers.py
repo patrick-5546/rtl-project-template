@@ -2,7 +2,8 @@
 
 Each simulator has one waveform viewer. A profile declares the simulator whose
 wave format it reads (``wave_sim``) and how to open an existing waveform
-(:meth:`ViewerProfile.open_waves`).
+(:meth:`ViewerProfile.open_waves`), with the layout that
+:func:`flow.runner.waveform_layout` finds for the DUT's configuration.
 
 Add or replace a simulator's viewer by subclassing :class:`ViewerProfile`,
 setting ``wave_sim``, and registering an instance in :data:`VIEWERS`, which is
@@ -10,26 +11,21 @@ keyed by ``wave_sim``.
 """
 
 import shlex
-import shutil
 from pathlib import Path
 from typing import override
 
 from flow.runner import (
-    default_questa_do,
     env_flag,
     env_str,
     make_target_command,
-    project_path_from_env,
     require,
     run,
     verdi_command,
     vsim_exe,
+    waveform_layout,
 )
 from flow.simulators import SIMULATORS
-
-# The first GTKWave release with json2stems, which writes RTLBrowse's stems from
-# Verilator's JSON design tree.
-JSON2STEMS_GTKWAVE = "3.3.125"
+from flow.stems import write_stems
 
 
 class ViewerProfile:
@@ -63,28 +59,11 @@ class ViewerProfile:
         raise NotImplementedError
 
 
-def drop_builtin_modules(stems: Path) -> None:
-    """Remove the modules whose file is ``<built-in>`` from the RTLBrowse *stems*.
-
-    Verilator's tree lists internal modules, such as ``$unit`` and
-    ``__Vconstpool``, which have no source: RTLBrowse would list them in its
-    hierarchy and fail to open them.
-    """
-    lines = stems.read_text(encoding="utf-8").splitlines(keepends=True)
-
-    def is_builtin_module(line: str) -> bool:
-        fields = line.split()
-        return fields[:2] == ["++", "module"] and fields[3:5] == ["file", "<built-in>"]
-
-    stems.write_text("".join(line for line in lines if not is_builtin_module(line)), "utf-8")
-
-
 class GtkwaveProfile(ViewerProfile):
     """GTKWave, with its RTLBrowse window unless ``NO_RTLBROWSE`` is set.
 
-    RTLBrowse reads stems, which GTKWave's ``json2stems`` writes from Verilator's
-    design tree, without Verilator's internal modules
-    (:func:`drop_builtin_modules`).
+    RTLBrowse reads stems, which :func:`flow.stems.write_stems` writes from
+    Verilator's design tree.
     """
 
     name = "gtkwave"
@@ -101,12 +80,8 @@ class GtkwaveProfile(ViewerProfile):
         wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
         gtkwave = env_str("GTKWAVE", "gtkwave")
-        gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", "-o"))
-        save = project_path_from_env(
-            "GTKWAVE_SAVE",
-            project_dir,
-            project_dir / "waves" / f"{dut}.gtkw",
-        )
+        gtkwave_args = shlex.split(env_str("GTKWAVE_ARGS", ""))
+        save = waveform_layout("GTKWAVE_SAVE", project_dir, dut, config, ".gtkw")
         cmd = [gtkwave, *gtkwave_args]
         if not env_flag("NO_RTLBROWSE", default=False):
             top = dut
@@ -116,15 +91,7 @@ class GtkwaveProfile(ViewerProfile):
             stems = json_dir / f"{top}.stems"
             require(tree_json, self.waves_hint(dut, config))
             require(tree_meta, self.waves_hint(dut, config))
-            json2stems = env_str("JSON2STEMS", "json2stems")
-            if shutil.which(json2stems) is None:
-                raise SystemExit(
-                    f"{json2stems}: command not found. It comes with GTKWave "
-                    f"{JSON2STEMS_GTKWAVE} or newer: install that, point JSON2STEMS at it, "
-                    "or skip RTLBrowse with NO_RTLBROWSE=1."
-                )
-            run([json2stems, str(tree_meta), str(tree_json), str(stems)], cwd=build_dir)
-            drop_builtin_modules(stems)
+            write_stems(tree_meta, tree_json, stems)
             print(f"GTKWave stems: {stems}")
             cmd += ["-t", str(stems)]
         cmd.append(str(wave))
@@ -147,7 +114,7 @@ class QuestaViewerProfile(ViewerProfile):
     ) -> None:
         wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
-        do = default_questa_do(project_dir, dut)
+        do = waveform_layout("QUESTA_DO", project_dir, dut, config, ".do")
         cmd = [vsim_exe(), "-gui", "-view", str(wave)]
         if do.is_file():
             cmd.extend(["-do", str(do)])
@@ -169,7 +136,7 @@ class VerdiProfile(ViewerProfile):
         wave = self.wave_path(build_dir)
         require(wave, self.waves_hint(dut, config))
         daidir = build_dir / "simv.daidir"
-        rc = project_path_from_env("VERDI_RC", project_dir, project_dir / "waves" / f"{dut}.rc")
+        rc = waveform_layout("VERDI_RC", project_dir, dut, config, ".rc")
         cmd = [*verdi_command(), "-dbdir", str(daidir), "-ssf", str(wave)]
         if rc.is_file():
             cmd.extend(["-sswr", str(rc)])

@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -52,6 +53,30 @@ def test_verilator_configure_modes(
     assert ("--trace-fst" in args.build_args) is waves
     assert ("--coverage" in args.build_args) is coverage
     assert bool(args.plusargs) is coverage
+
+
+@pytest.mark.parametrize(
+    ("platform", "installed", "found"),
+    [("darwin", True, True), ("darwin", False, False), ("linux", True, False)],
+)
+def test_verilator_fst_builds_find_homebrews_lz4_on_macos(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    platform: str,
+    installed: bool,
+    found: bool,
+) -> None:
+    lz4 = tmp_path / "homebrew" / "opt" / "lz4"
+    if installed:
+        (lz4 / "include").mkdir(parents=True)
+        (lz4 / "include" / "lz4.h").touch()
+    monkeypatch.setenv("HOMEBREW_PREFIX", str(tmp_path / "homebrew"))
+    monkeypatch.setattr(sys, "platform", platform)
+    profile = VerilatorProfile()
+    with patch.object(profile, "require_version"):
+        args = profile.configure(config(tmp_path, waves=True))
+    flags = ["-CFLAGS", f"-I{lz4 / 'include'}", "-LDFLAGS", f"-L{lz4 / 'lib'}"]
+    assert (args.build_args[-4:] == flags) is found
 
 
 def test_verilator_makes_only_the_top_levels_ports_public(tmp_path: Path) -> None:
@@ -151,6 +176,31 @@ def test_verilator_html_report_has_no_percentage_gate(tmp_path: Path) -> None:
     assert "--fail-under-branches" not in command
 
 
+@pytest.mark.parametrize(
+    ("platform", "preset", "env"),
+    [
+        ("darwin", None, {"LCOV_PURE_PERL": "1"}),
+        ("darwin", "0", {}),
+        ("linux", None, {}),
+    ],
+)
+def test_genhtml_skips_lcovs_cpp_extension_on_macos(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    platform: str,
+    preset: str | None,
+    env: dict[str, str],
+) -> None:
+    monkeypatch.setattr(sys, "platform", platform)
+    if preset is None:
+        monkeypatch.delenv("LCOV_PURE_PERL", raising=False)
+    else:
+        monkeypatch.setenv("LCOV_PURE_PERL", preset)
+    with patch("flow.simulators.run") as run:
+        VerilatorProfile().write_coverage_html(tmp_path, tmp_path)
+    assert run.call_args.kwargs["env"] == env
+
+
 def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
     build_dir = tmp_path / "build"
     build_dir.mkdir()
@@ -162,9 +212,11 @@ def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
         "SF:no_lines.sv\nBRF:0\nBRH:0\nend_of_record\n"
     )
 
-    def fake_run(cmd: list[str], *, cwd: Path) -> None:
-        del cwd
+    write_info: list[str] = []
+
+    def fake_run(cmd: list[str], **_: object) -> None:
         if "--write-info" in cmd:
+            write_info.extend(cmd)
             Path(cmd[cmd.index("--write-info") + 1]).write_text(written, encoding="utf-8")
 
     profile = VerilatorProfile()
@@ -175,6 +227,8 @@ def test_verilator_lcov_info_gets_line_totals(tmp_path: Path) -> None:
         profile.report_coverage(
             tmp_path, build_dir, build_dir / "coverage.dat", dut="top", config="width4"
         )
+    # Verilator's own totals count a point as hit at one hit, as LCOV does.
+    assert write_info[write_info.index("--annotate-min") + 1] == "1"
     info = build_dir / "coverage.info"
     expected = written.replace(
         "BRH:0\nend_of_record\nSF:has", "BRH:0\nLF:3\nLH:2\nend_of_record\nSF:has", 1
@@ -206,8 +260,7 @@ def test_verilator_report_writes_html_on_request(
         monkeypatch.setenv("COVERAGE_HTML", coverage_html)
     tools: list[str] = []
 
-    def fake_run(cmd: list[str], *, cwd: Path) -> None:
-        del cwd
+    def fake_run(cmd: list[str], **_: object) -> None:
         tools.append(cmd[0])
         if "--write-info" in cmd:
             Path(cmd[cmd.index("--write-info") + 1]).write_text("end_of_record\n", encoding="utf-8")

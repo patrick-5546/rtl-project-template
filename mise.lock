@@ -26,6 +26,29 @@ checksum = "sha256:e031634c3a928f9594eba868bc46ef5230d6571a364a0c63215b06c4563bf
 url = "https://conda.anaconda.org/conda-forge/linux-64/libgomp-16.2.0-he0feb66_7.conda"
 checksum = "sha256:92a0bb350c7be6a4eedcb4e111c60aefd176018e6b1c009a6e025dbe9bbcd758"
 
+[[tools."github:YosysHQ/oss-cad-suite-build"]]
+version = "2026-11-16"
+backend = "github:YosysHQ/oss-cad-suite-build"
+specifiers = ["2026-11-16"]
+
+[tools."github:YosysHQ/oss-cad-suite-build"."platforms.linux-arm64"]
+checksum = "sha256:8b0a12ed5477a1858a82fcb2e4f6d4310e0998fbfea918dff3e8e05cc17a7d71"
+checksum_source = "mise-versions"
+url = "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-11-16/oss-cad-suite-linux-arm64-20261116.tgz"
+url_api = "https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/assets/754025448"
+
+[tools."github:YosysHQ/oss-cad-suite-build"."platforms.linux-x64"]
+checksum = "sha256:ce7ae7e795440f7709025b589bd907950a409b4155b0be5828afb82d41e32d22"
+checksum_source = "mise-versions"
+url = "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-11-16/oss-cad-suite-linux-x64-20261116.tgz"
+url_api = "https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/assets/753897999"
+
+[tools."github:YosysHQ/oss-cad-suite-build"."platforms.macos-arm64"]
+checksum = "sha256:754e23cfc99a6a7f8e89e05516c0a2987eecf5dbbb0a7dae5b65fcaeb81aacf0"
+checksum_source = "mise-versions"
+url = "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2026-11-16/oss-cad-suite-darwin-arm64-20261116.tgz"
+url_api = "https://api.github.com/repos/YosysHQ/oss-cad-suite-build/releases/assets/754006188"
+
 [[tools."github:chipsalliance/verible"]]
 version = "0.0-4298-g085eef05"
 backend = "github:chipsalliance/verible"

@@ -90,3 +90,8 @@ line-length = 100
 # The layouts that the waveform viewers write, the lockfiles' hashes, and
 # third-party RTL.
 extend-exclude = ["mise.lock", "uv.lock", "waves/", "rtl/vendor/"]
+
+[tool.typos.default]
+# Abbreviated commit hashes: the docs give a tool built from Git as "git e40ba79",
+# and GTKWave 4's --version prints "(e40ba79)".
+extend-ignore-re = ["(?:git |\\()[0-9a-f]{7,40}"]
