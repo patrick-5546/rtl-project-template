@@ -29,6 +29,25 @@ from flow.runner import (
 )
 from flow.simulators import SIMULATORS, SimulatorProfile
 
+# Settings that build_and_test and default_build_dir read, and that would change what
+# these tests check if a caller set them, as `make test-flow-py BUILD_DIR=...` does.
+RUN_SETTINGS = (
+    "ABV",
+    "BUILD_DIR",
+    "COCOTB_EXECUTED_CASES_FILE",
+    "HDL_COVERAGE",
+    "QUESTA_GUI",
+    "REBUILD",
+    "VERILATOR",
+    "WAVES",
+)
+
+
+@pytest.fixture(autouse=True)
+def default_run_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in RUN_SETTINGS:
+        monkeypatch.delenv(name, raising=False)
+
 
 def test_run_adds_its_environment_and_echoes_it(capsys: pytest.CaptureFixture[str]) -> None:
     check = "import os, sys; sys.exit(os.environ.get('FLOW_TEST') != '1')"
@@ -264,7 +283,6 @@ def test_wave_metadata_is_prepared_before_a_failing_test(
     monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
     monkeypatch.setenv("WAVES", "1")
     monkeypatch.delenv("CONFIG", raising=False)
-    monkeypatch.delenv("HDL_COVERAGE", raising=False)
 
     with (
         patch("flow.runner.get_runner", return_value=simulator),
@@ -279,8 +297,6 @@ def rebuilds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, **environment: str
     """Run build_and_test with REBUILD=0 and a fake cocotb runner; return its ``always``."""
     simulator = MagicMock()
     simulator.log = logging.getLogger("flow-test-rebuild")
-    for name in ("ABV", "WAVES", "HDL_COVERAGE", "VERILATOR", "COCOTB_EXECUTED_CASES_FILE"):
-        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("SIM", "verilator")
     monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
     monkeypatch.setenv("REBUILD", "0")
@@ -359,8 +375,6 @@ def test_previous_run_outputs_are_deleted_before_the_build(
         seen_at_build.extend(output.exists() for output in stale)
 
     simulator.build.side_effect = record_outputs
-    for name in ("ABV", "WAVES", "HDL_COVERAGE", "REBUILD", "COCOTB_EXECUTED_CASES_FILE"):
-        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("SIM", "verilator")
     monkeypatch.setenv("BUILD_DIR", str(tmp_path / "build"))
     with (
@@ -384,8 +398,6 @@ def test_a_run_without_the_makefile_sets_project_root(
         roots.append(os.environ.get("PROJECT_ROOT"))
 
     simulator.build.side_effect = record_root
-    for name in ("ABV", "WAVES", "HDL_COVERAGE", "REBUILD", "COCOTB_EXECUTED_CASES_FILE"):
-        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("PROJECT_ROOT", "")
     monkeypatch.delenv("PROJECT_ROOT")
     monkeypatch.setenv("SIM", "verilator")
