@@ -30,7 +30,7 @@ jobs:
         with:
           persist-credentials: false
       # These checks need only uv and GNU Make of the tools that mise.lock pins.
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
         with:
           version: ${{ env.MISE_VERSION }}
           install_args: uv make
@@ -51,7 +51,7 @@ jobs:
         with:
           persist-credentials: false
       # Installs the tools that mise.lock pins: Verible, and OSS CAD Suite's Verilator and slang.
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
         with:
           version: ${{ env.MISE_VERSION }}
       - name: Install the locked Python packages
@@ -67,7 +67,7 @@ jobs:
         with:
           persist-credentials: false
       # The flow's tests mock the EDA tools, so they need only uv and GNU Make.
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
         with:
           version: ${{ env.MISE_VERSION }}
           install_args: uv make
@@ -101,7 +101,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libcapture-tiny-perl libdatetime-perl libdevel-stacktrace-perl libtimedate-perl
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
         with:
           version: ${{ env.MISE_VERSION }}
       - name: Install the locked Python packages
@@ -163,7 +163,7 @@ jobs:
           mkdir "$RUNNER_TEMP/macos-perl"
           ln -s /usr/bin/perl "$RUNNER_TEMP/macos-perl/perl"
           echo "$RUNNER_TEMP/macos-perl" >> "$GITHUB_PATH"
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
         with:
           version: ${{ env.MISE_VERSION }}
       - name: Install the locked Python packages
